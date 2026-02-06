@@ -1,0 +1,15 @@
+﻿Service Name,Category,Description,Base Price,Units
+Diseño de Interiores,Interior Design,"Servicio de diseño de interiores, cocinas, baños y closets",$1200.00,Servicio
+Pintura básica de muro,Interior Design,"Pintura de muros
+",$200.00,Mt2
+Mueble de madera,Industrial Design,"Diseño y fabricación de mueble de madera, puede variar en estilos y dimensiones, son muebles en general como libreros, escritorios, muebles para loza o bien mueble personalizado",$2500.00,Servicio
+Carpintería General y reparaciones,Woodwork,Trabajos de carpinteria general como fabricacion o reparacion de muebles genereales o servicio de pintura,$450.00,Servicio
+Comedor completo,Industrial Design,"Comedor de 6 personas en Cuarzo o granito estandar, base de madera estandar y sillas modelos estandar",$26000.00,Pz
+Sillas ,Industrial Design,"Sillas modelos estandar
+",$2100.00,Pz
+Cocina,Industrial Design,Metro lineal de cocinas minimalistas,$2850.00,Mt Lineal
+Closet,Industrial Design,Metro lineal de closet,$2000.00,Mt Lineal
+TV Station,Industrial Design,metro lineal de estancia de TV sin acabado en muro,$2000.00,Mt Lineal
+Muebles de Baño,Industrial Design,"Mueble de baño sencillo
+",$3490.00,pz
+Cubierta de Cocina,StoneWorks,Metro lineal de Cuarzo estandar,$3500.00,Mt Lineal
