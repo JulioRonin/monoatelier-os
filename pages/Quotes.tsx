@@ -8,9 +8,10 @@ import { api } from '../lib/api';
 
 interface QuotesProps {
     user?: User | null;
+    initialQuoteId?: string | null;
 }
 
-const Quotes: React.FC<QuotesProps> = ({ user }) => {
+const Quotes: React.FC<QuotesProps> = ({ user, initialQuoteId }) => {
     const [quotes, setQuotes] = useState<Quote[]>([]);
     const [view, setView] = useState<'list' | 'create' | 'detail' | 'manage'>('list');
     const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
@@ -51,6 +52,15 @@ const Quotes: React.FC<QuotesProps> = ({ user }) => {
             setLoading(true);
             const data = await api.getQuotes();
             setQuotes(data);
+
+            // Auto-select if ID provided
+            if (initialQuoteId) {
+                const found = data.find(q => q.id === initialQuoteId);
+                if (found) {
+                    setSelectedQuote(found);
+                    setView('detail');
+                }
+            }
         } catch (error: any) {
             console.error(error);
             alert(`Error loading quotes: ${error.message || error}`);

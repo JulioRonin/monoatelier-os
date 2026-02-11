@@ -13,6 +13,7 @@ import Clients from './pages/Clients';
 import TeamManagement from './pages/TeamManagement';
 import UserManagement from './pages/UserManagement'; // New
 import UserDashboard from './pages/UserDashboard'; // New
+import Invoicing from './pages/Invoicing'; // New
 import { User } from './types';
 
 export enum Page {
@@ -27,7 +28,8 @@ export enum Page {
   ProjectDetails,
   Quotes,
   Team,
-  UserManagement // New
+  UserManagement, // New
+  Invoicing // New
 }
 
 const App: React.FC = () => {
@@ -70,6 +72,25 @@ const App: React.FC = () => {
     setCurrentPage(Page.ProjectInit);
   };
 
+  const [initialQuoteId, setInitialQuoteId] = useState<string | null>(null);
+
+  const handleNotificationClick = (notification: any) => {
+    // 1. Approval Notification (Quotes)
+    if (notification.type === 'approval') {
+      // Extract ID from "quote-{id}"
+      const quoteId = notification.id.replace('quote-', '');
+      setInitialQuoteId(quoteId);
+      setCurrentPage(Page.Quotes);
+    }
+
+    // 2. Deadline Notification (Projects)
+    else if (notification.type === 'deadline') {
+      const projectId = notification.id.replace('proj-', '');
+      setSelectedProjectId(projectId);
+      setCurrentPage(Page.ProjectDetails);
+    }
+  };
+
   if (currentPage === Page.Login) {
     return <Login onLogin={handleLogin} />;
   }
@@ -88,6 +109,7 @@ const App: React.FC = () => {
           toggleDarkMode={toggleDarkMode}
           onLogout={() => { setCurrentUser(null); setCurrentPage(Page.Login); }}
           user={currentUser} // Pass full user if Header needs it
+          onNotificationClick={handleNotificationClick}
         />
 
         <main className="flex-1 overflow-y-auto p-8 scrollbar-hide">
@@ -123,6 +145,7 @@ const App: React.FC = () => {
           {currentPage === Page.Quotes && <Quotes user={currentUser} />}
           {currentPage === Page.Team && <TeamManagement />}
           {currentPage === Page.UserManagement && <UserManagement />}
+          {currentPage === Page.Invoicing && <Invoicing />}
         </main>
       </div>
     </div>

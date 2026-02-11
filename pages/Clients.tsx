@@ -1,14 +1,44 @@
 
 import React, { useState, useEffect } from 'react';
 import { api } from '../lib/api';
-import { Client } from '../types';
+import { Client, FiscalRegime } from '../types';
 import { Plus, User, Mail, Phone, Search, PenTool, Trash2 } from 'lucide-react';
+
+const REGIME_DESCRIPTIONS: { [key: string]: string } = {
+    '601': 'General de Ley Personas Morales',
+    '603': 'Personas Morales con Fines no Lucrativos',
+    '605': 'Sueldos y Salarios e Ingresos Asimilados a Salarios',
+    '606': 'Arrendamiento',
+    '607': 'Régimen de Enajenación o Adquisición de Bienes',
+    '608': 'Demás ingresos',
+    '610': 'Residentes en el Extranjero sin Establecimiento Permanente en México',
+    '611': 'Ingresos por Dividendos (socios y accionistas)',
+    '612': 'Personas Físicas con Actividades Empresariales y Profesionales',
+    '614': 'Ingresos por intereses',
+    '615': 'Régimen de los ingresos por obtención de premios',
+    '616': 'Sin obligaciones fiscales',
+    '620': 'Sociedades Cooperativas de Producción que optan por diferir sus ingresos',
+    '621': 'Incorporación Fiscal',
+    '622': 'Actividades Agrícolas, Ganaderas, Silvícolas y Pesqueras',
+    '623': 'Opcional para Grupos de Sociedades',
+    '624': 'Coordinados',
+    '625': 'Régimen de las Actividades Empresariales con ingresos a través de Plataformas Tecnológicas',
+    '626': 'Régimen Simplificado de Confianza'
+};
 
 const Clients: React.FC = () => {
     const [clients, setClients] = useState<Client[]>([]);
     const [loading, setLoading] = useState(true);
     const [showForm, setShowForm] = useState(false);
-    const [newClient, setNewClient] = useState({ fullName: '', email: '', phone: '' });
+    const [newClient, setNewClient] = useState<Partial<Client>>({
+        fullName: '',
+        email: '',
+        phone: '',
+        rfc: '',
+        fiscalName: '',
+        fiscalRegime: undefined,
+        postalCode: ''
+    });
 
     useEffect(() => {
         loadClients();
@@ -30,7 +60,15 @@ const Clients: React.FC = () => {
 
     const handleEdit = (client: Client) => {
         setEditingClient(client);
-        setNewClient({ fullName: client.fullName, email: client.email, phone: client.phone || '' });
+        setNewClient({
+            fullName: client.fullName,
+            email: client.email,
+            phone: client.phone || '',
+            rfc: client.rfc || '',
+            fiscalName: client.fiscalName || '',
+            fiscalRegime: client.fiscalRegime,
+            postalCode: client.postalCode || ''
+        });
         setShowForm(true);
     };
 
@@ -47,15 +85,20 @@ const Clients: React.FC = () => {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
+            // Filter out empty strings for fiscal fields if they are optional? 
+            // The user said "dejarlos como opcionales".
+            // The types allow optional/undefined. Supabase might store null or empty string.
+            // Let's ensure we send them as they are in state (strings/undefined).
+
             if (editingClient) {
-                await api.updateClient(editingClient.id, newClient);
+                await api.updateClient(editingClient.id, newClient as any);
             } else {
-                await api.createClient(newClient);
+                await api.createClient(newClient as any);
             }
             await loadClients();
             setShowForm(false);
             setEditingClient(null);
-            setNewClient({ fullName: '', email: '', phone: '' });
+            setNewClient({ fullName: '', email: '', phone: '', rfc: '', fiscalName: '', postalCode: '', fiscalRegime: undefined });
         } catch (e: any) {
             alert(`Error saving client: ${e.message}`);
         }
@@ -64,7 +107,7 @@ const Clients: React.FC = () => {
     const handleCloseForm = () => {
         setShowForm(false);
         setEditingClient(null);
-        setNewClient({ fullName: '', email: '', phone: '' });
+        setNewClient({ fullName: '', email: '', phone: '', rfc: '', fiscalName: '', postalCode: '', fiscalRegime: undefined });
     };
 
     return (
@@ -75,7 +118,11 @@ const Clients: React.FC = () => {
                     <p className="text-xs font-mono uppercase tracking-widest text-gray-400">Manage your client relationships</p>
                 </div>
                 <button
-                    onClick={() => { setShowForm(true); setEditingClient(null); setNewClient({ fullName: '', email: '', phone: '' }); }}
+                    onClick={() => {
+                        setShowForm(true);
+                        setEditingClient(null);
+                        setNewClient({ fullName: '', email: '', phone: '', rfc: '', fiscalName: '', postalCode: '', fiscalRegime: undefined });
+                    }}
                     className="bg-primary dark:bg-white dark:text-gray-900 text-white px-6 py-3 text-[10px] uppercase tracking-widest font-bold hover:bg-gray-800 transition-colors flex items-center gap-2"
                 >
                     <Plus size={16} /> Add Client
@@ -101,6 +148,62 @@ const Clients: React.FC = () => {
                                 <input type="tel" className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 p-3 text-sm focus:outline-none focus:border-primary" value={newClient.phone} onChange={e => setNewClient({ ...newClient, phone: e.target.value })} />
                             </div>
                         </div>
+
+                        {/* Fiscal Data Section */}
+                        <div className="border-t border-gray-100 dark:border-gray-700 pt-6">
+                            <h4 className="text-sm font-bold uppercase tracking-widest text-gray-400 mb-4">Fiscal Information (CFDI 4.0)</h4>
+
+                            <div className="grid grid-cols-2 gap-6 mb-4">
+                                <div>
+                                    <label className="block text-[10px] uppercase tracking-widest text-gray-500 mb-2">RFC</label>
+                                    <input
+                                        type="text"
+                                        placeholder="Optionally add RFC"
+                                        className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 p-3 text-sm focus:outline-none focus:border-primary uppercase"
+                                        value={newClient.rfc || ''}
+                                        onChange={e => setNewClient({ ...newClient, rfc: e.target.value.toUpperCase() })}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] uppercase tracking-widest text-gray-500 mb-2">Postal Code</label>
+                                    <input
+                                        type="text"
+                                        placeholder="Fiscal Zip Code"
+                                        className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 p-3 text-sm focus:outline-none focus:border-primary"
+                                        value={newClient.postalCode || ''}
+                                        onChange={e => setNewClient({ ...newClient, postalCode: e.target.value })}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="mb-4">
+                                <label className="block text-[10px] uppercase tracking-widest text-gray-500 mb-2">Fiscal Name (Razón Social)</label>
+                                <input
+                                    type="text"
+                                    placeholder="Registered Name for Invoicing"
+                                    className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 p-3 text-sm focus:outline-none focus:border-primary uppercase"
+                                    value={newClient.fiscalName || ''}
+                                    onChange={e => setNewClient({ ...newClient, fiscalName: e.target.value.toUpperCase() })}
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-[10px] uppercase tracking-widest text-gray-500 mb-2">Fiscal Regime</label>
+                                <select
+                                    className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 p-3 text-sm focus:outline-none focus:border-primary"
+                                    value={newClient.fiscalRegime || ''}
+                                    onChange={e => setNewClient({ ...newClient, fiscalRegime: e.target.value as FiscalRegime })}
+                                >
+                                    <option value="">Select Regime (Optional)</option>
+                                    {Object.values(FiscalRegime).map(regime => (
+                                        <option key={regime} value={regime}>
+                                            {regime} - {REGIME_DESCRIPTIONS[regime] || ''}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+
                         <div className="flex justify-end gap-4 pt-4">
                             <button type="button" onClick={handleCloseForm} className="px-6 py-2 text-xs uppercase tracking-widest text-gray-500 hover:text-black dark:hover:text-white">Cancel</button>
                             <button type="submit" className="bg-primary text-white px-8 py-3 text-xs uppercase tracking-widest font-bold hover:bg-black transition-colors">{editingClient ? 'Update Profile' : 'Save Profile'}</button>

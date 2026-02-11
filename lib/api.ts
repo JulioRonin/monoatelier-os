@@ -9,7 +9,11 @@ const mapClient = (data: any): Client => ({
     fullName: data.full_name || 'Unknown',
     email: data.email || '',
     phone: data.phone || '',
-    avatarUrl: data.avatar_url || ''
+    avatarUrl: data.avatar_url || '',
+    rfc: data.rfc || '',
+    fiscalName: data.fiscal_name || '',
+    fiscalRegime: data.fiscal_regime || '',
+    postalCode: data.postal_code || ''
 });
 
 const mapProject = (data: any): Project => {
@@ -63,7 +67,11 @@ export const api = {
             .insert([{
                 full_name: client.fullName,
                 email: client.email,
-                phone: client.phone
+                phone: client.phone,
+                rfc: client.rfc,
+                fiscal_name: client.fiscalName,
+                fiscal_regime: client.fiscalRegime,
+                postal_code: client.postalCode
             }])
             .select()
             .single();
@@ -79,7 +87,11 @@ export const api = {
             .update({
                 full_name: updates.fullName,
                 email: updates.email,
-                phone: updates.phone
+                phone: updates.phone,
+                rfc: updates.rfc,
+                fiscal_name: updates.fiscalName,
+                fiscal_regime: updates.fiscalRegime,
+                postal_code: updates.postalCode
             })
             .eq('id', id);
 
@@ -543,5 +555,127 @@ export const api = {
 
             if (error) throw error;
         }
+    },
+
+    // INVOICING (CFDI 4.0)
+    async getInvoices() {
+        if (!supabase) return [];
+        const { data, error } = await supabase
+            .from('invoices')
+            .select('*, items:invoice_items(*)')
+            .order('created_at', { ascending: false });
+
+        if (error) {
+            console.error('Error fetching invoices:', error);
+            return [];
+        }
+
+        return (data || []).map((inv: any) => ({
+            id: inv.id,
+            series: inv.series,
+            folio: inv.folio,
+            date: inv.date,
+            clientId: inv.client_id,
+            clientName: inv.client_name,
+            clientRfc: inv.client_rfc,
+            clientFiscalRegime: inv.client_fiscal_regime,
+            clientPostalCode: inv.client_postal_code,
+            clientUseCFDI: inv.client_use_cfdi,
+            paymentForm: inv.payment_form,
+            paymentMethod: inv.payment_method,
+            currency: inv.currency,
+            exchangeRate: inv.exchange_rate,
+            placeOfIssue: inv.place_of_issue,
+            exportation: inv.exportation,
+            subtotal: inv.subtotal,
+            discount: inv.discount,
+            totalTaxesTransferred: inv.total_taxes_transferred,
+            totalTaxesRetained: inv.total_taxes_retained,
+            total: inv.total,
+            status: inv.status,
+            uuid: inv.uuid,
+            items: (inv.items || []).map((item: any) => ({
+                id: item.id,
+                productCode: item.product_code,
+                unitCode: item.unit_code,
+                description: item.description,
+                quantity: item.quantity,
+                unitPrice: item.unit_price,
+                discount: item.discount,
+                taxObject: item.tax_object,
+                amount: item.amount,
+                taxes: item.taxes // JSONB
+            }))
+        }));
+    },
+
+    async createInvoice(invoice: any) {
+        if (!supabase) throw new Error("Supabase not configured");
+
+        const { data: invoiceData, error: invoiceError } = await supabase
+            .from('invoices')
+            .insert([{
+                series: invoice.series,
+                folio: invoice.folio,
+                date: invoice.date,
+                client_id: invoice.clientId,
+                client_name: invoice.clientName,
+                client_rfc: invoice.clientRfc,
+                client_fiscal_regime: invoice.clientFiscalRegime,
+                client_postal_code: invoice.clientPostalCode,
+                client_use_cfdi: invoice.clientUseCFDI,
+                payment_form: invoice.paymentForm,
+                payment_method: invoice.paymentMethod,
+                currency: invoice.currency,
+                exchange_rate: invoice.exchangeRate,
+                place_of_issue: invoice.placeOfIssue,
+                exportation: invoice.exportation,
+                subtotal: invoice.subtotal,
+                discount: invoice.discount,
+                total_taxes_transferred: invoice.totalTaxesTransferred,
+                total_taxes_retained: invoice.totalTaxesRetained,
+                total: invoice.total,
+                status: invoice.status
+            }])
+            .select()
+            .single();
+
+        if (invoiceError) throw invoiceError;
+
+        if (invoice.items && invoice.items.length > 0) {
+            const itemsToInsert = invoice.items.map((item: any) => ({
+                invoice_id: invoiceData.id,
+                product_code: item.productCode,
+                unit_code: item.unitCode,
+                description: item.description,
+                quantity: item.quantity,
+                unit_price: item.unitPrice,
+                discount: item.discount,
+                tax_object: item.taxObject,
+                amount: item.amount,
+                taxes: item.taxes // JSONB
+            }));
+
+            const { error: itemsError } = await supabase
+                .from('invoice_items')
+                .insert(itemsToInsert);
+
+            if (itemsError) throw itemsError;
+        }
+
+        return invoiceData;
+    },
+
+    async updateInvoiceStatus(id: string, status: string, uuid?: string) {
+        if (!supabase) throw new Error("Supabase not configured");
+        const updates: any = { status };
+        if (uuid) updates.uuid = uuid;
+
+        const { error } = await supabase
+            .from('invoices')
+            .update(updates)
+            .eq('id', id);
+
+        if (error) throw error;
     }
 };

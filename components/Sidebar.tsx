@@ -23,6 +23,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, onNavigate, currentUser 
     { icon: FolderOpen, label: 'Projects', page: Page.Projects },
     { icon: Users, label: 'Clients', page: Page.Clients },
     { icon: FileText, label: 'Quotes', page: Page.Quotes },
+    { icon: FileText, label: 'Invoicing', page: Page.Invoicing },
 
     // Super User Only
     ...(isSuperUser ? [

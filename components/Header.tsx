@@ -9,17 +9,19 @@ interface HeaderProps {
   toggleDarkMode: () => void;
   onLogout: () => void;
   user: User | null;
+  onNotificationClick?: (notification: Notification) => void;
 }
 
-interface Notification {
+export interface Notification {
   id: string;
   type: 'approval' | 'deadline' | 'payment';
   title: string;
   subtitle: string;
   time: string;
+  data?: any;
 }
 
-const Header: React.FC<HeaderProps> = ({ role, darkMode, toggleDarkMode, onLogout, user }) => {
+const Header: React.FC<HeaderProps> = ({ role, darkMode, toggleDarkMode, onLogout, user, onNotificationClick }) => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
 
@@ -115,33 +117,55 @@ const Header: React.FC<HeaderProps> = ({ role, darkMode, toggleDarkMode, onLogou
           </button>
 
           {showDropdown && (
-            <div className="absolute right-0 top-full mt-4 w-80 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-100 dark:border-gray-700 overflow-hidden animate-fade-in-up">
-              <div className="p-4 border-b border-gray-50 dark:border-gray-700 font-bold dark:text-white flex justify-between">
+            <div className="absolute right-0 top-full mt-4 w-96 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-100 dark:border-gray-700 overflow-hidden animate-fade-in-up z-50">
+              <div className="p-4 border-b border-gray-50 dark:border-gray-700 font-bold dark:text-white flex justify-between items-center bg-gray-50/50 dark:bg-gray-800">
                 <span>Notifications</span>
-                <span className="text-[10px] bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-full">{notifications.length} New</span>
+                <span className="text-[10px] bg-primary/10 text-primary dark:text-secondary px-2 py-1 rounded-full">{notifications.length} New</span>
               </div>
+
               <div className="max-h-96 overflow-y-auto">
                 {notifications.length === 0 ? (
                   <div className="p-8 text-center text-gray-400 text-xs">No new notifications</div>
                 ) : (
                   notifications.map(n => (
-                    <div key={n.id} className="p-4 border-b border-gray-50 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer flex gap-3">
-                      <div className={`mt-1 p-2 rounded-full h-fit shrink-0 ${n.type === 'approval' ? 'bg-orange-50 text-orange-500' :
-                          n.type === 'deadline' ? 'bg-red-50 text-red-500' :
-                            'bg-green-50 text-green-500'
-                        }`}>
-                        {n.type === 'approval' ? <AlertTriangle size={14} /> :
-                          n.type === 'deadline' ? <Clock size={14} /> :
-                            <DollarSign size={14} />}
-                      </div>
-                      <div>
-                        <p className="text-sm font-bold text-gray-800 dark:text-gray-200">{n.title}</p>
-                        <p className="text-xs text-gray-500 mb-1">{n.subtitle}</p>
-                        <p className="text-[10px] text-gray-400 uppercase tracking-widest">{n.time}</p>
+                    <div key={n.id} className="p-4 border-b border-gray-50 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer transition-colors group">
+                      <div className="flex gap-4 items-start">
+                        <div className={`mt-1 p-2 rounded-full h-fit shrink-0 ${n.type === 'approval' ? 'bg-orange-50 text-orange-500 ring-1 ring-orange-100' :
+                          n.type === 'deadline' ? 'bg-red-50 text-red-500 ring-1 ring-red-100' :
+                            'bg-green-50 text-green-500 ring-1 ring-green-100'
+                          }`}>
+                          {n.type === 'approval' ? <AlertTriangle size={16} /> :
+                            n.type === 'deadline' ? <Clock size={16} /> :
+                              <DollarSign size={16} />}
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex justify-between items-start mb-1">
+                            <h4 className="text-sm font-bold text-gray-800 dark:text-gray-200 leading-tight">{n.title}</h4>
+                            <span className="text-[10px] text-gray-400 uppercase tracking-widest whitespace-nowrap ml-2">{n.time}</span>
+                          </div>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mb-3 leading-relaxed">{n.subtitle}</p>
+
+                          {/* Action Button */}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (onNotificationClick) {
+                                onNotificationClick(n);
+                                setShowDropdown(false);
+                              }
+                            }}
+                            className="text-[10px] uppercase font-bold tracking-widest text-primary dark:text-secondary hover:underline flex items-center gap-1 group-hover:translate-x-1 transition-transform"
+                          >
+                            View Details <CheckCircle size={10} />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   ))
                 )}
+              </div>
+              <div className="p-3 bg-gray-50 dark:bg-gray-800/80 border-t border-gray-100 dark:border-gray-700 text-center">
+                <button onClick={() => setNotifications([])} className="text-[10px] text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors uppercase tracking-widest">Mark all as read</button>
               </div>
             </div>
           )}
