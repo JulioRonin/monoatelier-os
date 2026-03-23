@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { LayoutDashboard, FolderOpen, PieChart, Layers, Settings, FileText, Users, Shield, ChevronLeft, ChevronRight, Menu } from 'lucide-react';
+import { LayoutDashboard, FolderOpen, PieChart, Layers, Settings, FileText, Users, Shield, ChevronLeft, ChevronRight, Menu, Receipt } from 'lucide-react';
 import { Page } from '../App';
 
 import { User } from '../types';
@@ -24,6 +24,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, onNavigate, currentUser 
     { icon: Users, label: 'Clients', page: Page.Clients },
     { icon: FileText, label: 'Quotes', page: Page.Quotes },
     { icon: FileText, label: 'Invoicing', page: Page.Invoicing },
+    { icon: Receipt, label: 'REP / Pagos', page: Page.PaymentReceipts },
 
     // Super User Only
     ...(isSuperUser ? [

@@ -471,7 +471,16 @@ export const api = {
     // AUTH
     auth: {
         async login(email: string, password: string) {
-            if (!supabase) throw new Error("Supabase not configured");
+            if (!supabase) {
+                console.warn("Supabase not configured. Using mock login.");
+                return {
+                    id: 'mock-user-1',
+                    email: email,
+                    fullName: email.split('@')[0] || 'Mock User',
+                    role: 'Super User',
+                    avatarUrl: 'https://i.pravatar.cc/150?u=' + encodeURIComponent(email)
+                } as User;
+            }
 
             // For prototype: Simple query. In prod use supabase.auth.
             const { data, error } = await supabase

@@ -14,6 +14,7 @@ import TeamManagement from './pages/TeamManagement';
 import UserManagement from './pages/UserManagement'; // New
 import UserDashboard from './pages/UserDashboard'; // New
 import Invoicing from './pages/Invoicing'; // New
+import PaymentReceipts from './pages/PaymentReceipts'; // New
 import { User } from './types';
 
 export enum Page {
@@ -29,7 +30,8 @@ export enum Page {
   Quotes,
   Team,
   UserManagement, // New
-  Invoicing // New
+  Invoicing, // New
+  PaymentReceipts // New
 }
 
 const App: React.FC = () => {
@@ -146,6 +148,7 @@ const App: React.FC = () => {
           {currentPage === Page.Team && <TeamManagement />}
           {currentPage === Page.UserManagement && <UserManagement />}
           {currentPage === Page.Invoicing && <Invoicing />}
+          {currentPage === Page.PaymentReceipts && <PaymentReceipts />}
         </main>
       </div>
     </div>
