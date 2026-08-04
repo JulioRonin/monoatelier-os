@@ -1,0 +1,4 @@
+sku,descripcion,tipo,alto_hueco_mm,retranqueo_mm,largo_comercial_mm,costo_ml,moneda,proveedor
+GOL-ALU-C-45,Perfil gola aluminio tipo C,aluminio,45,40,3000,,MXN,
+GOL-ALU-J-38,Perfil gola aluminio tipo J,aluminio,38,35,4000,,MXN,
+GOL-TAB-45,Gola fabricada en tablero 15mm,tablero,45,40,,,MXN,propia
