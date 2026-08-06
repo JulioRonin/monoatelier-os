@@ -107,3 +107,6 @@ El margen vive SÓLO en el reporte interno. Detalle en `docs/ENTREGABLES.md`.
 - [x] Reporte interno de costos con simulación por proveedor
 - [x] Diseño por prompts desde la plataforma (forge_agent/ — ver docs/AGENTE_PROMPTS.md)
 - [ ] Renders hiperrealistas por escena (atmósferas) desde render_presets.py
+- [ ] Frentes curvos / termoformados — hoy el motor sólo corta piezas planas
+      rectangulares; un frente genuinamente curvo necesita un generador nuevo
+      (ver style/mono_atelier_style.md § Reglas de composición).

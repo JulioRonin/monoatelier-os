@@ -1,0 +1,2055 @@
+{
+  "cliente": "Julio Ibarra",
+  "nombre": "Cocina verde sage",
+  "moneda": "MXN",
+  "proveedor_preferente": "Importacion",
+  "style_preset": "mono-atelier-base",
+  "modules": [
+    {
+      "id": "B01_1",
+      "tipo": "cajonera",
+      "ancho": 450,
+      "alto": 266,
+      "prof": 600,
+      "panels": [
+        {
+          "name": "B01_1_lateral_caja",
+          "largo": 500,
+          "ancho": 196,
+          "espesor": 15,
+          "cantidad": 2,
+          "material": "MEL-BLA-15-IMP",
+          "rol_estructural": "lateral_caja",
+          "justificacion": "Corre COMPLETO: la corredera se atornilla a él en toda su longitud. Captura al frente de caja y a la trasera.",
+          "cantos": {
+            "frontal": true,
+            "trasero": false,
+            "superior": true,
+            "inferior": false
+          },
+          "veta": "libre",
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 35.5,
+              "y": 250.0,
+              "z": 233.0,
+              "sx": 15,
+              "sy": 500,
+              "sz": 196
+            },
+            {
+              "x": 414.5,
+              "y": 250.0,
+              "z": 233.0,
+              "sx": 15,
+              "sy": 500,
+              "sz": 196
+            }
+          ]
+        },
+        {
+          "name": "B01_1_frente_caja",
+          "largo": 364,
+          "ancho": 196,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-BLA-15-IMP",
+          "rol_estructural": "capturado",
+          "justificacion": "Capturado entre los laterales (ancho_caja − 2T).",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": true,
+            "inferior": false
+          },
+          "veta": "libre",
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 225.0,
+              "y": 7.5,
+              "z": 233.0,
+              "sx": 364,
+              "sy": 15,
+              "sz": 196
+            }
+          ]
+        },
+        {
+          "name": "B01_1_trasera_caja",
+          "largo": 364,
+          "ancho": 196,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-BLA-15-IMP",
+          "rol_estructural": "capturado",
+          "justificacion": "Capturada entre los laterales.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": true,
+            "inferior": false
+          },
+          "veta": "libre",
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 225.0,
+              "y": 492.5,
+              "z": 233.0,
+              "sx": 364,
+              "sy": 15,
+              "sz": 196
+            }
+          ]
+        },
+        {
+          "name": "B01_1_fondo_caja",
+          "largo": 394,
+          "ancho": 500,
+          "espesor": 3,
+          "cantidad": 1,
+          "material": "MDF-003-FON",
+          "rol_estructural": "fondo",
+          "justificacion": "Fondo de la caja.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 225.0,
+              "y": 250.0,
+              "z": 136.5,
+              "sx": 394,
+              "sy": 500,
+              "sz": 3
+            }
+          ]
+        },
+        {
+          "name": "B01_1_frente",
+          "largo": 263,
+          "ancho": 447,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-ROBLE-NAT-15",
+          "rol_estructural": "frente",
+          "justificacion": "Frente visible del cajón.",
+          "cantos": {
+            "frontal": true,
+            "trasero": true,
+            "superior": true,
+            "inferior": true
+          },
+          "veta": "vertical",
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 225.0,
+              "y": -7.5,
+              "z": 233.0,
+              "sx": 447,
+              "sy": 15,
+              "sz": 263
+            }
+          ]
+        }
+      ],
+      "hardware": [
+        {
+          "sku": "COR-LAT-500",
+          "descripcion": "Corredera lateral extensión 500mm",
+          "cantidad": 1,
+          "unidad": "par"
+        },
+        {
+          "sku": "TOR-35X16",
+          "descripcion": "Tornillo 3.5x16 para corredera",
+          "cantidad": 12,
+          "unidad": "pza"
+        }
+      ],
+      "apertura": "jaladera",
+      "gola_sku": null,
+      "led": false,
+      "notas": [
+        "Corredera 500mm (lateral), holgura 13mm por lado. Caja: 394 x 500 x 196mm.",
+        "Encintar canto FRONTAL y SUPERIOR de los laterales; el trasero NO."
+      ],
+      "flags": {
+        "columna": "B01",
+        "orden": 1
+      }
+    },
+    {
+      "id": "B01_2",
+      "tipo": "cajonera",
+      "ancho": 450,
+      "alto": 266,
+      "prof": 600,
+      "panels": [
+        {
+          "name": "B01_2_lateral_caja",
+          "largo": 500,
+          "ancho": 196,
+          "espesor": 15,
+          "cantidad": 2,
+          "material": "MEL-BLA-15-IMP",
+          "rol_estructural": "lateral_caja",
+          "justificacion": "Corre COMPLETO: la corredera se atornilla a él en toda su longitud. Captura al frente de caja y a la trasera.",
+          "cantos": {
+            "frontal": true,
+            "trasero": false,
+            "superior": true,
+            "inferior": false
+          },
+          "veta": "libre",
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 35.5,
+              "y": 250.0,
+              "z": 499.0,
+              "sx": 15,
+              "sy": 500,
+              "sz": 196
+            },
+            {
+              "x": 414.5,
+              "y": 250.0,
+              "z": 499.0,
+              "sx": 15,
+              "sy": 500,
+              "sz": 196
+            }
+          ]
+        },
+        {
+          "name": "B01_2_frente_caja",
+          "largo": 364,
+          "ancho": 196,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-BLA-15-IMP",
+          "rol_estructural": "capturado",
+          "justificacion": "Capturado entre los laterales (ancho_caja − 2T).",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": true,
+            "inferior": false
+          },
+          "veta": "libre",
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 225.0,
+              "y": 7.5,
+              "z": 499.0,
+              "sx": 364,
+              "sy": 15,
+              "sz": 196
+            }
+          ]
+        },
+        {
+          "name": "B01_2_trasera_caja",
+          "largo": 364,
+          "ancho": 196,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-BLA-15-IMP",
+          "rol_estructural": "capturado",
+          "justificacion": "Capturada entre los laterales.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": true,
+            "inferior": false
+          },
+          "veta": "libre",
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 225.0,
+              "y": 492.5,
+              "z": 499.0,
+              "sx": 364,
+              "sy": 15,
+              "sz": 196
+            }
+          ]
+        },
+        {
+          "name": "B01_2_fondo_caja",
+          "largo": 394,
+          "ancho": 500,
+          "espesor": 3,
+          "cantidad": 1,
+          "material": "MDF-003-FON",
+          "rol_estructural": "fondo",
+          "justificacion": "Fondo de la caja.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 225.0,
+              "y": 250.0,
+              "z": 402.5,
+              "sx": 394,
+              "sy": 500,
+              "sz": 3
+            }
+          ]
+        },
+        {
+          "name": "B01_2_frente",
+          "largo": 263,
+          "ancho": 447,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-ROBLE-NAT-15",
+          "rol_estructural": "frente",
+          "justificacion": "Frente visible del cajón.",
+          "cantos": {
+            "frontal": true,
+            "trasero": true,
+            "superior": true,
+            "inferior": true
+          },
+          "veta": "vertical",
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 225.0,
+              "y": -7.5,
+              "z": 499.0,
+              "sx": 447,
+              "sy": 15,
+              "sz": 263
+            }
+          ]
+        }
+      ],
+      "hardware": [
+        {
+          "sku": "COR-LAT-500",
+          "descripcion": "Corredera lateral extensión 500mm",
+          "cantidad": 1,
+          "unidad": "par"
+        },
+        {
+          "sku": "TOR-35X16",
+          "descripcion": "Tornillo 3.5x16 para corredera",
+          "cantidad": 12,
+          "unidad": "pza"
+        }
+      ],
+      "apertura": "jaladera",
+      "gola_sku": null,
+      "led": false,
+      "notas": [
+        "Corredera 500mm (lateral), holgura 13mm por lado. Caja: 394 x 500 x 196mm.",
+        "Encintar canto FRONTAL y SUPERIOR de los laterales; el trasero NO."
+      ],
+      "flags": {
+        "columna": "B01",
+        "orden": 2
+      }
+    },
+    {
+      "id": "B01_3",
+      "tipo": "cajonera",
+      "ancho": 450,
+      "alto": 268,
+      "prof": 600,
+      "panels": [
+        {
+          "name": "B01_3_lateral_caja",
+          "largo": 500,
+          "ancho": 198,
+          "espesor": 15,
+          "cantidad": 2,
+          "material": "MEL-BLA-15-IMP",
+          "rol_estructural": "lateral_caja",
+          "justificacion": "Corre COMPLETO: la corredera se atornilla a él en toda su longitud. Captura al frente de caja y a la trasera.",
+          "cantos": {
+            "frontal": true,
+            "trasero": false,
+            "superior": true,
+            "inferior": false
+          },
+          "veta": "libre",
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 35.5,
+              "y": 250.0,
+              "z": 766.0,
+              "sx": 15,
+              "sy": 500,
+              "sz": 198
+            },
+            {
+              "x": 414.5,
+              "y": 250.0,
+              "z": 766.0,
+              "sx": 15,
+              "sy": 500,
+              "sz": 198
+            }
+          ]
+        },
+        {
+          "name": "B01_3_frente_caja",
+          "largo": 364,
+          "ancho": 198,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-BLA-15-IMP",
+          "rol_estructural": "capturado",
+          "justificacion": "Capturado entre los laterales (ancho_caja − 2T).",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": true,
+            "inferior": false
+          },
+          "veta": "libre",
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 225.0,
+              "y": 7.5,
+              "z": 766.0,
+              "sx": 364,
+              "sy": 15,
+              "sz": 198
+            }
+          ]
+        },
+        {
+          "name": "B01_3_trasera_caja",
+          "largo": 364,
+          "ancho": 198,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-BLA-15-IMP",
+          "rol_estructural": "capturado",
+          "justificacion": "Capturada entre los laterales.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": true,
+            "inferior": false
+          },
+          "veta": "libre",
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 225.0,
+              "y": 492.5,
+              "z": 766.0,
+              "sx": 364,
+              "sy": 15,
+              "sz": 198
+            }
+          ]
+        },
+        {
+          "name": "B01_3_fondo_caja",
+          "largo": 394,
+          "ancho": 500,
+          "espesor": 3,
+          "cantidad": 1,
+          "material": "MDF-003-FON",
+          "rol_estructural": "fondo",
+          "justificacion": "Fondo de la caja.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 225.0,
+              "y": 250.0,
+              "z": 668.5,
+              "sx": 394,
+              "sy": 500,
+              "sz": 3
+            }
+          ]
+        },
+        {
+          "name": "B01_3_frente",
+          "largo": 265,
+          "ancho": 447,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-ROBLE-NAT-15",
+          "rol_estructural": "frente",
+          "justificacion": "Frente visible del cajón.",
+          "cantos": {
+            "frontal": true,
+            "trasero": true,
+            "superior": true,
+            "inferior": true
+          },
+          "veta": "vertical",
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 225.0,
+              "y": -7.5,
+              "z": 766.0,
+              "sx": 447,
+              "sy": 15,
+              "sz": 265
+            }
+          ]
+        }
+      ],
+      "hardware": [
+        {
+          "sku": "COR-LAT-500",
+          "descripcion": "Corredera lateral extensión 500mm",
+          "cantidad": 1,
+          "unidad": "par"
+        },
+        {
+          "sku": "TOR-35X16",
+          "descripcion": "Tornillo 3.5x16 para corredera",
+          "cantidad": 12,
+          "unidad": "pza"
+        }
+      ],
+      "apertura": "jaladera",
+      "gola_sku": null,
+      "led": false,
+      "notas": [
+        "Corredera 500mm (lateral), holgura 13mm por lado. Caja: 394 x 500 x 198mm.",
+        "Encintar canto FRONTAL y SUPERIOR de los laterales; el trasero NO."
+      ],
+      "flags": {
+        "columna": "B01",
+        "orden": 3
+      }
+    },
+    {
+      "id": "B02",
+      "tipo": "base",
+      "ancho": 600,
+      "alto": 900,
+      "prof": 600,
+      "panels": [
+        {
+          "name": "B02_base",
+          "largo": 600,
+          "ancho": 600,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-BLA-15-IMP",
+          "rol_estructural": "base_portante",
+          "justificacion": "Corre a todo el ancho exterior. Los laterales se apoyan encima: la carga entra en compresión, el tornillo sólo alinea.",
+          "cantos": {
+            "frontal": true,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 750.0,
+              "y": 300.0,
+              "z": 107.5,
+              "sx": 600,
+              "sy": 600,
+              "sz": 15
+            }
+          ]
+        },
+        {
+          "name": "B02_lateral",
+          "largo": 785,
+          "ancho": 600,
+          "espesor": 15,
+          "cantidad": 2,
+          "material": "MEL-BLA-15-IMP",
+          "rol_estructural": "lateral_apoyado",
+          "justificacion": "Alto 785 = alto_cuerpo − espesor de base. DESCANSA sobre la base, no va capturado entre ella.",
+          "cantos": {
+            "frontal": true,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "vertical",
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 457.5,
+              "y": 300.0,
+              "z": 507.5,
+              "sx": 15,
+              "sy": 600,
+              "sz": 785
+            },
+            {
+              "x": 1042.5,
+              "y": 300.0,
+              "z": 507.5,
+              "sx": 15,
+              "sy": 600,
+              "sz": 785
+            }
+          ]
+        },
+        {
+          "name": "B02_ref_sup_frente",
+          "largo": 570,
+          "ancho": 100,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-BLA-15-IMP",
+          "rol_estructural": "refuerzo",
+          "justificacion": "Refuerzo superior frontal entre laterales.",
+          "cantos": {
+            "frontal": true,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 750.0,
+              "y": 50.0,
+              "z": 892.5,
+              "sx": 570,
+              "sy": 100,
+              "sz": 15
+            }
+          ]
+        },
+        {
+          "name": "B02_ref_sup_trasero",
+          "largo": 570,
+          "ancho": 100,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-BLA-15-IMP",
+          "rol_estructural": "refuerzo",
+          "justificacion": "Refuerzo superior trasero entre laterales.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 750.0,
+              "y": 550.0,
+              "z": 892.5,
+              "sx": 570,
+              "sy": 100,
+              "sz": 15
+            }
+          ]
+        },
+        {
+          "name": "B02_ref_post_inferior",
+          "largo": 570,
+          "ancho": 100,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-BLA-15-IMP",
+          "rol_estructural": "refuerzo",
+          "justificacion": "Refuerzo posterior inferior: rigidiza contra el paralelogramo.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 750.0,
+              "y": 592.5,
+              "z": 165.0,
+              "sx": 570,
+              "sy": 15,
+              "sz": 100
+            }
+          ]
+        },
+        {
+          "name": "B02_fondo",
+          "largo": 600,
+          "ancho": 800,
+          "espesor": 3,
+          "cantidad": 1,
+          "material": "MDF-003-FON",
+          "rol_estructural": "fondo",
+          "justificacion": "Aplicado sobre el canto trasero cubriendo los refuerzos. Escuadra el mueble: atornillar sólo después de verificar diagonales iguales.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 750.0,
+              "y": 601.5,
+              "z": 500.0,
+              "sx": 600,
+              "sy": 3,
+              "sz": 800
+            }
+          ]
+        },
+        {
+          "name": "B02_entrepano",
+          "largo": 568,
+          "ancho": 580,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-BLA-15-IMP",
+          "rol_estructural": "entrepano_movil",
+          "justificacion": "Entrepaño móvil sobre soportes del sistema 32.",
+          "cantos": {
+            "frontal": true,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 750.0,
+              "y": 310.0,
+              "z": 500.0,
+              "sx": 568,
+              "sy": 580,
+              "sz": 15
+            }
+          ]
+        },
+        {
+          "name": "B02_zoclo",
+          "largo": 600,
+          "ancho": 100,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-BLA-15-IMP",
+          "rol_estructural": "zoclo",
+          "justificacion": "Pieza independiente, retranqueada 60mm del frente.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": true,
+            "inferior": false
+          },
+          "veta": "libre",
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 750.0,
+              "y": 67.5,
+              "z": 50.0,
+              "sx": 600,
+              "sy": 15,
+              "sz": 100
+            }
+          ]
+        },
+        {
+          "name": "B02_puerta",
+          "largo": 797,
+          "ancho": 597,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-ROBLE-NAT-15",
+          "rol_estructural": "frente",
+          "justificacion": "Bisagra recta. Apertura: jaladera.",
+          "cantos": {
+            "frontal": true,
+            "trasero": true,
+            "superior": true,
+            "inferior": true
+          },
+          "veta": "vertical",
+          "drilling": [
+            {
+              "tipo": "cazoleta",
+              "diametro": 35,
+              "x": 21.5,
+              "y": 100.0,
+              "profundidad": 12.5,
+              "cara": "interior",
+              "nota": "centro de cazoleta a 21.5mm del canto"
+            },
+            {
+              "tipo": "cazoleta",
+              "diametro": 35,
+              "x": 21.5,
+              "y": 697.0,
+              "profundidad": 12.5,
+              "cara": "interior",
+              "nota": "centro de cazoleta a 21.5mm del canto"
+            }
+          ],
+          "colocacion": [
+            {
+              "x": 750.0,
+              "y": -7.5,
+              "z": 501.5,
+              "sx": 597,
+              "sy": 15,
+              "sz": 797
+            }
+          ]
+        }
+      ],
+      "hardware": [
+        {
+          "sku": "BIS-35-REC",
+          "descripcion": "Bisagra cazoleta 35mm recta (sobreposición total)",
+          "cantidad": 2,
+          "unidad": "pza"
+        },
+        {
+          "sku": "PAT-NIV-100",
+          "descripcion": "Pata niveladora 100mm",
+          "cantidad": 4,
+          "unidad": "pza"
+        },
+        {
+          "sku": "UNI-MIN-15",
+          "descripcion": "Minifix + tarugo",
+          "cantidad": 8,
+          "unidad": "jgo"
+        },
+        {
+          "sku": "TOR-35X45",
+          "descripcion": "Tornillo 3.5x45",
+          "cantidad": 8,
+          "unidad": "pza"
+        }
+      ],
+      "apertura": "jaladera",
+      "gola_sku": null,
+      "led": false,
+      "notas": [
+        "Apoyar los laterales SOBRE la base; atornillar desde abajo.",
+        "Escuadrar contra el fondo (diagonales iguales) ANTES de fijarlo."
+      ],
+      "flags": {}
+    },
+    {
+      "id": "B03",
+      "tipo": "base",
+      "ancho": 600,
+      "alto": 900,
+      "prof": 600,
+      "panels": [
+        {
+          "name": "B03_base",
+          "largo": 600,
+          "ancho": 600,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-BLA-15-IMP",
+          "rol_estructural": "base_portante",
+          "justificacion": "Corre a todo el ancho exterior. Los laterales se apoyan encima: la carga entra en compresión, el tornillo sólo alinea.",
+          "cantos": {
+            "frontal": true,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 1350.0,
+              "y": 300.0,
+              "z": 107.5,
+              "sx": 600,
+              "sy": 600,
+              "sz": 15
+            }
+          ]
+        },
+        {
+          "name": "B03_lateral",
+          "largo": 785,
+          "ancho": 600,
+          "espesor": 15,
+          "cantidad": 2,
+          "material": "MEL-BLA-15-IMP",
+          "rol_estructural": "lateral_apoyado",
+          "justificacion": "Alto 785 = alto_cuerpo − espesor de base. DESCANSA sobre la base, no va capturado entre ella.",
+          "cantos": {
+            "frontal": true,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "vertical",
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 1057.5,
+              "y": 300.0,
+              "z": 507.5,
+              "sx": 15,
+              "sy": 600,
+              "sz": 785
+            },
+            {
+              "x": 1642.5,
+              "y": 300.0,
+              "z": 507.5,
+              "sx": 15,
+              "sy": 600,
+              "sz": 785
+            }
+          ]
+        },
+        {
+          "name": "B03_ref_sup_frente",
+          "largo": 570,
+          "ancho": 100,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-BLA-15-IMP",
+          "rol_estructural": "refuerzo",
+          "justificacion": "Refuerzo superior frontal entre laterales.",
+          "cantos": {
+            "frontal": true,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 1350.0,
+              "y": 50.0,
+              "z": 892.5,
+              "sx": 570,
+              "sy": 100,
+              "sz": 15
+            }
+          ]
+        },
+        {
+          "name": "B03_ref_sup_trasero",
+          "largo": 570,
+          "ancho": 100,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-BLA-15-IMP",
+          "rol_estructural": "refuerzo",
+          "justificacion": "Refuerzo superior trasero entre laterales.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 1350.0,
+              "y": 550.0,
+              "z": 892.5,
+              "sx": 570,
+              "sy": 100,
+              "sz": 15
+            }
+          ]
+        },
+        {
+          "name": "B03_ref_post_inferior",
+          "largo": 570,
+          "ancho": 100,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-BLA-15-IMP",
+          "rol_estructural": "refuerzo",
+          "justificacion": "Refuerzo posterior inferior: rigidiza contra el paralelogramo.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 1350.0,
+              "y": 592.5,
+              "z": 165.0,
+              "sx": 570,
+              "sy": 15,
+              "sz": 100
+            }
+          ]
+        },
+        {
+          "name": "B03_fondo",
+          "largo": 600,
+          "ancho": 800,
+          "espesor": 3,
+          "cantidad": 1,
+          "material": "MDF-003-FON",
+          "rol_estructural": "fondo",
+          "justificacion": "Aplicado sobre el canto trasero cubriendo los refuerzos. Escuadra el mueble: atornillar sólo después de verificar diagonales iguales.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 1350.0,
+              "y": 601.5,
+              "z": 500.0,
+              "sx": 600,
+              "sy": 3,
+              "sz": 800
+            }
+          ]
+        },
+        {
+          "name": "B03_entrepano",
+          "largo": 568,
+          "ancho": 580,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-BLA-15-IMP",
+          "rol_estructural": "entrepano_movil",
+          "justificacion": "Entrepaño móvil sobre soportes del sistema 32.",
+          "cantos": {
+            "frontal": true,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 1350.0,
+              "y": 310.0,
+              "z": 500.0,
+              "sx": 568,
+              "sy": 580,
+              "sz": 15
+            }
+          ]
+        },
+        {
+          "name": "B03_zoclo",
+          "largo": 600,
+          "ancho": 100,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-BLA-15-IMP",
+          "rol_estructural": "zoclo",
+          "justificacion": "Pieza independiente, retranqueada 60mm del frente.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": true,
+            "inferior": false
+          },
+          "veta": "libre",
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 1350.0,
+              "y": 67.5,
+              "z": 50.0,
+              "sx": 600,
+              "sy": 15,
+              "sz": 100
+            }
+          ]
+        },
+        {
+          "name": "B03_puerta",
+          "largo": 797,
+          "ancho": 597,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-ROBLE-NAT-15",
+          "rol_estructural": "frente",
+          "justificacion": "Bisagra recta. Apertura: jaladera.",
+          "cantos": {
+            "frontal": true,
+            "trasero": true,
+            "superior": true,
+            "inferior": true
+          },
+          "veta": "vertical",
+          "drilling": [
+            {
+              "tipo": "cazoleta",
+              "diametro": 35,
+              "x": 21.5,
+              "y": 100.0,
+              "profundidad": 12.5,
+              "cara": "interior",
+              "nota": "centro de cazoleta a 21.5mm del canto"
+            },
+            {
+              "tipo": "cazoleta",
+              "diametro": 35,
+              "x": 21.5,
+              "y": 697.0,
+              "profundidad": 12.5,
+              "cara": "interior",
+              "nota": "centro de cazoleta a 21.5mm del canto"
+            }
+          ],
+          "colocacion": [
+            {
+              "x": 1350.0,
+              "y": -7.5,
+              "z": 501.5,
+              "sx": 597,
+              "sy": 15,
+              "sz": 797
+            }
+          ]
+        }
+      ],
+      "hardware": [
+        {
+          "sku": "BIS-35-REC",
+          "descripcion": "Bisagra cazoleta 35mm recta (sobreposición total)",
+          "cantidad": 2,
+          "unidad": "pza"
+        },
+        {
+          "sku": "PAT-NIV-100",
+          "descripcion": "Pata niveladora 100mm",
+          "cantidad": 4,
+          "unidad": "pza"
+        },
+        {
+          "sku": "UNI-MIN-15",
+          "descripcion": "Minifix + tarugo",
+          "cantidad": 8,
+          "unidad": "jgo"
+        },
+        {
+          "sku": "TOR-35X45",
+          "descripcion": "Tornillo 3.5x45",
+          "cantidad": 8,
+          "unidad": "pza"
+        }
+      ],
+      "apertura": "jaladera",
+      "gola_sku": null,
+      "led": false,
+      "notas": [
+        "Apoyar los laterales SOBRE la base; atornillar desde abajo.",
+        "Escuadrar contra el fondo (diagonales iguales) ANTES de fijarlo."
+      ],
+      "flags": {}
+    },
+    {
+      "id": "B04",
+      "tipo": "base_tarja",
+      "ancho": 900,
+      "alto": 900,
+      "prof": 600,
+      "panels": [
+        {
+          "name": "B04_base",
+          "largo": 900,
+          "ancho": 600,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-BLA-15-IMP",
+          "rol_estructural": "base_portante",
+          "justificacion": "Corre a todo el ancho exterior. Los laterales se apoyan encima: la carga entra en compresión, el tornillo sólo alinea.",
+          "cantos": {
+            "frontal": true,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 2100.0,
+              "y": 300.0,
+              "z": 107.5,
+              "sx": 900,
+              "sy": 600,
+              "sz": 15
+            }
+          ]
+        },
+        {
+          "name": "B04_lateral",
+          "largo": 785,
+          "ancho": 600,
+          "espesor": 15,
+          "cantidad": 2,
+          "material": "MEL-BLA-15-IMP",
+          "rol_estructural": "lateral_apoyado",
+          "justificacion": "Alto 785 = alto_cuerpo − espesor de base. DESCANSA sobre la base, no va capturado entre ella.",
+          "cantos": {
+            "frontal": true,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "vertical",
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 1657.5,
+              "y": 300.0,
+              "z": 507.5,
+              "sx": 15,
+              "sy": 600,
+              "sz": 785
+            },
+            {
+              "x": 2542.5,
+              "y": 300.0,
+              "z": 507.5,
+              "sx": 15,
+              "sy": 600,
+              "sz": 785
+            }
+          ]
+        },
+        {
+          "name": "B04_ref_sup_frente",
+          "largo": 870,
+          "ancho": 80,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-BLA-15-IMP",
+          "rol_estructural": "refuerzo",
+          "justificacion": "Refuerzo superior frontal entre laterales.",
+          "cantos": {
+            "frontal": true,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 2100.0,
+              "y": 40.0,
+              "z": 892.5,
+              "sx": 870,
+              "sy": 80,
+              "sz": 15
+            }
+          ]
+        },
+        {
+          "name": "B04_ref_sup_trasero",
+          "largo": 870,
+          "ancho": 80,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-BLA-15-IMP",
+          "rol_estructural": "refuerzo",
+          "justificacion": "Refuerzo superior trasero entre laterales.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 2100.0,
+              "y": 560.0,
+              "z": 892.5,
+              "sx": 870,
+              "sy": 80,
+              "sz": 15
+            }
+          ]
+        },
+        {
+          "name": "B04_ref_post_inferior",
+          "largo": 870,
+          "ancho": 80,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-BLA-15-IMP",
+          "rol_estructural": "refuerzo",
+          "justificacion": "Refuerzo posterior inferior: rigidiza contra el paralelogramo.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 2100.0,
+              "y": 592.5,
+              "z": 155.0,
+              "sx": 870,
+              "sy": 15,
+              "sz": 80
+            }
+          ]
+        },
+        {
+          "name": "B04_fondo",
+          "largo": 900,
+          "ancho": 800,
+          "espesor": 3,
+          "cantidad": 1,
+          "material": "MDF-003-FON",
+          "rol_estructural": "fondo",
+          "justificacion": "Aplicado sobre el canto trasero cubriendo los refuerzos. Escuadra el mueble: atornillar sólo después de verificar diagonales iguales.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 2100.0,
+              "y": 601.5,
+              "z": 500.0,
+              "sx": 900,
+              "sy": 3,
+              "sz": 800
+            }
+          ]
+        },
+        {
+          "name": "B04_zoclo",
+          "largo": 900,
+          "ancho": 100,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-BLA-15-IMP",
+          "rol_estructural": "zoclo",
+          "justificacion": "Pieza independiente, retranqueada 60mm del frente.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": true,
+            "inferior": false
+          },
+          "veta": "libre",
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 2100.0,
+              "y": 67.5,
+              "z": 50.0,
+              "sx": 900,
+              "sy": 15,
+              "sz": 100
+            }
+          ]
+        },
+        {
+          "name": "B04_puerta",
+          "largo": 797,
+          "ancho": 448.5,
+          "espesor": 15,
+          "cantidad": 2,
+          "material": "MEL-ROBLE-NAT-15",
+          "rol_estructural": "frente",
+          "justificacion": "Bisagra recta. Apertura: jaladera.",
+          "cantos": {
+            "frontal": true,
+            "trasero": true,
+            "superior": true,
+            "inferior": true
+          },
+          "veta": "vertical",
+          "drilling": [
+            {
+              "tipo": "cazoleta",
+              "diametro": 35,
+              "x": 21.5,
+              "y": 100.0,
+              "profundidad": 12.5,
+              "cara": "interior",
+              "nota": "centro de cazoleta a 21.5mm del canto"
+            },
+            {
+              "tipo": "cazoleta",
+              "diametro": 35,
+              "x": 21.5,
+              "y": 697.0,
+              "profundidad": 12.5,
+              "cara": "interior",
+              "nota": "centro de cazoleta a 21.5mm del canto"
+            }
+          ],
+          "colocacion": [
+            {
+              "x": 1875.0,
+              "y": -7.5,
+              "z": 501.5,
+              "sx": 448.5,
+              "sy": 15,
+              "sz": 797
+            },
+            {
+              "x": 2325.0,
+              "y": -7.5,
+              "z": 501.5,
+              "sx": 448.5,
+              "sy": 15,
+              "sz": 797
+            }
+          ]
+        }
+      ],
+      "hardware": [
+        {
+          "sku": "BIS-35-REC",
+          "descripcion": "Bisagra cazoleta 35mm recta (sobreposición total)",
+          "cantidad": 4,
+          "unidad": "pza"
+        },
+        {
+          "sku": "PAT-NIV-100",
+          "descripcion": "Pata niveladora 100mm",
+          "cantidad": 4,
+          "unidad": "pza"
+        },
+        {
+          "sku": "UNI-MIN-15",
+          "descripcion": "Minifix + tarugo",
+          "cantidad": 8,
+          "unidad": "jgo"
+        },
+        {
+          "sku": "TOR-35X45",
+          "descripcion": "Tornillo 3.5x45",
+          "cantidad": 8,
+          "unidad": "pza"
+        }
+      ],
+      "apertura": "jaladera",
+      "gola_sku": null,
+      "led": false,
+      "notas": [
+        "Apoyar los laterales SOBRE la base; atornillar desde abajo.",
+        "Escuadrar contra el fondo (diagonales iguales) ANTES de fijarlo.",
+        "Módulo de tarja: sin entrepaño; refuerzos de 80mm para librar el tazón."
+      ],
+      "flags": {
+        "requiere_recorte_cubierta": true
+      }
+    },
+    {
+      "id": "A01",
+      "tipo": "superior",
+      "ancho": 600,
+      "alto": 750,
+      "prof": 350,
+      "panels": [
+        {
+          "name": "A01_lateral",
+          "largo": 750,
+          "ancho": 350,
+          "espesor": 15,
+          "cantidad": 2,
+          "material": "MEL-BLA-15-IMP",
+          "rol_estructural": "lateral_portante",
+          "justificacion": "Corre a altura COMPLETA. El mueble cuelga: el techo y el piso van capturados entre los laterales para que el tornillo trabaje a cortante y no a extracción en canto de aglomerado.",
+          "cantos": {
+            "frontal": true,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "vertical",
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 7.5,
+              "y": 175.0,
+              "z": 1875.0,
+              "sx": 15,
+              "sy": 350,
+              "sz": 750
+            },
+            {
+              "x": 592.5,
+              "y": 175.0,
+              "z": 1875.0,
+              "sx": 15,
+              "sy": 350,
+              "sz": 750
+            }
+          ]
+        },
+        {
+          "name": "A01_techo",
+          "largo": 570,
+          "ancho": 350,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-BLA-15-IMP",
+          "rol_estructural": "capturado",
+          "justificacion": "Capturado entre laterales (ancho − 2T).",
+          "cantos": {
+            "frontal": true,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 300.0,
+              "y": 175.0,
+              "z": 2242.5,
+              "sx": 570,
+              "sy": 350,
+              "sz": 15
+            }
+          ]
+        },
+        {
+          "name": "A01_piso",
+          "largo": 570,
+          "ancho": 350,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-BLA-15-IMP",
+          "rol_estructural": "capturado",
+          "justificacion": "Capturado entre laterales. Recibe la carga del contenido.",
+          "cantos": {
+            "frontal": true,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 300.0,
+              "y": 175.0,
+              "z": 1507.5,
+              "sx": 570,
+              "sy": 350,
+              "sz": 15
+            }
+          ]
+        },
+        {
+          "name": "A01_riel_colgador",
+          "largo": 570,
+          "ancho": 120,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-BLA-15-IMP",
+          "rol_estructural": "riel_colgador",
+          "justificacion": "Posterior superior: AQUÍ van los tornillos de fijación al muro.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 300.0,
+              "y": 342.5,
+              "z": 2175.0,
+              "sx": 570,
+              "sy": 15,
+              "sz": 120
+            }
+          ]
+        },
+        {
+          "name": "A01_fondo",
+          "largo": 600,
+          "ancho": 750,
+          "espesor": 3,
+          "cantidad": 1,
+          "material": "MDF-003-FON",
+          "rol_estructural": "fondo",
+          "justificacion": "Aplicado sobre el canto trasero cubriendo los refuerzos. Escuadra el mueble: atornillar sólo después de verificar diagonales iguales.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 300.0,
+              "y": 351.5,
+              "z": 1875.0,
+              "sx": 600,
+              "sy": 3,
+              "sz": 750
+            }
+          ]
+        },
+        {
+          "name": "A01_entrepano",
+          "largo": 568,
+          "ancho": 330,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-BLA-15-IMP",
+          "rol_estructural": "entrepano_movil",
+          "justificacion": "Entrepaño móvil sobre soportes del sistema 32.",
+          "cantos": {
+            "frontal": true,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 300.0,
+              "y": 185.0,
+              "z": 1875.0,
+              "sx": 568,
+              "sy": 330,
+              "sz": 15
+            }
+          ]
+        },
+        {
+          "name": "A01_puerta",
+          "largo": 747,
+          "ancho": 597,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "LAC-VERDE-SAGE-15",
+          "rol_estructural": "frente",
+          "justificacion": "Bisagra recta.",
+          "cantos": {
+            "frontal": true,
+            "trasero": true,
+            "superior": true,
+            "inferior": true
+          },
+          "veta": "vertical",
+          "drilling": [
+            {
+              "tipo": "cazoleta",
+              "diametro": 35,
+              "x": 21.5,
+              "y": 100.0,
+              "profundidad": 12.5,
+              "cara": "interior",
+              "nota": "centro de cazoleta a 21.5mm del canto"
+            },
+            {
+              "tipo": "cazoleta",
+              "diametro": 35,
+              "x": 21.5,
+              "y": 647.0,
+              "profundidad": 12.5,
+              "cara": "interior",
+              "nota": "centro de cazoleta a 21.5mm del canto"
+            }
+          ],
+          "colocacion": [
+            {
+              "x": 300.0,
+              "y": -7.5,
+              "z": 1876.5,
+              "sx": 597,
+              "sy": 15,
+              "sz": 747
+            }
+          ]
+        }
+      ],
+      "hardware": [
+        {
+          "sku": "BIS-35-REC",
+          "descripcion": "Bisagra cazoleta 35mm recta (sobreposición total)",
+          "cantidad": 2,
+          "unidad": "pza"
+        },
+        {
+          "sku": "UNI-MIN-15",
+          "descripcion": "Minifix + tarugo",
+          "cantidad": 8,
+          "unidad": "jgo"
+        },
+        {
+          "sku": "TOR-35X45",
+          "descripcion": "Tornillo 3.5x45",
+          "cantidad": 8,
+          "unidad": "pza"
+        }
+      ],
+      "apertura": "jaladera",
+      "gola_sku": null,
+      "led": false,
+      "notas": [
+        "Techo y piso CAPTURADOS entre laterales: el tornillo trabaja a cortante.",
+        "Fijar al muro por el riel colgador posterior superior."
+      ],
+      "flags": {}
+    },
+    {
+      "id": "A02",
+      "tipo": "superior",
+      "ancho": 900,
+      "alto": 750,
+      "prof": 350,
+      "panels": [
+        {
+          "name": "A02_lateral",
+          "largo": 750,
+          "ancho": 350,
+          "espesor": 15,
+          "cantidad": 2,
+          "material": "MEL-BLA-15-IMP",
+          "rol_estructural": "lateral_portante",
+          "justificacion": "Corre a altura COMPLETA. El mueble cuelga: el techo y el piso van capturados entre los laterales para que el tornillo trabaje a cortante y no a extracción en canto de aglomerado.",
+          "cantos": {
+            "frontal": true,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "vertical",
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 607.5,
+              "y": 175.0,
+              "z": 1875.0,
+              "sx": 15,
+              "sy": 350,
+              "sz": 750
+            },
+            {
+              "x": 1492.5,
+              "y": 175.0,
+              "z": 1875.0,
+              "sx": 15,
+              "sy": 350,
+              "sz": 750
+            }
+          ]
+        },
+        {
+          "name": "A02_techo",
+          "largo": 870,
+          "ancho": 350,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-BLA-15-IMP",
+          "rol_estructural": "capturado",
+          "justificacion": "Capturado entre laterales (ancho − 2T).",
+          "cantos": {
+            "frontal": true,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 1050.0,
+              "y": 175.0,
+              "z": 2242.5,
+              "sx": 870,
+              "sy": 350,
+              "sz": 15
+            }
+          ]
+        },
+        {
+          "name": "A02_piso",
+          "largo": 870,
+          "ancho": 350,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-BLA-15-IMP",
+          "rol_estructural": "capturado",
+          "justificacion": "Capturado entre laterales. Recibe la carga del contenido.",
+          "cantos": {
+            "frontal": true,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 1050.0,
+              "y": 175.0,
+              "z": 1507.5,
+              "sx": 870,
+              "sy": 350,
+              "sz": 15
+            }
+          ]
+        },
+        {
+          "name": "A02_riel_colgador",
+          "largo": 870,
+          "ancho": 120,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-BLA-15-IMP",
+          "rol_estructural": "riel_colgador",
+          "justificacion": "Posterior superior: AQUÍ van los tornillos de fijación al muro.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 1050.0,
+              "y": 342.5,
+              "z": 2175.0,
+              "sx": 870,
+              "sy": 15,
+              "sz": 120
+            }
+          ]
+        },
+        {
+          "name": "A02_fondo",
+          "largo": 900,
+          "ancho": 750,
+          "espesor": 3,
+          "cantidad": 1,
+          "material": "MDF-003-FON",
+          "rol_estructural": "fondo",
+          "justificacion": "Aplicado sobre el canto trasero cubriendo los refuerzos. Escuadra el mueble: atornillar sólo después de verificar diagonales iguales.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 1050.0,
+              "y": 351.5,
+              "z": 1875.0,
+              "sx": 900,
+              "sy": 3,
+              "sz": 750
+            }
+          ]
+        },
+        {
+          "name": "A02_entrepano",
+          "largo": 868,
+          "ancho": 330,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-BLA-15-IMP",
+          "rol_estructural": "entrepano_movil",
+          "justificacion": "Entrepaño móvil sobre soportes del sistema 32.",
+          "cantos": {
+            "frontal": true,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 1050.0,
+              "y": 185.0,
+              "z": 1875.0,
+              "sx": 868,
+              "sy": 330,
+              "sz": 15
+            }
+          ]
+        },
+        {
+          "name": "A02_puerta",
+          "largo": 747,
+          "ancho": 448.5,
+          "espesor": 15,
+          "cantidad": 2,
+          "material": "LAC-VERDE-SAGE-15",
+          "rol_estructural": "frente",
+          "justificacion": "Bisagra recta.",
+          "cantos": {
+            "frontal": true,
+            "trasero": true,
+            "superior": true,
+            "inferior": true
+          },
+          "veta": "vertical",
+          "drilling": [
+            {
+              "tipo": "cazoleta",
+              "diametro": 35,
+              "x": 21.5,
+              "y": 100.0,
+              "profundidad": 12.5,
+              "cara": "interior",
+              "nota": "centro de cazoleta a 21.5mm del canto"
+            },
+            {
+              "tipo": "cazoleta",
+              "diametro": 35,
+              "x": 21.5,
+              "y": 647.0,
+              "profundidad": 12.5,
+              "cara": "interior",
+              "nota": "centro de cazoleta a 21.5mm del canto"
+            }
+          ],
+          "colocacion": [
+            {
+              "x": 825.0,
+              "y": -7.5,
+              "z": 1876.5,
+              "sx": 448.5,
+              "sy": 15,
+              "sz": 747
+            },
+            {
+              "x": 1275.0,
+              "y": -7.5,
+              "z": 1876.5,
+              "sx": 448.5,
+              "sy": 15,
+              "sz": 747
+            }
+          ]
+        }
+      ],
+      "hardware": [
+        {
+          "sku": "BIS-35-REC",
+          "descripcion": "Bisagra cazoleta 35mm recta (sobreposición total)",
+          "cantidad": 4,
+          "unidad": "pza"
+        },
+        {
+          "sku": "UNI-MIN-15",
+          "descripcion": "Minifix + tarugo",
+          "cantidad": 8,
+          "unidad": "jgo"
+        },
+        {
+          "sku": "TOR-35X45",
+          "descripcion": "Tornillo 3.5x45",
+          "cantidad": 8,
+          "unidad": "pza"
+        }
+      ],
+      "apertura": "jaladera",
+      "gola_sku": null,
+      "led": false,
+      "notas": [
+        "Techo y piso CAPTURADOS entre laterales: el tornillo trabaja a cortante.",
+        "Fijar al muro por el riel colgador posterior superior."
+      ],
+      "flags": {}
+    }
+  ],
+  "tramos": [
+    {
+      "id": "T1",
+      "muro": "A",
+      "modulos": [
+        "B01_1",
+        "B01_2",
+        "B01_3",
+        "B02",
+        "B03",
+        "B04"
+      ],
+      "lleva_cubierta": false,
+      "panels": [],
+      "hardware": [],
+      "notas": []
+    }
+  ],
+  "notas": [
+    "Cubierta de granito oscuro con vetas blancas: piedra natural, NO la fabrica el taller. Cotizar con marmolero y coordinar plantilla después de instalar los muebles.",
+    "Gabinetes superiores con frente curvo (referencia del cliente): el motor actual sólo produce piezas planas. Se modelan con frente recto en verde sage mientras se desarrolla un generador de frentes curvos/termoformados.",
+    "Cajonera B01: \"3 medias\" interpretado como 3 cajones de altura similar (~266mm de frente cada uno). Confirmar con el cliente."
+  ]
+}

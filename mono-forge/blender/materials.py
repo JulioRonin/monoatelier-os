@@ -14,6 +14,8 @@ PALETA = {
     "MEL-BLA-19-CUB": dict(base=(0.94, 0.94, 0.92, 1), rough=0.35),  # cubierta
     "NEGRO-MATE":     dict(base=(0.05, 0.05, 0.05, 1), rough=0.70),
     "ROBLE-CLARO":    dict(base=(0.72, 0.58, 0.40, 1), rough=0.45),
+    "MEL-ROBLE-NAT-15": dict(base=(0.75, 0.60, 0.42, 1), rough=0.42),
+    "LAC-VERDE-SAGE-15": dict(base=(0.65, 0.70, 0.58, 1), rough=0.30),
 }
 
 

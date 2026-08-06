@@ -351,9 +351,25 @@ def agregar_tramo(id: str, muro: str, modulos: list[str],
         lleva_cubierta: False para un tramo de alacenas.
         recortes: ["tarja", "parrilla"] — se acotan en el plano de cubierta.
     """
-    faltantes = [mid for mid in modulos if not ESTADO.modulo(mid)]
+    # Un id de cajonera (ej. "B01") se expande a sus cajones individuales
+    # (B01_1, B01_2, ...) — evita que el modelo tenga que conocer el sufijo.
+    resueltos: list[str] = []
+    for mid in modulos:
+        if ESTADO.modulo(mid):
+            resueltos.append(mid)
+            continue
+        grupo = sorted(
+            (m for m in ESTADO.project.modules if m.flags.get("columna") == mid),
+            key=lambda m: m.flags.get("orden", 0))
+        if grupo:
+            resueltos += [m.id for m in grupo]
+        else:
+            resueltos.append(mid)
+
+    faltantes = [mid for mid in resueltos if not ESTADO.modulo(mid)]
     if faltantes:
         return f"ERROR: no existen los módulos {', '.join(faltantes)}."
+    modulos = resueltos
     t = Tramo(id=id, muro=muro, modulos=list(modulos), lleva_cubierta=lleva_cubierta)
     largo = sum(ESTADO.modulo(mid).ancho for mid in modulos)
     notas = []

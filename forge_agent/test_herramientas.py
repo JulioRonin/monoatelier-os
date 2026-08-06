@@ -138,3 +138,14 @@ def test_ver_catalogo_no_inventa_skus():
     assert "MEL-BLA-15-IMP" in salida
     assert "GOL-ALU-C-45" in salida
     assert "SIN PRECIO" in salida        # los huecos del catálogo se declaran
+
+
+def test_tramo_expande_grupo_de_cajonera_por_id():
+    """agregar_tramo debe aceptar el id del grupo (B01), no exigir B01_1, B01_2..."""
+    _llamar(h.definir_proyecto, cliente="X", nombre="Y")
+    _llamar(h.agregar_gabinete_base, id="G01", ancho=600)
+    _llamar(h.agregar_cajonera, id="B01", ancho=450, altos_frentes=[266, 266, 268])
+    salida = _llamar(h.agregar_tramo, id="T1", muro="A", modulos=["G01", "B01"])
+    assert "ERROR" not in salida
+    t = h.ESTADO.project.tramos[0]
+    assert t.modulos == ["G01", "B01_1", "B01_2", "B01_3"]
