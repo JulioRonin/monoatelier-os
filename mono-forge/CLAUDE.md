@@ -129,6 +129,16 @@ Los renders SIEMPRE usan blender/render_presets.py — nunca inventes iluminaci�
 - docs.verificar() corre la verificación de cierre de pipeline (ver abajo).
 - Paso a paso: docs/ENTREGABLES.md.
 
+## Agente de diseño por prompts (forge_agent/)
+- El modelo elige QUÉ módulos y con qué anchos; el motor deriva TODAS las medidas.
+  Las herramientas de herramientas.py sólo llaman a los generadores — si una
+  herramienta calcula una medida por su cuenta, está mal escrita.
+- Los errores se devuelven al modelo como texto ("ERROR: ...") para que corrija,
+  nunca como excepción que mate el trabajo.
+- Modelo: claude-opus-5, adaptive thinking, effort high. Sin temperature.
+- La cola vive en forge_jobs (Supabase); el worker corre en la máquina del taller
+  porque Blender es local. Paso a paso: docs/AGENTE_PROMPTS.md.
+
 ## Entregables por proyecto (los 7)
 1. modelo.blend + preview.glb
 2. renders/ (mín. 3 vistas, Cycles 1920×1080)

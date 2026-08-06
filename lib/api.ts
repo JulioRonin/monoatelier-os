@@ -1,6 +1,6 @@
 
 import { supabase } from './supabaseClient';
-import { Project, Client, Quote, ProjectStatus, PriorityLevel, PhaseEnum, User, ForgeModel } from '../types';
+import { Project, Client, Quote, ProjectStatus, PriorityLevel, PhaseEnum, User, ForgeModel, ForgeJob } from '../types';
 
 // --- MAPPING HELPERS ---
 
@@ -47,6 +47,18 @@ const mapForgeModel = (data: any): ForgeModel => ({
     usdzUrl: data.usdz_url,
     status: data.status || 'draft',
     createdAt: data.created_at
+});
+
+const mapForgeJob = (data: any): ForgeJob => ({
+    id: data.id,
+    prompt: data.prompt,
+    baseModelId: data.base_model_id,
+    status: data.status,
+    resultModelId: data.result_model_id,
+    log: data.log,
+    error: data.error,
+    createdAt: data.created_at,
+    updatedAt: data.updated_at
 });
 
 // --- API METHODS ---
@@ -765,6 +777,40 @@ export const api = {
             .from('forge_models')
             .delete()
             .eq('id', id);
+        if (error) throw error;
+    },
+
+    // FORGE JOBS — la cola que atiende el Forge Agent en tu máquina
+    async getForgeJobs(limit = 15) {
+        if (!supabase) return [];
+        const { data, error } = await supabase
+            .from('forge_jobs')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .limit(limit);
+        if (error) throw error;
+        return (data || []).map(mapForgeJob);
+    },
+
+    async createForgeJob(prompt: string, base?: { modelId: string; projectJson: any }) {
+        if (!supabase) throw new Error("Supabase not configured");
+        const { data, error } = await supabase
+            .from('forge_jobs')
+            .insert([{
+                prompt,
+                base_model_id: base?.modelId || null,
+                base_project_json: base?.projectJson || null,
+                status: 'pending'
+            }])
+            .select()
+            .single();
+        if (error) throw error;
+        return mapForgeJob(data);
+    },
+
+    async deleteForgeJob(id: string) {
+        if (!supabase) throw new Error("Supabase not configured");
+        const { error } = await supabase.from('forge_jobs').delete().eq('id', id);
         if (error) throw error;
     },
 

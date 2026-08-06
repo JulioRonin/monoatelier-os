@@ -272,3 +272,15 @@ export interface ForgeModel {
   status: 'draft' | 'published';
   createdAt?: string;
 }
+
+export interface ForgeJob {
+  id: string;
+  prompt: string;
+  baseModelId?: string | null;
+  status: 'pending' | 'running' | 'done' | 'error';
+  resultModelId?: string | null;
+  log?: string | null;
+  error?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+}

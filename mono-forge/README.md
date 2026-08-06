@@ -76,6 +76,17 @@ python -m mono_forge.cli BASE-600 SUP-750 --out projects/x   # genera project.js
 python -m mono_forge.publish projects/x --name "Cocina X"    # sube a la plataforma → QR / link AR
 ```
 
+## Diseñar por prompts
+
+```powershell
+python -m forge_agent.worker          # escucha los prompts de la plataforma
+python -m forge_agent.worker --prompt "cocina de 3m con tarja y torre de horno"
+```
+
+El agente traduce lenguaje natural a parámetros del motor: elige los módulos,
+pero TODAS las medidas las sigue derivando mono-forge. Paso a paso en
+`docs/AGENTE_PROMPTS.md`.
+
 ## Entregables
 
 ```bash
@@ -94,5 +105,5 @@ El margen vive SÓLO en el reporte interno. Detalle en `docs/ENTREGABLES.md`.
 - [x] Vistas y planos con cotas (alzado, planta, despiece, plan de corte)
 - [x] cutlist.xlsx, herrajes.xlsx, cotizacion.pdf, manual_ensamble.pdf, entrega.pdf
 - [x] Reporte interno de costos con simulación por proveedor
+- [x] Diseño por prompts desde la plataforma (forge_agent/ — ver docs/AGENTE_PROMPTS.md)
 - [ ] Renders hiperrealistas por escena (atmósferas) desde render_presets.py
-- [ ] Diseño por prompts desde la plataforma (Forge Agent)

@@ -9,11 +9,12 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
     Hammer, Upload, Smartphone, Trash2, Loader2, Box, QrCode,
-    CheckCircle2, RefreshCw, FlaskConical, X
+    CheckCircle2, RefreshCw, FlaskConical, X, Sparkles, SendHorizonal,
+    AlertTriangle, Clock
 } from 'lucide-react';
 import QRCode from 'qrcode';
 import { api } from '../lib/api';
-import { ForgeModel } from '../types';
+import { ForgeModel, ForgeJob } from '../types';
 import ForgeViewer from '../components/ForgeViewer';
 import {
     ForgeProjectData, construirProyecto, exportarGLB, exportarUSDZ,
@@ -30,6 +31,9 @@ const Forge: React.FC = () => {
     const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
     const [importData, setImportData] = useState<ForgeProjectData | null>(null);
     const [importName, setImportName] = useState('');
+    const [jobs, setJobs] = useState<ForgeJob[]>([]);
+    const [prompt, setPrompt] = useState('');
+    const [sending, setSending] = useState(false);
     const fileRef = useRef<HTMLInputElement>(null);
     const darkMode = typeof document !== 'undefined' &&
         document.documentElement.classList.contains('dark');
@@ -47,7 +51,44 @@ const Forge: React.FC = () => {
         }
     }, []);
 
-    useEffect(() => { load(); }, [load]);
+    const loadJobs = useCallback(async () => {
+        try {
+            setJobs(await api.getForgeJobs());
+        } catch (e) {
+            console.warn('forge_jobs no disponible:', e);
+        }
+    }, []);
+
+    useEffect(() => { load(); loadJobs(); }, [load, loadJobs]);
+
+    // mientras haya trabajos en curso, refresca cada 4s
+    const hayEnCurso = jobs.some(j => j.status === 'pending' || j.status === 'running');
+    useEffect(() => {
+        if (!hayEnCurso) return;
+        const t = setInterval(() => { loadJobs(); load(); }, 4000);
+        return () => clearInterval(t);
+    }, [hayEnCurso, loadJobs, load]);
+
+    const enviarPrompt = async () => {
+        const texto = prompt.trim();
+        if (!texto) return;
+        setSending(true);
+        setError(null);
+        try {
+            // si hay un diseño seleccionado, el agente itera sobre él
+            const base = selected
+                ? { modelId: selected.id, projectJson: selected.projectJson }
+                : undefined;
+            await api.createForgeJob(texto, base);
+            setPrompt('');
+            await loadJobs();
+        } catch (e: any) {
+            setError(`No se pudo encolar el diseño: ${e.message}. `
+                + '¿Corriste la migración 20260806_forge_jobs.sql?');
+        } finally {
+            setSending(false);
+        }
+    };
 
     // QR del visor AR público del diseño seleccionado
     useEffect(() => {
@@ -198,6 +239,101 @@ const Forge: React.FC = () => {
                     <button onClick={() => setError(null)}><X size={16} /></button>
                 </div>
             )}
+
+            {/* Diseñar por prompt */}
+            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-6 space-y-4">
+                <div className="flex items-center gap-2">
+                    <Sparkles size={16} className="text-primary" />
+                    <p className="text-xs font-mono uppercase tracking-widest text-gray-400">
+                        Diseñar por prompt
+                    </p>
+                    {selected && !importData && (
+                        <span className="text-[10px] font-mono uppercase tracking-widest text-primary dark:text-success">
+                            · iterando sobre «{selected.name}»
+                        </span>
+                    )}
+                </div>
+                <div className="flex gap-3">
+                    <textarea
+                        value={prompt}
+                        onChange={e => setPrompt(e.target.value)}
+                        onKeyDown={e => {
+                            if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) enviarPrompt();
+                        }}
+                        rows={2}
+                        placeholder={selected && !importData
+                            ? 'Ej: súbeme la alacena 10cm y cambia los frentes a alto brillo blanco'
+                            : 'Ej: cocina en L de 3.2m, frentes alto brillo blanco, gola de aluminio, tarja al centro y torre de horno a la derecha'}
+                        className="flex-1 border border-gray-200 dark:border-gray-600 bg-transparent p-3 text-sm dark:text-white focus:border-primary outline-none resize-none"
+                    />
+                    <button
+                        onClick={enviarPrompt}
+                        disabled={sending || !prompt.trim()}
+                        className="bg-primary text-white px-6 flex items-center gap-2 text-xs uppercase tracking-widest disabled:opacity-40 shrink-0"
+                    >
+                        {sending ? <Loader2 size={16} className="animate-spin" /> : <SendHorizonal size={16} />}
+                        Diseñar
+                    </button>
+                </div>
+                <p className="text-[11px] text-gray-400">
+                    Requiere el <b>Forge Agent</b> corriendo en tu computadora
+                    (<code>python -m forge_agent.worker</code>). Él traduce el prompt a
+                    parámetros del motor, construye en tu Blender y publica el resultado aquí.
+                    {selected && !importData && ' Deselecciona el diseño para empezar uno nuevo.'}
+                </p>
+
+                {jobs.length > 0 && (
+                    <div className="border-t border-gray-100 dark:border-gray-700 pt-4 space-y-2">
+                        {jobs.slice(0, 5).map(j => (
+                            <div key={j.id} className="flex items-start gap-3 text-sm">
+                                <span className="mt-0.5 shrink-0">
+                                    {j.status === 'done' ? <CheckCircle2 size={15} className="text-primary" />
+                                        : j.status === 'error' ? <AlertTriangle size={15} className="text-danger" />
+                                            : j.status === 'running' ? <Loader2 size={15} className="animate-spin text-primary" />
+                                                : <Clock size={15} className="text-gray-400" />}
+                                </span>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-gray-700 dark:text-gray-200 truncate">{j.prompt}</p>
+                                    {j.status === 'pending' && (
+                                        <p className="text-[11px] text-gray-400">
+                                            En cola — esperando al Forge Agent.
+                                        </p>
+                                    )}
+                                    {j.status === 'running' && (
+                                        <p className="text-[11px] text-gray-400">Diseñando…</p>
+                                    )}
+                                    {j.status === 'error' && (
+                                        <p className="text-[11px] text-danger">{j.error}</p>
+                                    )}
+                                    {j.status === 'done' && j.log && (
+                                        <p className="text-[11px] text-gray-500 dark:text-gray-400 whitespace-pre-wrap">
+                                            {j.log}
+                                        </p>
+                                    )}
+                                </div>
+                                {j.status === 'done' && j.resultModelId && (
+                                    <button
+                                        onClick={() => {
+                                            const m = models.find(x => x.id === j.resultModelId);
+                                            if (m) { setImportData(null); setSelected(m); }
+                                        }}
+                                        className="text-[10px] font-mono uppercase tracking-widest text-primary hover:underline shrink-0"
+                                    >
+                                        Ver
+                                    </button>
+                                )}
+                                <button
+                                    onClick={async () => { await api.deleteForgeJob(j.id); loadJobs(); }}
+                                    className="text-gray-300 hover:text-danger shrink-0"
+                                    title="Quitar del historial"
+                                >
+                                    <X size={13} />
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Listado */}
