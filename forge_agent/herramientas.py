@@ -16,9 +16,10 @@ from mono_forge.constants import (
 from mono_forge.costing import catalogo_herrajes, catalogo_materiales
 from mono_forge.cutlist import resumen
 from mono_forge.generators.base import gabinete_base
-from mono_forge.generators.cajonera import cajon
+from mono_forge.generators.cajonera import cajonera
 from mono_forge.generators.cubierta import cubierta
 from mono_forge.generators.superior import alacena
+from mono_forge.generators.tarja import TARJA_ANCHO, TARJA_FONDO, TARJA_PROFUNDIDAD, tarja
 from mono_forge.generators.torre import torre
 from mono_forge.models import Project, Tramo
 from mono_forge.rules import led as regla_led
@@ -238,50 +239,44 @@ def agregar_alacena(id: str, ancho: float, alto: float = ALTO_SUPERIOR_DEFAULT,
 @beta_tool
 def agregar_cajonera(id: str, ancho: float, altos_frentes: list[float],
                      prof: float = PROF_BASE, tipo_corredera: str = "lateral",
-                     esp_frente: float = T_FRENTE_STD,
+                     esp_frente: float = T_FRENTE_STD, led: bool = False,
                      material: str = "", material_frente: str = "",
                      apertura: str = "") -> str:
-    """Agrega una torre de cajones: un módulo por cajón, apilados.
+    """Agrega un mueble inferior de CAJONES: casco completo con N cajones dentro.
 
     Args:
-        id: prefijo del identificador (ej. "C01"; los cajones serán C01_1, C01_2...).
-        ancho: ancho exterior del módulo en mm.
-        altos_frentes: alto del frente de cada cajón, de abajo hacia arriba
-            (ej. [200, 200, 300]). La suma debe caber en los 900mm del mueble.
-        prof: profundidad del módulo. La corredera se elige sola (500 estándar).
+        id: identificador corto y único (ej. "C01").
+        ancho: ancho exterior en mm. Máximo 900 (arriba de eso el casco exige
+            divisor central y un divisor parte el hueco de los cajones).
+        altos_frentes: alto del frente de cada cajón, de abajo hacia arriba.
+            Deben sumar EXACTAMENTE 800mm (el alto del cuerpo). Ejemplos:
+            3 cajones [266, 266, 268]; 4 cajones [200, 200, 200, 200];
+            1 grande abajo + 2 chicos [400, 200, 200].
+        prof: profundidad. La corredera se elige sola (500 estándar).
         tipo_corredera: "lateral" o "bajo_cajon".
         esp_frente: 15 estándar, 19 alto brillo.
+        led: True para iluminación LED en este módulo.
         material: SKU de estructura. Vacío = el del proyecto.
         material_frente: SKU de frente. Vacío = el del proyecto.
         apertura: vacío = la del proyecto.
     """
-    from mono_forge.constants import T
-    ancho_interior = ancho - 2 * T
-    creados = []
-    for i, alto_f in enumerate(altos_frentes, start=1):
-        cid = f"{id}_{i}"
-        if ESTADO.modulo(cid):
-            return f"ERROR: ya existe un módulo con id {cid}."
-        m = cajon(
-            id=cid, ancho_interior=ancho_interior, alto_frente=alto_f,
-            prof_modulo=prof, ancho_modulo=ancho, esp_frente=esp_frente,
-            tipo_corredera=tipo_corredera,
+    if ESTADO.modulo(id):
+        return f"ERROR: ya existe un módulo con id {id}. Usa otro."
+    try:
+        m = cajonera(
+            id=id, ancho=ancho, altos_frentes=altos_frentes, prof=prof,
+            esp_frente=esp_frente, tipo_corredera=tipo_corredera,
             material=material or ESTADO.material_default,
             material_frente=material_frente or ESTADO.material_frente_default,
             apertura=_apertura(apertura),
-            gola_hueco=_gola_hueco(ESTADO.gola_sku_default))
-        m.gola_sku = ESTADO.gola_sku_default
-        # los cajones de una misma torre comparten hueco: se apilan, no se alinean
-        m.flags["columna"] = id
-        m.flags["orden"] = i
-        ESTADO.project.modules.append(m)
-        creados.append(f"{cid} ({alto_f:.0f}mm)")
-    total = sum(altos_frentes)
-    aviso = ""
-    if total > 900:
-        aviso = (f" AVISO: los frentes suman {total:.0f}mm y el mueble inferior "
-                 f"mide 900mm. Revisa la modulación.")
-    return f"Cajonera {id}: {', '.join(creados)}. Corredera {tipo_corredera}.{aviso}"
+            gola_hueco=_gola_hueco(ESTADO.gola_sku_default), led=led)
+    except ValueError as e:
+        return f"ERROR: {e}"
+    m.gola_sku = ESTADO.gola_sku_default
+    ESTADO.project.modules.append(m)
+    return (f"{id}: mueble de cajones {ancho:.0f}×900×{prof:.0f}mm con "
+            f"{len(altos_frentes)} cajones ({', '.join(f'{a:.0f}' for a in altos_frentes)}mm). "
+            f"Casco completo + cajas. {len(m.panels)} piezas.")
 
 
 @beta_tool
@@ -321,6 +316,40 @@ def agregar_torre(id: str, ancho: float = 600,
 
 
 @beta_tool
+def agregar_tarja(modulo_id: str, ancho: float = TARJA_ANCHO,
+                  fondo: float = TARJA_FONDO,
+                  profundidad: float = TARJA_PROFUNDIDAD) -> str:
+    """Coloca el tazón de la tarja en un módulo (normalmente el de tarja=True).
+
+    La tarja se COMPRA: es pieza de referencia, no entra al cutlist ni al costeo.
+    Sirve para que se vea en el 3D y el render, y para acotar el recorte de la
+    cubierta. Llámala después de crear el módulo de tarja.
+
+    Args:
+        modulo_id: id del módulo donde va (debe existir ya).
+        ancho: ancho del tazón en mm (550 típico de un tazón).
+        fondo: fondo del tazón en mm.
+        profundidad: qué tan hondo es el tazón en mm.
+    """
+    m = ESTADO.modulo(modulo_id)
+    if not m:
+        return f"ERROR: no existe el módulo {modulo_id}."
+    if any(q.rol_estructural == "accesorio_tarja" for q in m.panels):
+        return f"ERROR: {modulo_id} ya tiene tarja."
+    try:
+        tarja(m, ancho=ancho, fondo=fondo, profundidad=profundidad)
+    except ValueError as e:
+        return f"ERROR: {e}"
+    aviso = ""
+    if m.tipo != "base_tarja":
+        aviso = (f" AVISO: {modulo_id} no se creó con tarja=True, así que lleva "
+                 f"entrepaño y refuerzos de 100mm que estorban al tazón. "
+                 f"Recréalo con tarja=True.")
+    return (f"Tarja de {ancho:.0f}×{fondo:.0f}mm (tazón de {profundidad:.0f}mm) "
+            f"en {modulo_id}. Pieza de referencia: NO entra al cutlist.{aviso}")
+
+
+@beta_tool
 def eliminar_modulo(id: str) -> str:
     """Elimina un módulo del proyecto por su id. Úsalo al iterar cuando el
     cliente pide quitar o rehacer una parte del diseño."""
@@ -351,25 +380,9 @@ def agregar_tramo(id: str, muro: str, modulos: list[str],
         lleva_cubierta: False para un tramo de alacenas.
         recortes: ["tarja", "parrilla"] — se acotan en el plano de cubierta.
     """
-    # Un id de cajonera (ej. "B01") se expande a sus cajones individuales
-    # (B01_1, B01_2, ...) — evita que el modelo tenga que conocer el sufijo.
-    resueltos: list[str] = []
-    for mid in modulos:
-        if ESTADO.modulo(mid):
-            resueltos.append(mid)
-            continue
-        grupo = sorted(
-            (m for m in ESTADO.project.modules if m.flags.get("columna") == mid),
-            key=lambda m: m.flags.get("orden", 0))
-        if grupo:
-            resueltos += [m.id for m in grupo]
-        else:
-            resueltos.append(mid)
-
-    faltantes = [mid for mid in resueltos if not ESTADO.modulo(mid)]
+    faltantes = [mid for mid in modulos if not ESTADO.modulo(mid)]
     if faltantes:
         return f"ERROR: no existen los módulos {', '.join(faltantes)}."
-    modulos = resueltos
     t = Tramo(id=id, muro=muro, modulos=list(modulos), lleva_cubierta=lleva_cubierta)
     largo = sum(ESTADO.modulo(mid).ancho for mid in modulos)
     notas = []
@@ -429,6 +442,7 @@ def agregar_nota(nota: str) -> str:
 HERRAMIENTAS = [
     ver_catalogo, definir_proyecto, estado_actual,
     agregar_gabinete_base, agregar_alacena, agregar_cajonera, agregar_torre,
+    agregar_tarja,
     eliminar_modulo, agregar_tramo, calcular_led, agregar_nota,
 ]
 

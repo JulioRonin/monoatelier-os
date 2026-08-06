@@ -140,12 +140,52 @@ def test_ver_catalogo_no_inventa_skus():
     assert "SIN PRECIO" in salida        # los huecos del catálogo se declaran
 
 
-def test_tramo_expande_grupo_de_cajonera_por_id():
-    """agregar_tramo debe aceptar el id del grupo (B01), no exigir B01_1, B01_2..."""
+def test_la_cajonera_es_un_mueble_con_casco():
+    """Un cajón sin casco no tiene dónde atornillar la corredera."""
     _llamar(h.definir_proyecto, cliente="X", nombre="Y")
     _llamar(h.agregar_gabinete_base, id="G01", ancho=600)
-    _llamar(h.agregar_cajonera, id="B01", ancho=450, altos_frentes=[266, 266, 268])
-    salida = _llamar(h.agregar_tramo, id="T1", muro="A", modulos=["G01", "B01"])
+    salida = _llamar(h.agregar_cajonera, id="B01", ancho=450,
+                     altos_frentes=[266, 266, 268])
     assert "ERROR" not in salida
-    t = h.ESTADO.project.tramos[0]
-    assert t.modulos == ["G01", "B01_1", "B01_2", "B01_3"]
+
+    m = h.ESTADO.modulo("B01")
+    roles = {q.rol_estructural for q in m.panels}
+    assert {"base_portante", "lateral_apoyado", "refuerzo", "zoclo"} <= roles
+    assert len([q for q in m.panels if q.rol_estructural == "frente"]) == 3
+
+    # y entra al tramo como UN módulo, no como tres
+    _llamar(h.agregar_tramo, id="T1", muro="A", modulos=["G01", "B01"])
+    assert h.ESTADO.project.tramos[0].modulos == ["G01", "B01"]
+
+
+def test_la_cajonera_rechaza_una_aritmetica_vertical_imposible():
+    _llamar(h.definir_proyecto, cliente="X", nombre="Y")
+    assert "ERROR" in _llamar(h.agregar_cajonera, id="B01", ancho=450,
+                              altos_frentes=[200, 200])          # suman 400, no 800
+    assert "ERROR" in _llamar(h.agregar_cajonera, id="B02", ancho=1200,
+                              altos_frentes=[400, 400])          # exigiría divisor
+
+
+def test_la_tarja_no_entra_al_cutlist():
+    """Se compra, no se fabrica: se ve en el 3D pero no se corta."""
+    from mono_forge.cutlist import resumen
+
+    _llamar(h.definir_proyecto, cliente="X", nombre="Y")
+    _llamar(h.agregar_gabinete_base, id="B01", ancho=900, puertas=2, tarja=True,
+            entrepanos=0)
+    area_antes = resumen(h.ESTADO.project)["area_paneles_m2"]
+
+    salida = _llamar(h.agregar_tarja, modulo_id="B01")
+    assert "ERROR" not in salida
+    tz = next(q for q in h.ESTADO.modulo("B01").panels
+              if q.rol_estructural == "accesorio_tarja")
+    assert tz.accesorio is True
+    assert resumen(h.ESTADO.project)["area_paneles_m2"] == area_antes
+
+    # pero sí se coloca en 3D, colgando del nivel de cubierta
+    h.finalizar()
+    assert len(tz.colocacion) == 1
+    assert tz.colocacion[0]["z"] < ALTO_TOTAL_BASE
+
+    assert "ERROR" in _llamar(h.agregar_tarja, modulo_id="B01")     # duplicada
+    assert "ERROR" in _llamar(h.agregar_tarja, modulo_id="NOPE")

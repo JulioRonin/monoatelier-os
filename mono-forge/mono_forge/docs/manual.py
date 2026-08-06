@@ -190,14 +190,18 @@ def manual_pdf(project: Project, destino: str) -> str:
                             ANCHO_UTIL, 62 * mm, titulo=f"{m.id} · alzado"))
             fl.append(Spacer(1, 6))
 
-        fl.append(Paragraph("Despiece", st["h2"]))
-        fl.append(Paragraph(
-            "La línea gruesa marca los lados con cubrecanto.", st["nota"]))
-        fl.append(Despiece(m.panels, ANCHO_UTIL))
-        fl.append(Spacer(1, 8))
+        # el título viaja con el dibujo: si no cabe, saltan juntos de página
+        fl.append(KeepTogether([
+            Paragraph("Despiece", st["h2"]),
+            Paragraph("La línea gruesa marca los lados con cubrecanto.", st["nota"]),
+            Despiece([q for q in m.panels if not q.accesorio], ANCHO_UTIL),
+            Spacer(1, 8),
+        ]))
 
         filas = [["Pieza", "Cant", "Largo", "Ancho", "Esp", "Cantos", "Veta"]]
         for p in m.panels:
+            if p.accesorio:
+                continue
             lados = ", ".join(k for k, v in p.cantos.items() if v) or "—"
             filas.append([p.name.split("_", 1)[-1], str(int(p.cantidad)),
                           f"{p.largo:.0f}", f"{p.ancho:.0f}", f"{p.espesor:.0f}",
@@ -265,7 +269,7 @@ def manual_pdf(project: Project, destino: str) -> str:
         f"Cada pieza está inflada por el kerf de {KERF}mm: el acomodo es ejecutable "
         f"tal cual en la sierra.", st["nota"]))
     fl.append(Spacer(1, 6))
-    for material, hojas in nesting(project.all_panels()).items():
+    for material, hojas in nesting(project.piezas_de_corte()).items():
         for h in hojas:
             fl.append(KeepTogether([
                 Paragraph(f"{material} — hoja {h.indice + 1} de {len(hojas)} "

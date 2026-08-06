@@ -54,6 +54,9 @@ class Panel:
     justificacion: str = ""        # POR QUÉ va así — se imprime en el manual de ensamble
     cantos: dict[str, bool] = field(default_factory=cantos)
     veta: str = "libre"            # libre | vertical | horizontal
+    #: True = pieza de REFERENCIA (tarja, electrodoméstico). Se ve en el 3D y
+    #: en el render, pero NO se corta ni entra al cutlist ni al costeo.
+    accesorio: bool = False
     drilling: list[DrillOp] = field(default_factory=list)
     # Colocación 3D DERIVADA por rules/posicion.py — una entrada por copia:
     # {"x","y","z","sx","sy","sz"} (centro y extensión por eje, en mm).
@@ -180,6 +183,10 @@ class Project:
         for t in self.tramos:
             out.extend(t.panels)
         return out
+
+    def piezas_de_corte(self) -> list[Panel]:
+        """Sólo lo que el taller CORTA: sin accesorios de referencia."""
+        return [p for p in self.all_panels() if not p.accesorio]
 
     def all_hardware(self) -> list[HardwareItem]:
         out: list[HardwareItem] = []

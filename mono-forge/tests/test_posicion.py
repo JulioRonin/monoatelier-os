@@ -92,34 +92,6 @@ def test_roundtrip_json_conserva_colocacion(tmp_path):
            [q.colocacion for q in p.all_panels()]
 
 
-def test_columna_de_cajones_se_apila_no_se_alinea():
-    """Una cajonera de 3 cajones ocupa UN hueco de muro, no tres."""
-    from mono_forge.generators.cajonera import cajon
-
-    p = Project(cliente="TEST", nombre="cajonera")
-    p.modules.append(gabinete_base("B01", ancho=600))
-    for i, alto in enumerate([200, 250, 350], start=1):
-        m = cajon(f"C01_{i}", ancho_interior=570, alto_frente=alto, prof_modulo=600,
-                  ancho_modulo=600)
-        m.flags["columna"] = "C01"
-        m.flags["orden"] = i
-        p.modules.append(m)
-    colocar(p)
-
-    frentes = [next(q for q in m.panels if q.rol_estructural == "frente")
-               for m in p.modules if m.tipo == "cajonera"]
-    xs = {round(f.colocacion[0]["x"], 1) for f in frentes}
-    assert len(xs) == 1, "los cajones deben compartir la misma X (un solo hueco)"
-
-    # y apilarse sin traslape: cada frente empieza donde termina el anterior
-    zs = sorted((f.colocacion[0]["z"] - f.colocacion[0]["sz"] / 2,
-                 f.colocacion[0]["z"] + f.colocacion[0]["sz"] / 2) for f in frentes)
-    assert zs[0][0] >= ALTO_ZOCLO - 0.01           # arrancan sobre el zoclo
-    for (_, fin), (ini, _) in zip(zs, zs[1:]):
-        assert abs(ini - fin) <= GAP_FRENTES + 0.01
-    assert zs[-1][1] <= ALTO_TOTAL_BASE + 0.01     # y no rebasan los 900
-
-
 def _volumen_traslape(a, b):
     """Volumen de la intersección de dos cajas (0 si sólo se tocan)."""
     def solape(c1, c2, eje, tam):
@@ -150,11 +122,11 @@ def test_las_piezas_del_cajon_no_se_atraviesan():
             assert v < 1.0, f"{n1} y {n2} se atraviesan ({v:.0f} mm³)"
 
 
-def test_el_fondo_del_cajon_es_de_tablero_de_15_y_carga_los_laterales():
-    """El fondo carga el contenido: un MDF de 3mm se pandea.
+def test_el_fondo_del_cajon_va_atrapado_entre_los_cuatro_lados():
+    """Tablero de 15mm (un MDF de 3mm se pandea), inset en X y en Y.
 
-    Y como carga, aplica la regla del casco: corre a TODO el ancho y los
-    laterales descansan sobre él, en vez de ir capturado entre ellos.
+    No descansa debajo de los laterales ni sobresale: queda atrapado entre
+    los cuatro lados de la caja.
     """
     from mono_forge.constants import T_FONDO_CAJON
 
@@ -166,14 +138,76 @@ def test_el_fondo_del_cajon_es_de_tablero_de_15_y_carga_los_laterales():
 
     assert T_FONDO_CAJON == 15
     assert fondo.espesor == T_FONDO_CAJON
-    assert fondo.material == lateral.material            # tablero, no MDF de fondo
-    assert fondo.largo == frente_caja.largo + 2 * T      # a todo el ancho de la caja
-    assert lateral.ancho == frente_caja.ancho            # ambos sobre el fondo
+    assert fondo.material == lateral.material        # tablero, no MDF de fondo
+    assert fondo.largo == frente_caja.largo          # inset en X: entre laterales
+    assert fondo.ancho == lateral.largo - 2 * T      # inset en Y: entre frente y trasera
+    assert lateral.ancho == frente_caja.ancho        # caja de altura pareja
 
     p = Project(cliente="TEST", nombre="fondo")
     p.modules.append(m)
     colocar(p)
-    cf = fondo.colocacion[0]
-    cl = lateral.colocacion[0]
-    assert cl["z"] - cl["sz"] / 2 == pytest.approx(cf["z"] + cf["sz"] / 2), \
-        "el lateral debe arrancar justo donde termina el fondo"
+    cf, cl = fondo.colocacion[0], lateral.colocacion[0]
+    assert cf["z"] - cf["sz"] / 2 == pytest.approx(cl["z"] - cl["sz"] / 2), \
+        "el fondo se asienta a ras del canto inferior de la caja"
+
+
+def test_la_cajonera_es_un_mueble_completo_no_cajones_flotando():
+    """Sin casco no hay dónde atornillar la corredera: el cajón no es fabricable.
+
+    Una cajonera debe traer las MISMAS piezas de casco que un mueble de puerta.
+    """
+    from mono_forge.generators.cajonera import cajonera
+
+    m = cajonera("B01", ancho=450, altos_frentes=[266, 266, 268])
+    roles = {q.rol_estructural for q in m.panels}
+    base = {q.rol_estructural for q in gabinete_base("X", ancho=450).panels}
+    casco = base - {"frente", "entrepano_movil", "entrepano_fijo"}
+    assert casco <= roles, f"a la cajonera le falta casco: {casco - roles}"
+
+    assert m.alto == ALTO_TOTAL_BASE                       # es un mueble inferior
+    lat = next(q for q in m.panels if q.rol_estructural == "lateral_apoyado")
+    assert lat.largo == ALTO_LATERAL_BASE                  # 785 derivado, igual que siempre
+    assert len([q for q in m.panels if q.rol_estructural == "frente"]) == 3
+
+
+def test_la_cajonera_completa_no_tiene_piezas_que_se_atraviesen():
+    from mono_forge.generators.cajonera import cajonera
+
+    p = Project(cliente="TEST", nombre="cajonera")
+    p.modules.append(cajonera("B01", ancho=450, altos_frentes=[266, 266, 268]))
+    colocar(p)
+
+    cajas = [(q.name, c) for q in p.modules[0].panels for c in q.colocacion]
+    for i, (n1, c1) in enumerate(cajas):
+        for n2, c2 in cajas[i + 1:]:
+            v = _volumen_traslape(c1, c2)
+            assert v < 1.0, f"{n1} y {n2} se atraviesan ({v:.0f} mm³)"
+
+
+def test_los_cajones_van_dentro_del_casco():
+    """Las cajas no pueden salirse del mueble ni chocar entre ellas."""
+    from mono_forge.generators.cajonera import cajonera
+
+    p = Project(cliente="TEST", nombre="cajonera")
+    m = cajonera("B01", ancho=450, altos_frentes=[266, 266, 268])
+    p.modules.append(m)
+    colocar(p)
+
+    for q in m.panels:
+        if q.rol_estructural not in ("lateral_caja", "capturado", "fondo_caja"):
+            continue
+        for c in q.colocacion:
+            assert c["x"] - c["sx"] / 2 >= T - 0.01, f"{q.name} se sale por la izquierda"
+            assert c["x"] + c["sx"] / 2 <= m.ancho - T + 0.01, f"{q.name} se sale por la derecha"
+            assert c["z"] - c["sz"] / 2 >= ALTO_ZOCLO, f"{q.name} baja del zoclo"
+            assert c["z"] + c["sz"] / 2 <= ALTO_TOTAL_BASE, f"{q.name} rebasa los 900"
+
+
+def test_la_cajonera_valida_la_aritmetica_vertical():
+    from mono_forge.generators.cajonera import cajonera
+    import pytest as _pt
+
+    with _pt.raises(ValueError, match="800"):
+        cajonera("B01", ancho=450, altos_frentes=[200, 200])      # suman 400
+    with _pt.raises(ValueError, match="divisor"):
+        cajonera("B01", ancho=1200, altos_frentes=[400, 400])

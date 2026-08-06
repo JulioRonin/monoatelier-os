@@ -79,6 +79,11 @@ def _colocar_panel_apoyado(m: Module, p: Panel) -> bool:
                            p.largo, p.espesor, p.ancho)]
     elif rol in ("entrepano_movil", "entrepano_fijo"):
         _colocar_entrepanos(m, p, z0=z_base + T, z1=z_top - T)
+    elif rol == "accesorio_tarja":
+        # el tazón cuelga del nivel de cubierta hacia abajo
+        p.colocacion = [_c(a / 2, T + p.ancho / 2,
+                           ALTO_TOTAL_BASE - p.espesor / 2,
+                           p.largo, p.ancho, p.espesor)]
     elif rol == "frente":
         _colocar_frentes(m, p, z_top=z_top,
                          apilar=(m.tipo == "torre"), z_piso=z_base + T)
@@ -119,7 +124,50 @@ def _colocar_panel_colgado(m: Module, p: Panel) -> bool:
 
 
 def _colocar_panel_cajonera(m: Module, p: Panel) -> bool:
-    """cajonera suelta — los laterales corren el largo de la corredera."""
+    """Mueble de cajones (casco + N cajones) o, si es viejo, un cajón suelto."""
+    cajones = m.flags.get("cajones")
+    if not cajones:
+        return _colocar_cajon_suelto(m, p)
+
+    for cj in cajones:
+        if p.name.startswith(f"{m.id}_c{cj['i']}_"):
+            return _colocar_pieza_de_cajon(m, p, cj)
+    # cualquier otra pieza es del casco: mismas reglas que un mueble inferior
+    return _colocar_panel_apoyado(m, p)
+
+
+def _colocar_pieza_de_cajon(m: Module, p: Panel, cj: dict) -> bool:
+    """Una pieza de la caja o el frente de un cajón dentro del mueble."""
+    a = m.ancho
+    ancho_caja, corredera = cj["ancho_caja"], cj["corredera"]
+    x0 = (a - ancho_caja) / 2          # caja centrada en el hueco
+    z0 = cj["z_caja"]
+    rol = p.rol_estructural
+
+    if rol == "lateral_caja":
+        zc = z0 + cj["alto_caja"] / 2
+        p.colocacion = [
+            _c(x0 + T / 2, corredera / 2, zc, T, corredera, cj["alto_caja"]),
+            _c(x0 + ancho_caja - T / 2, corredera / 2, zc,
+               T, corredera, cj["alto_caja"]),
+        ][:p.cantidad]
+    elif rol == "capturado":
+        y = T / 2 if p.name.endswith("_frente_caja") else corredera - T / 2
+        p.colocacion = [_c(a / 2, y, z0 + cj["alto_caja"] / 2, p.largo, T, p.ancho)]
+    elif rol == "fondo_caja":
+        # atrapado entre los cuatro lados: inset en X y en Y
+        p.colocacion = [_c(a / 2, corredera / 2, z0 + p.espesor / 2,
+                           p.largo, p.ancho, p.espesor)]
+    elif rol == "frente":
+        p.colocacion = [_c(a / 2, -p.espesor / 2,
+                           cj["z_frente"] + p.largo / 2, p.ancho, p.espesor, p.largo)]
+    else:
+        return False
+    return True
+
+
+def _colocar_cajon_suelto(m: Module, p: Panel) -> bool:
+    """Cajón sin casco — los laterales corren el largo de la corredera."""
     a, alto = m.ancho, m.alto
     rol = p.rol_estructural
 
@@ -138,23 +186,15 @@ def _colocar_panel_cajonera(m: Module, p: Panel) -> bool:
         ancho_caja = capturado.largo + 2 * T if capturado else a - 2 * T
     x0 = (a - ancho_caja) / 2            # caja centrada en el módulo
     z0 = (alto - alto_caja) / 2          # caja centrada en el alto del frente
-    # El fondo ocupa la franja inferior y TODO lo demás descansa sobre él
-    t_fondo = next((q.espesor for q in m.panels
-                    if q.rol_estructural == "fondo_portante"), 0.0)
-    z_sobre = z0 + t_fondo
-
-    if rol == "fondo_portante":
-        p.colocacion = [_c(a / 2, corredera / 2, z0 + p.espesor / 2,
-                           p.largo, p.ancho, p.espesor)]
-    elif rol == "lateral_caja":
-        zc = z_sobre + p.ancho / 2
+    if rol == "lateral_caja":
+        zc = z0 + alto_caja / 2
         p.colocacion = [_c(x0 + T / 2, corredera / 2, zc, T, corredera, p.ancho),
                         _c(x0 + ancho_caja - T / 2, corredera / 2, zc,
                            T, corredera, p.ancho)][:p.cantidad]
     elif rol == "capturado":
         y = T / 2 if p.name.endswith("_frente_caja") else corredera - T / 2
-        p.colocacion = [_c(a / 2, y, z_sobre + p.ancho / 2, p.largo, T, p.ancho)]
-    elif rol == "fondo":            # JSON viejo: fondo de 3mm bajo la caja
+        p.colocacion = [_c(a / 2, y, z0 + alto_caja / 2, p.largo, T, p.ancho)]
+    elif rol in ("fondo_caja", "fondo"):   # "fondo" = JSON viejo de 3mm
         p.colocacion = [_c(a / 2, corredera / 2, z0 + p.espesor / 2,
                            p.largo, p.ancho, p.espesor)]
     elif rol == "frente":
@@ -232,24 +272,11 @@ def colocar(project: Project, alto_colgado: float = ALTO_COLGADO_DEFAULT) -> dic
     origen: dict[str, tuple[float, float]] = {}   # id módulo → (x0, z0)
     x_piso = 0.0
     x_aire = 0.0
-    # columnas de cajones: varios módulos comparten un mismo hueco y se APILAN.
-    # Sin esto una cajonera de 3 cajones ocuparía 3 anchos de muro.
-    col_x: dict[str, float] = {}
-    col_z: dict[str, float] = {}
-
     for m in project.modules:
         colgado = m.tipo == "superior"
-        columna = m.flags.get("columna")
         if colgado:
             x0, z0 = x_aire, alto_colgado
             x_aire += m.ancho + GAP_MODULOS
-        elif columna:
-            if columna not in col_x:
-                col_x[columna] = x_piso
-                col_z[columna] = ALTO_ZOCLO      # los frentes arrancan sobre el zoclo
-                x_piso += m.ancho + GAP_MODULOS
-            x0, z0 = col_x[columna], col_z[columna]
-            col_z[columna] += m.alto
         else:
             x0, z0 = x_piso, 0.0
             x_piso += m.ancho + GAP_MODULOS

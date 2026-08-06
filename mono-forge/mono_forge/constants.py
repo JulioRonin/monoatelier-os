@@ -90,10 +90,11 @@ def alto_lateral(tipo: str, alto_total: float | None = None) -> float:
     """Único punto del sistema donde se decide la altura del lateral.
 
     base     → descansa sobre la base       → alto_cuerpo − T   (785)
+    cajonera → es un mueble inferior         → igual que base
     torre    → mismo principio, pieza única → alto − zoclo − T  (2100 → 1985)
     superior → corre completo               → alto
     """
-    if tipo in ("base", "base_tarja"):
+    if tipo in ("base", "base_tarja", "cajonera"):
         return ALTO_LATERAL_BASE
     if tipo == "torre":
         return (alto_total or ALTO_TORRE_DEFAULT) - ALTO_ZOCLO - T
@@ -104,7 +105,7 @@ def alto_lateral(tipo: str, alto_total: float | None = None) -> float:
 
 def alto_cuerpo(tipo: str, alto_total: float | None = None) -> float:
     """Alto del cuerpo (sin zoclo). Es el alto del fondo aplicado."""
-    if tipo in ("base", "base_tarja"):
+    if tipo in ("base", "base_tarja", "cajonera"):
         return ALTO_CUERPO_BASE
     if tipo == "torre":
         return (alto_total or ALTO_TORRE_DEFAULT) - ALTO_ZOCLO

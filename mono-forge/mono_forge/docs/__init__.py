@@ -55,7 +55,7 @@ def verificar(project: Project, destino: str) -> dict:
     r = resumen(project)
 
     # 1. área
-    area_json = sum(p.area_m2 for p in project.all_panels())
+    area_json = sum(p.area_m2 for p in project.piezas_de_corte())
     area_cut = sum(h.area_usada for hs in r["detalle"].values() for h in hs)
     if area_json > 0 and abs(area_cut - area_json) / area_json > 0.01:
         problemas.append(
