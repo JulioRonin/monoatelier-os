@@ -12,7 +12,10 @@ desde el JSON → los documentos se generan desde el JSON.
 PROHIBIDO derivar medidas midiendo mallas de Blender.
 
 ## Unidades y convenciones
-- TODO en milímetros. Blender scene: unit_scale=0.001, length_unit='MILLIMETERS'.
+- TODO en milímetros en el JSON. En Blender: scale_length=1.0 (1 unidad = 1 METRO,
+  porque build_from_json ya convierte con x*0.001) y length_unit='MILLIMETERS'
+  sólo para que la interfaz muestre mm. Poner scale_length=0.001 hace que un
+  panel de 600mm mida 0.6mm y el GLB salga 1000x pequeño en AR.
 - Hoja 2440×1220. KERF = 4mm.
 - Nomenclatura de paneles: {modulo}_{pieza} (ej. B01_lateral).
 - Veta vertical en puertas, laterales y divisores.
