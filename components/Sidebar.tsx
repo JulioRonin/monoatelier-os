@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { LayoutDashboard, FolderOpen, PieChart, Layers, Settings, FileText, Users, Shield, ChevronLeft, ChevronRight, Menu, Receipt } from 'lucide-react';
+import { LayoutDashboard, FolderOpen, PieChart, Layers, Settings, FileText, Users, Shield, ChevronLeft, ChevronRight, Menu, Receipt, Hammer } from 'lucide-react';
 import { Page } from '../App';
 
 import { User } from '../types';
@@ -23,6 +23,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, onNavigate, currentUser 
     { icon: FolderOpen, label: 'Projects', page: Page.Projects },
     { icon: Users, label: 'Clients', page: Page.Clients },
     { icon: FileText, label: 'Quotes', page: Page.Quotes },
+    { icon: Hammer, label: 'Forge', page: Page.Forge },
     { icon: FileText, label: 'Invoicing', page: Page.Invoicing },
     { icon: Receipt, label: 'REP / Pagos', page: Page.PaymentReceipts },
 

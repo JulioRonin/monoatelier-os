@@ -1,6 +1,6 @@
 
 import { supabase } from './supabaseClient';
-import { Project, Client, Quote, ProjectStatus, PriorityLevel, PhaseEnum, User } from '../types';
+import { Project, Client, Quote, ProjectStatus, PriorityLevel, PhaseEnum, User, ForgeModel } from '../types';
 
 // --- MAPPING HELPERS ---
 
@@ -36,6 +36,18 @@ const mapProject = (data: any): Project => {
         responsibleId: data.responsible_id
     };
 };
+
+const mapForgeModel = (data: any): ForgeModel => ({
+    id: data.id,
+    name: data.name,
+    description: data.description || '',
+    projectId: data.project_id,
+    projectJson: data.project_json,
+    glbUrl: data.glb_url,
+    usdzUrl: data.usdz_url,
+    status: data.status || 'draft',
+    createdAt: data.created_at
+});
 
 // --- API METHODS ---
 
@@ -686,5 +698,85 @@ export const api = {
             .eq('id', id);
 
         if (error) throw error;
+    },
+
+    // FORGE — diseños paramétricos (mono-forge) + visor AR
+    async getForgeModels() {
+        if (!supabase) {
+            console.warn("Supabase not configured. Return empty array.");
+            return [];
+        }
+        const { data, error } = await supabase
+            .from('forge_models')
+            .select('*')
+            .order('created_at', { ascending: false });
+        if (error) throw error;
+        return (data || []).map(mapForgeModel);
+    },
+
+    async getForgeModel(id: string) {
+        if (!supabase) throw new Error("Supabase not configured");
+        const { data, error } = await supabase
+            .from('forge_models')
+            .select('*')
+            .eq('id', id)
+            .single();
+        if (error) throw error;
+        return mapForgeModel(data);
+    },
+
+    async createForgeModel(model: { name: string; description?: string; projectId?: string | null; projectJson: any }) {
+        if (!supabase) throw new Error("Supabase not configured");
+        const { data, error } = await supabase
+            .from('forge_models')
+            .insert([{
+                name: model.name,
+                description: model.description || null,
+                project_id: model.projectId || null,
+                project_json: model.projectJson,
+                status: 'draft'
+            }])
+            .select()
+            .single();
+        if (error) throw error;
+        return mapForgeModel(data);
+    },
+
+    async updateForgeModel(id: string, updates: Partial<ForgeModel>) {
+        if (!supabase) throw new Error("Supabase not configured");
+        const dbUpdates: any = {};
+        if (updates.name !== undefined) dbUpdates.name = updates.name;
+        if (updates.description !== undefined) dbUpdates.description = updates.description;
+        if (updates.projectJson !== undefined) dbUpdates.project_json = updates.projectJson;
+        if (updates.glbUrl !== undefined) dbUpdates.glb_url = updates.glbUrl;
+        if (updates.usdzUrl !== undefined) dbUpdates.usdz_url = updates.usdzUrl;
+        if (updates.status !== undefined) dbUpdates.status = updates.status;
+
+        const { error } = await supabase
+            .from('forge_models')
+            .update(dbUpdates)
+            .eq('id', id);
+        if (error) throw error;
+    },
+
+    async deleteForgeModel(id: string) {
+        if (!supabase) throw new Error("Supabase not configured");
+        const { error } = await supabase
+            .from('forge_models')
+            .delete()
+            .eq('id', id);
+        if (error) throw error;
+    },
+
+    /** Sube un asset (GLB/USDZ/JSON) al bucket público 'forge' y devuelve su URL pública. */
+    async uploadForgeAsset(modelId: string, filename: string, blob: Blob, contentType: string) {
+        if (!supabase) throw new Error("Supabase not configured");
+        const path = `${modelId}/${filename}`;
+        const { error } = await supabase.storage
+            .from('forge')
+            .upload(path, blob, { upsert: true, contentType });
+        if (error) throw error;
+        const { data } = supabase.storage.from('forge').getPublicUrl(path);
+        return data.publicUrl;
     }
 };

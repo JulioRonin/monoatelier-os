@@ -259,3 +259,16 @@ export interface User {
   role: 'Super User' | 'Level 2';
   avatarUrl?: string;
 }
+// --- FORGE (motor paramétrico mono-forge + visor AR) ---
+
+export interface ForgeModel {
+  id: string;
+  name: string;
+  description?: string;
+  projectId?: string | null;
+  projectJson: any; // project.json completo generado por mono-forge
+  glbUrl?: string | null;   // AR Android / visor web
+  usdzUrl?: string | null;  // AR iOS (Quick Look)
+  status: 'draft' | 'published';
+  createdAt?: string;
+}

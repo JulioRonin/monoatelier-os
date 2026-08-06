@@ -100,10 +100,24 @@ El tornillo nunca carga el peso; el tablero sí. El tornillo sólo alinea.
 Antes de cualquier render o propuesta visual, leer style/mono_atelier_style.md.
 Los renders SIEMPRE usan blender/render_presets.py — nunca inventes iluminación.
 
+## Posicionamiento 3D
+- La colocación se DERIVA en rules/posicion.py por rol_estructural y se escribe
+  en el project.json (campo colocacion: centro + extensión por eje, en mm).
+- Blender y el visor web/AR de la plataforma SÓLO leen colocacion. Si un panel
+  aparece mal puesto, se corrige la regla en posicion.py, nunca la malla.
+
 ## Blender
 - Interactivo: tools del MCP blender para iterar vistas y materiales.
 - Producción: blender --background --python blender/build_from_json.py -- <json>
 - Cada panel = un objeto mesh independiente nombrado igual que en el JSON.
+- build_from_json exporta modelo.blend + preview.glb (+ preview.usdz si hay USD).
+- Setup paso a paso: docs/BLENDER_SETUP.md.
+
+## AR (plataforma)
+- Módulo Forge de Mono Atelier OS: importa project.json, visor 3D three.js,
+  genera GLB/USDZ en el navegador y publica al bucket 'forge' de Supabase.
+- Visor público /?ar=<id> (QR) — Android Scene Viewer, iOS Quick Look, escala real.
+- Paso a paso: docs/AR_GUIDE.md. Publicación por CLI: mono_forge/publish.py.
 
 ## Entregables por proyecto (los 7)
 1. modelo.blend + preview.glb

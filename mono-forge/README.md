@@ -38,12 +38,14 @@ mono_forge/
   models.py        ← Project / Module / Panel / HardwareItem. La fuente de verdad.
   rules/
     estructura.py  ← LA regla: el tornillo no carga el peso, el tablero sí.
+    posicion.py    ← colocación 3D derivada por rol_estructural (va al JSON).
     herrajes.py    ← bisagras recta/semicurva/curva, correderas, patas.
     apertura.py    ← jaladera / gola (aluminio o tablero) / push.
     led.py         ← tira, fuente y notas de ruteo.
   generators/      ← base, superior, cajonera, torre, cubierta.
   cutlist.py       ← nesting CON KERF. Sin kerf el taller no puede ejecutarlo.
   costing.py       ← dos tarifas de canto; el margen nunca sale en documentos.
+  publish.py       ← sube project.json + GLB/USDZ a la plataforma (bucket 'forge').
 catalog/           ← materiales, herrajes, golas. Los precios viven aquí, no en el código.
 style/             ← manifiesto de estilo Mono Atelier (LLENAR).
 blender/           ← build_from_json, materiales, presets de render.
@@ -62,9 +64,20 @@ tests/             ← red de seguridad de medidas.
 | Kerf de 4mm inflando cada pieza | `cutlist.nesting` |
 | Gola por tramo, medidas desde catálogo | `rules/apertura` |
 
+## AR — ver los diseños desde el teléfono
+
+Todo diseño publicado se puede colocar a ESCALA REAL con la cámara del
+teléfono (Android: Scene Viewer / iOS: Quick Look). Paso a paso en
+`docs/AR_GUIDE.md`; conexión con Blender en `docs/BLENDER_SETUP.md`.
+
+```bash
+python -m mono_forge.cli BASE-600 SUP-750 --out projects/x   # genera project.json + colocación 3D
+python -m mono_forge.publish projects/x --name "Cocina X"    # sube a la plataforma → QR / link AR
+```
+
 ## Pendiente (fases siguientes)
 
-- [ ] Posicionamiento real en Blender por `rol_estructural`
+- [x] Posicionamiento real por `rol_estructural` (`rules/posicion.py` → colocación en el JSON)
+- [x] Integración con la plataforma (módulo Forge: storage + visor 3D + AR)
 - [ ] Vistas explotadas + planos con cotas (SVG)
 - [ ] cutlist.xlsx, cotizacion.pdf, manual_ensamble.pdf, entrega.pdf
-- [ ] Integración con la plataforma (jobs + storage + visor glb)

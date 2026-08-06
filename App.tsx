@@ -15,6 +15,8 @@ import UserManagement from './pages/UserManagement'; // New
 import UserDashboard from './pages/UserDashboard'; // New
 import Invoicing from './pages/Invoicing'; // New
 import PaymentReceipts from './pages/PaymentReceipts'; // New
+import Forge from './pages/Forge'; // New: motor paramétrico + AR
+import ForgeARView from './pages/ForgeARView'; // New: visor AR público (QR)
 import { User } from './types';
 
 export enum Page {
@@ -31,7 +33,8 @@ export enum Page {
   Team,
   UserManagement, // New
   Invoicing, // New
-  PaymentReceipts // New
+  PaymentReceipts, // New
+  Forge // New
 }
 
 const App: React.FC = () => {
@@ -93,6 +96,12 @@ const App: React.FC = () => {
     }
   };
 
+  // Visor AR público: /?ar=<forge_model_id> — sin login, es el link del QR
+  const arModelId = new URLSearchParams(window.location.search).get('ar');
+  if (arModelId) {
+    return <ForgeARView modelId={arModelId} />;
+  }
+
   if (currentPage === Page.Login) {
     return <Login onLogin={handleLogin} />;
   }
@@ -149,6 +158,7 @@ const App: React.FC = () => {
           {currentPage === Page.UserManagement && <UserManagement />}
           {currentPage === Page.Invoicing && <Invoicing />}
           {currentPage === Page.PaymentReceipts && <PaymentReceipts />}
+          {currentPage === Page.Forge && <Forge />}
         </main>
       </div>
     </div>

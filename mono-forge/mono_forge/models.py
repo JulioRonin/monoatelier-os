@@ -55,6 +55,10 @@ class Panel:
     cantos: dict[str, bool] = field(default_factory=cantos)
     veta: str = "libre"            # libre | vertical | horizontal
     drilling: list[DrillOp] = field(default_factory=list)
+    # Colocación 3D DERIVADA por rules/posicion.py — una entrada por copia:
+    # {"x","y","z","sx","sy","sz"} (centro y extensión por eje, en mm).
+    # Blender y el visor web sólo leen esto; nunca calculan posiciones.
+    colocacion: list[dict] = field(default_factory=list)
 
     @property
     def area_m2(self) -> float:
