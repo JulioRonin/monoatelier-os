@@ -9,7 +9,11 @@ entregables y sube todo de vuelta a la plataforma.
     python -m forge_agent.worker --prompt "cocina de 3m con tarja y torre de horno"
 
 Variables de entorno:
-    ANTHROPIC_API_KEY   obligatoria — console.anthropic.com
+    FORGE_PROVEEDOR     anthropic (default) | nvidia | openai_compat
+    ANTHROPIC_API_KEY   con FORGE_PROVEEDOR=anthropic — console.anthropic.com
+    NVIDIA_API_KEY      con FORGE_PROVEEDOR=nvidia — build.nvidia.com
+    FORGE_MODEL         id del modelo (obligatorio fuera de Anthropic)
+    FORGE_BASE_URL      endpoint OpenAI-compatible (NIM local, vLLM, Ollama)
     SUPABASE_URL        obligatoria para el modo escucha
     SUPABASE_KEY        service_role (recomendado) o anon key
     BLENDER_PATH        opcional — ruta a blender.exe; sin ella se omite el 3D
@@ -34,6 +38,7 @@ from mono_forge.costing import Tarifas
 from mono_forge.docs import generar_todo, verificar
 from mono_forge.models import Project
 
+from . import proveedores
 from .agente import disenar
 
 INTERVALO = float(os.environ.get("FORGE_POLL_SECONDS", "5"))
@@ -217,9 +222,17 @@ def atender(job: dict) -> None:
 
 
 def main(argv: list[str]) -> int:
-    if not os.environ.get("ANTHROPIC_API_KEY"):
-        print("ERROR: define ANTHROPIC_API_KEY (console.anthropic.com).")
+    # falla aquí, con un mensaje claro, y no a media hora de trabajo
+    try:
+        cfg = proveedores.configurar()
+    except RuntimeError as e:
+        print(f"ERROR de configuración: {e}")
         return 1
+    if cfg["proveedor"] == "anthropic" and not os.environ.get("ANTHROPIC_API_KEY"):
+        print("ERROR: define ANTHROPIC_API_KEY (console.anthropic.com), o usa "
+              "FORGE_PROVEEDOR=nvidia con NVIDIA_API_KEY.")
+        return 1
+    print(f"Modelo: {cfg['proveedor']}/{cfg['modelo']}")
 
     if "--prompt" in argv:
         prompt = argv[argv.index("--prompt") + 1]

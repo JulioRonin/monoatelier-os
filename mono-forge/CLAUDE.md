@@ -179,6 +179,12 @@ Los renders SIEMPRE usan blender/render_presets.py — nunca inventes iluminaci�
 - Los errores se devuelven al modelo como texto ("ERROR: ...") para que corrija,
   nunca como excepción que mate el trabajo.
 - Modelo: claude-opus-5, adaptive thinking, effort high. Sin temperature.
+- El PROVEEDOR es intercambiable (forge_agent/proveedores.py): anthropic
+  (tool_runner del SDK) | nvidia | openai_compat (bucle manual sobre
+  chat.completions — NIM, vLLM, Ollama). Las herramientas se declaran UNA vez
+  con @beta_tool y de ahí salen los dos formatos de esquema: nunca escribas un
+  segundo esquema a mano. Las llaves salen del entorno, jamás del código.
+  Paso a paso: docs/PROVEEDORES.md.
 - La cola vive en forge_jobs (Supabase); el worker corre en la máquina del taller
   porque Blender es local. Paso a paso: docs/AGENTE_PROMPTS.md.
 
