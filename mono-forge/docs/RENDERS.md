@@ -6,9 +6,17 @@ y se traduce ahí a luces, materiales y encuadres.
 
 ## Correr un render
 
-```powershell
-cd C:\Users\ORKA\Documents\monoatelier-os\mono-forge
+En Windows usa el atajo — encuentra Blender solo y no hay rutas que teclear:
 
+```powershell
+cd <ruta-del-repo>\mono-forge
+.\forge.ps1 render projects\cocina-sage
+```
+
+El comando equivalente a mano (sustituye la ruta REAL de tu blender.exe;
+`.\forge.ps1 blender` te la imprime):
+
+```powershell
 & "C:\Program Files\Blender Foundation\Blender 4.2\blender.exe" --background `
   --python blender\render.py -- projects\cocina-sage\project.json
 ```
@@ -90,8 +98,24 @@ Con GPU (se activa sola si hay OPTIX/CUDA/HIP/METAL disponible) una vista a
 128 muestras y 1920×1080 tarda del orden de minutos. Sin GPU, bastante más:
 usa `--muestras 64` para iterar y sube sólo para la entrega final.
 
+## Ver el modelo con tus propios ojos
+
+`--background` significa **sin interfaz**: Blender corre invisible, escribe los
+archivos y se cierra. Es lo correcto para producción, pero no ves nada moverse.
+Para abrir el modelo y girarlo:
+
+```powershell
+.\forge.ps1 ver projects\cocina-sage
+```
+
+Eso abre `deliverables\modelo.blend` en la interfaz de Blender. Si aún no
+existe, lo construye primero.
+
 ## Problemas frecuentes
 
+- **`El término 'C:\Program Files\...\blender.exe' no se reconoce`** → copiaste
+  una ruta abreviada con puntos suspensivos. Usa `.\forge.ps1`, o corre
+  `.\forge.ps1 blender` para ver la ruta real de tu instalación.
 - **`could not be opened: No such file or directory`** → estás corriendo desde
   otra carpeta. Haz `cd` a `mono-forge` primero, o pasa la ruta completa del
   script.

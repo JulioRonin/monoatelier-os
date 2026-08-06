@@ -89,6 +89,9 @@ pero TODAS las medidas las sigue derivando mono-forge. Paso a paso en
 
 ## Renders
 
+En Windows: `.\forge.ps1 render projects\x` (encuentra Blender solo).
+Para VER el modelo en la interfaz en vez de renderizar: `.\forge.ps1 ver projects\x`.
+
 ```bash
 blender --background --python blender/render.py -- projects/x/project.json
 blender --background --python blender/render.py -- projects/x/project.json \
