@@ -46,6 +46,7 @@ mono_forge/
   cutlist.py       ← nesting CON KERF. Sin kerf el taller no puede ejecutarlo.
   costing.py       ← dos tarifas de canto; el margen nunca sale en documentos.
   publish.py       ← sube project.json + GLB/USDZ a la plataforma (bucket 'forge').
+  docs/            ← cutlist.xlsx, herrajes.xlsx, cotización, manual, entrega, costos.
 catalog/           ← materiales, herrajes, golas. Los precios viven aquí, no en el código.
 style/             ← manifiesto de estilo Mono Atelier (LLENAR).
 blender/           ← build_from_json, materiales, presets de render.
@@ -75,9 +76,23 @@ python -m mono_forge.cli BASE-600 SUP-750 --out projects/x   # genera project.js
 python -m mono_forge.publish projects/x --name "Cocina X"    # sube a la plataforma → QR / link AR
 ```
 
+## Entregables
+
+```bash
+python -m mono_forge.docs projects/x --margen 0.35 --canto-maquina 12 \
+       --canto-manual 45 --mano-obra 850
+```
+
+Genera cutlist.xlsx, herrajes.xlsx, manual_ensamble.pdf, cotizacion.pdf,
+entrega.pdf y costos_internos.pdf, y corre la verificación de consistencia.
+El margen vive SÓLO en el reporte interno. Detalle en `docs/ENTREGABLES.md`.
+
 ## Pendiente (fases siguientes)
 
 - [x] Posicionamiento real por `rol_estructural` (`rules/posicion.py` → colocación en el JSON)
 - [x] Integración con la plataforma (módulo Forge: storage + visor 3D + AR)
-- [ ] Vistas explotadas + planos con cotas (SVG)
-- [ ] cutlist.xlsx, cotizacion.pdf, manual_ensamble.pdf, entrega.pdf
+- [x] Vistas y planos con cotas (alzado, planta, despiece, plan de corte)
+- [x] cutlist.xlsx, herrajes.xlsx, cotizacion.pdf, manual_ensamble.pdf, entrega.pdf
+- [x] Reporte interno de costos con simulación por proveedor
+- [ ] Renders hiperrealistas por escena (atmósferas) desde render_presets.py
+- [ ] Diseño por prompts desde la plataforma (Forge Agent)

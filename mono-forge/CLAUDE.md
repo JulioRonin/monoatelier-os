@@ -119,6 +119,16 @@ Los renders SIEMPRE usan blender/render_presets.py — nunca inventes iluminaci�
 - Visor público /?ar=<id> (QR) — Android Scene Viewer, iOS Quick Look, escala real.
 - Paso a paso: docs/AR_GUIDE.md. Publicación por CLI: mono_forge/publish.py.
 
+## Generación de entregables
+- python -m mono_forge.docs <dir_proyecto> [--margen --canto-maquina --canto-manual
+  --mano-obra --ar-url]. Todo se deriva del project.json, nunca de las mallas.
+- mono_forge/docs/: estilo.py (identidad), planos.py (alzado/planta/despiece/nesting),
+  xlsx.py, cotizacion.py, manual.py, entrega.py, costos.py.
+- El margen y el costo directo SÓLO aparecen en costos_internos.pdf. Hay un test
+  que abre cotizacion.pdf y entrega.pdf en binario y falla si se filtran.
+- docs.verificar() corre la verificación de cierre de pipeline (ver abajo).
+- Paso a paso: docs/ENTREGABLES.md.
+
 ## Entregables por proyecto (los 7)
 1. modelo.blend + preview.glb
 2. renders/ (mín. 3 vistas, Cycles 1920×1080)
@@ -127,6 +137,7 @@ Los renders SIEMPRE usan blender/render_presets.py — nunca inventes iluminaci�
 5. cotizacion.pdf (cliente)
 6. manual_ensamble.pdf (carpintero: explotado, planos por pieza, pasos, herraje por paso)
 7. entrega.pdf (cliente: renders, specs, garantía, cuidados, firma)
++ costos_internos.pdf — INTERNO, con margen y simulación por proveedor. No se entrega.
 
 ## Tests
 Los tests son la red de seguridad. Si un test de medidas falla, NUNCA lo "arregles"

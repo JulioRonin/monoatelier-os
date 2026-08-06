@@ -47,6 +47,29 @@ def _f(v) -> float:
         return 0.0
 
 
+def equivalente(sku: str, proveedor: str, mats: dict[str, dict]) -> dict | None:
+    """El mismo tablero (misma descripción y espesor) en otra marca.
+
+    Sin esto la simulación por proveedor devuelve el mismo precio para todos:
+    el proveedor sólo cambia el costo si de verdad se sustituye el SKU.
+    Si la marca no tiene el equivalente (o no tiene precio), regresa None y el
+    cálculo se queda con el SKU original — nunca inventa un precio.
+    """
+    fila = mats.get(sku)
+    if not fila:
+        return None
+    if (fila.get("marca") or "").strip().lower() == proveedor.strip().lower():
+        return fila
+    for otra in mats.values():
+        if (otra.get("marca") or "").strip().lower() != proveedor.strip().lower():
+            continue
+        if (otra.get("descripcion") == fila.get("descripcion")
+                and otra.get("espesor_mm") == fila.get("espesor_mm")
+                and _f(otra.get("costo_m2"))):
+            return otra
+    return None
+
+
 def costear(project: Project, tarifas: Tarifas | None = None,
             proveedor: str | None = None) -> dict:
     tarifas = tarifas or Tarifas()
@@ -55,12 +78,19 @@ def costear(project: Project, tarifas: Tarifas | None = None,
 
     costo_material = 0.0
     faltantes: list[str] = []
+    sustituciones: dict[str, str] = {}
     area_por_sku: dict[str, float] = {}
     for p in project.all_panels():
         area_por_sku[p.material] = area_por_sku.get(p.material, 0.0) + p.area_m2
 
     for sku, area in area_por_sku.items():
         fila = mats.get(sku)
+        alterna = equivalente(sku, proveedor, mats) if proveedor else None
+        if alterna is not None and alterna.get("sku") != sku:
+            sustituciones[sku] = alterna["sku"]
+            fila = alterna
+        elif alterna is not None:
+            fila = alterna
         if not fila or not _f(fila.get("costo_m2")):
             faltantes.append(sku)
             continue
@@ -100,11 +130,22 @@ def costear(project: Project, tarifas: Tarifas | None = None,
         "costo_directo": round(costo_directo, 2),
         "precio_cliente": round(precio, 2),   # el margen NUNCA se imprime al cliente
         "skus_sin_precio": sorted(set(faltantes)),
+        "sustituciones": sustituciones,       # sku original → sku del proveedor simulado
     }
 
 
 def comparar_proveedores(project: Project, tarifas: Tarifas | None = None) -> dict:
-    """El delta entre importación y marca es una palanca de margen real."""
+    """El delta entre importación y marca es una palanca de margen real.
+
+    Sólo se listan los proveedores que realmente pueden surtir algún tablero del
+    proyecto con precio en catálogo: un proveedor sin equivalentes no es una
+    alternativa, es un hueco de datos.
+    """
     mats = catalogo_materiales()
-    proveedores = sorted({r["marca"] for r in mats.values() if r.get("marca")})
-    return {p: costear(project, tarifas, proveedor=p)["precio_cliente"] for p in proveedores}
+    usados = {p.material for p in project.all_panels()}
+    salida: dict[str, float] = {}
+    for prov in sorted({r["marca"] for r in mats.values() if r.get("marca")}):
+        if not any(equivalente(sku, prov, mats) for sku in usados):
+            continue
+        salida[prov] = costear(project, tarifas, proveedor=prov)["precio_cliente"]
+    return salida
