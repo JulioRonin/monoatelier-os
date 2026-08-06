@@ -100,6 +100,20 @@ El tornillo nunca carga el peso; el tablero sí. El tornillo sólo alinea.
 Antes de cualquier render o propuesta visual, leer style/mono_atelier_style.md.
 Los renders SIEMPRE usan blender/render_presets.py — nunca inventes iluminación.
 
+## Renders
+- blender --background --python blender/render.py -- <json> [--escena --vistas
+  --muestras --res]. Escenas: cocina | estudio | noche.
+- Los ENCUADRES se derivan del bounding box del proyecto (bbox_de lee el JSON,
+  no mide mallas). Nunca hardcodear coordenadas de cámara: un preset debe
+  encuadrar igual de bien un mueble de 600mm y una cocina de 4m.
+- Tres capas de luz: ventana lateral + cove indirecto contra el plafón + LED de
+  mueble. El LED se deriva de los módulos con led=True — mismo dato que la
+  lista de herrajes, no una decisión aparte.
+- materials.py = materiales PLANOS (los que viajan al GLB para AR).
+  render_presets.RECETAS = los procedurales, sustituidos sólo al renderizar.
+  Un SKU nuevo va en los tres lados: materials.py, RECETAS y lib/forge3d.ts.
+- Paso a paso: docs/RENDERS.md.
+
 ## Posicionamiento 3D
 - La colocación se DERIVA en rules/posicion.py por rol_estructural y se escribe
   en el project.json (campo colocacion: centro + extensión por eje, en mm).

@@ -40,7 +40,11 @@ def preparar_escena():
     bpy.ops.wm.read_factory_settings(use_empty=True)
     s = bpy.context.scene
     s.unit_settings.system = "METRIC"
-    s.unit_settings.scale_length = MM
+    # 1 unidad de Blender = 1 METRO. Las posiciones ya vienen convertidas
+    # (x * MM), así que un panel de 600mm mide 0.6 unidades = 0.6 m.
+    # Poner scale_length = 0.001 aquí haría que ese panel midiera 0.6 mm y el
+    # GLB saldría 1000× pequeño en AR. length_unit sólo cambia cómo se MUESTRA.
+    s.unit_settings.scale_length = 1.0
     s.unit_settings.length_unit = "MILLIMETERS"
 
 
