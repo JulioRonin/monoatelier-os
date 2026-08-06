@@ -14,6 +14,12 @@ PALETA = {
     "MEL-BLA-19-CUB": dict(base=(0.94, 0.94, 0.92, 1), rough=0.35),  # cubierta
     "NEGRO-MATE":     dict(base=(0.05, 0.05, 0.05, 1), rough=0.70),
     "ROBLE-CLARO":    dict(base=(0.72, 0.58, 0.40, 1), rough=0.45),
+    "MEL-ROBLE-NAT-15": dict(base=(0.75, 0.60, 0.42, 1), rough=0.42),
+    "LAC-VERDE-SAGE-15": dict(base=(0.65, 0.70, 0.58, 1), rough=0.30),
+    "MEL-ROSA-PASTEL-15": dict(base=(0.95, 0.83, 0.855, 1), rough=0.52),
+    "LAC-ROSA-PASTEL-15": dict(base=(0.957, 0.788, 0.827, 1), rough=0.28),
+    "CUA-ROSA-PASTEL-19": dict(base=(0.910, 0.737, 0.776, 1), rough=0.22),
+    "MET-ROSA-MONO":     dict(base=(0.851, 0.545, 0.639, 1), rough=0.25),
 }
 
 

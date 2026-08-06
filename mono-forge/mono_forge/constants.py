@@ -11,7 +11,8 @@ Todas las medidas en MILÍMETROS.
 T = 15                      # estructura (laterales, base, techo, refuerzos, divisores)
 T_FRENTE_STD = 15           # frentes estándar
 T_FRENTE_BRILLO = 19        # alto brillo — cintilla PVC pegada a MANO
-T_FONDO = 3                 # fondos
+T_FONDO = 3                 # fondos APLICADOS del casco (los que escuadran el mueble)
+T_FONDO_CAJON = 15          # fondo de la caja del cajón: carga el contenido, va en tablero
 
 # ── Corte ────────────────────────────────────────────────────────────────
 HOJA_LARGO = 2440
@@ -28,6 +29,10 @@ ZOCLO_RETRANQUEO = 60
 ALTO_CUERPO_BASE = ALTO_TOTAL_BASE - ALTO_ZOCLO       # = 800
 ALTO_LATERAL_BASE = ALTO_CUERPO_BASE - T              # = 785  ← DERIVADO
 PROF_BASE = 600
+
+#: filler de esquina interior (cocinas en L / U). Sin este claro, la puerta del
+#: último mueble de un muro golpea la del primero del muro de retorno.
+HOLGURA_ESQUINA = 50
 
 # ── Mueble superior ──────────────────────────────────────────────────────
 PROF_SUPERIOR = 350         # rango válido 350–400
@@ -89,10 +94,11 @@ def alto_lateral(tipo: str, alto_total: float | None = None) -> float:
     """Único punto del sistema donde se decide la altura del lateral.
 
     base     → descansa sobre la base       → alto_cuerpo − T   (785)
+    cajonera → es un mueble inferior         → igual que base
     torre    → mismo principio, pieza única → alto − zoclo − T  (2100 → 1985)
     superior → corre completo               → alto
     """
-    if tipo in ("base", "base_tarja"):
+    if tipo in ("base", "base_tarja", "cajonera"):
         return ALTO_LATERAL_BASE
     if tipo == "torre":
         return (alto_total or ALTO_TORRE_DEFAULT) - ALTO_ZOCLO - T
@@ -103,7 +109,7 @@ def alto_lateral(tipo: str, alto_total: float | None = None) -> float:
 
 def alto_cuerpo(tipo: str, alto_total: float | None = None) -> float:
     """Alto del cuerpo (sin zoclo). Es el alto del fondo aplicado."""
-    if tipo in ("base", "base_tarja"):
+    if tipo in ("base", "base_tarja", "cajonera"):
         return ALTO_CUERPO_BASE
     if tipo == "torre":
         return (alto_total or ALTO_TORRE_DEFAULT) - ALTO_ZOCLO

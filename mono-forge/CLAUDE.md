@@ -12,7 +12,10 @@ desde el JSON → los documentos se generan desde el JSON.
 PROHIBIDO derivar medidas midiendo mallas de Blender.
 
 ## Unidades y convenciones
-- TODO en milímetros. Blender scene: unit_scale=0.001, length_unit='MILLIMETERS'.
+- TODO en milímetros en el JSON. En Blender: scale_length=1.0 (1 unidad = 1 METRO,
+  porque build_from_json ya convierte con x*0.001) y length_unit='MILLIMETERS'
+  sólo para que la interfaz muestre mm. Poner scale_length=0.001 hace que un
+  panel de 600mm mida 0.6mm y el GLB salga 1000x pequeño en AR.
 - Hoja 2440×1220. KERF = 4mm.
 - Nomenclatura de paneles: {modulo}_{pieza} (ej. B01_lateral).
 - Veta vertical en puertas, laterales y divisores.
@@ -100,11 +103,51 @@ El tornillo nunca carga el peso; el tablero sí. El tornillo sólo alinea.
 Antes de cualquier render o propuesta visual, leer style/mono_atelier_style.md.
 Los renders SIEMPRE usan blender/render_presets.py — nunca inventes iluminación.
 
+## Renders
+- blender --background --python blender/render.py -- <json> [--escena --vistas
+  --muestras --res]. Escenas: cocina | estudio | noche.
+- Los ENCUADRES se derivan del bounding box del proyecto (bbox_de lee el JSON,
+  no mide mallas). Nunca hardcodear coordenadas de cámara: un preset debe
+  encuadrar igual de bien un mueble de 600mm y una cocina de 4m.
+- Tres capas de luz: ventana lateral + cove indirecto contra el plafón + LED de
+  mueble. El LED se deriva de los módulos con led=True — mismo dato que la
+  lista de herrajes, no una decisión aparte.
+- materials.py = materiales PLANOS (los que viajan al GLB para AR).
+  render_presets.RECETAS = los procedurales, sustituidos sólo al renderizar.
+  Un SKU nuevo va en los tres lados: materials.py, RECETAS y lib/forge3d.ts.
+- Paso a paso: docs/RENDERS.md.
+
 ## Posicionamiento 3D
 - La colocación se DERIVA en rules/posicion.py por rol_estructural y se escribe
   en el project.json (campo colocacion: centro + extensión por eje, en mm).
 - Blender y el visor web/AR de la plataforma SÓLO leen colocacion. Si un panel
   aparece mal puesto, se corrige la regla en posicion.py, nunca la malla.
+- La alacena es 250mm menos profunda que el mueble de piso y va colgada del
+  MURO, no alineada al frente: posicion.py la recorre (prof_muro − m.prof).
+
+## Cocinas en L y en U — el TRAMO es el muro
+- Cada Tramo lleva rotacion (grados, antihorario en planta), origen [X,Y] y
+  desplazamiento (arranque A LO LARGO de su propio muro).
+- La aritmética del mueble se resuelve SIEMPRE en el marco local del muro; el
+  giro se aplica al final. Un mueble del muro B mide exactamente lo mismo que
+  uno del muro A: el giro no toca el cutlist.
+- Cuando un tramo va girado, cada colocación lleva "rz": sx/sy siguen siendo
+  las extensiones LOCALES y el visor gira la caja sobre su centro. Sin
+  rotación la clave NO se escribe (los JSON de un muro no cambian de forma).
+- El giro y el origen NUNCA se ponen a mano: rules.posicion.esquina_en_l()
+  los calcula, incluido el filler de esquina (HOLGURA_ESQUINA = 50mm). Sin ese
+  filler la última puerta de un muro golpea la primera del retorno.
+- Varias corridas pueden compartir muro (torre + corrida de piso + alacenas):
+  se distinguen con `desplazamiento`, y los documentos las dibujan en UN solo
+  alzado por muro (docs.planos.alzados deshace el giro por muro).
+
+## Jaladeras
+- generators/jaladera.py: se COMPRAN (van a herrajes.xlsx, no al cutlist) pero
+  se modelan como accesorio para que se vean en 3D, AR y render.
+- Siluetas: "bow" (moño, 3 cajas) y "barra". La geometría es una aproximación
+  volumétrica de la pieza real — lo que se cotiza es el SKU, no la malla.
+- La posición NO es un dato del mueble: se deriva del frente ya colocado
+  (cajón → centrada; puerta → a 80mm del canto superior).
 
 ## Blender
 - Interactivo: tools del MCP blender para iterar vistas y materiales.
@@ -136,6 +179,12 @@ Los renders SIEMPRE usan blender/render_presets.py — nunca inventes iluminaci�
 - Los errores se devuelven al modelo como texto ("ERROR: ...") para que corrija,
   nunca como excepción que mate el trabajo.
 - Modelo: claude-opus-5, adaptive thinking, effort high. Sin temperature.
+- El PROVEEDOR es intercambiable (forge_agent/proveedores.py): anthropic
+  (tool_runner del SDK) | nvidia | openai_compat (bucle manual sobre
+  chat.completions — NIM, vLLM, Ollama). Las herramientas se declaran UNA vez
+  con @beta_tool y de ahí salen los dos formatos de esquema: nunca escribas un
+  segundo esquema a mano. Las llaves salen del entorno, jamás del código.
+  Paso a paso: docs/PROVEEDORES.md.
 - La cola vive en forge_jobs (Supabase); el worker corre en la máquina del taller
   porque Blender es local. Paso a paso: docs/AGENTE_PROMPTS.md.
 

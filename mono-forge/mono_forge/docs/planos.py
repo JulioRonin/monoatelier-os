@@ -6,6 +6,8 @@ vez deriva de rules/posicion.py. Si el plano se ve mal, la regla está mal.
 
 from __future__ import annotations
 
+import math
+
 from reportlab.lib.units import mm
 from reportlab.platypus import Flowable
 
@@ -19,24 +21,120 @@ VISTAS = {
 }
 
 
-def _rects(paneles, vista: str) -> list[tuple[float, float, float, float, str]]:
+def _extension(c: dict, eje: str) -> float:
+    """Extensión de la caja sobre un eje del proyecto.
+
+    sx/sy son las medidas LOCALES del muro. Cuando el tramo va girado ("rz",
+    cocinas en L / U) la huella en planta es la de la caja girada: sin esto,
+    un mueble sobre el muro girado se dibujaría acostado.
+    """
+    rz = float(c.get("rz", 0.0))
+    if not rz or eje == "sz":
+        return c[eje]
+    co, si = abs(math.cos(math.radians(rz))), abs(math.sin(math.radians(rz)))
+    return (c["sx"] * co + c["sy"] * si if eje == "sx"
+            else c["sx"] * si + c["sy"] * co)
+
+
+def _local(c: dict, marco) -> dict:
+    """Regresa la colocación al marco del muro (para el alzado de un tramo girado).
+
+    Un alzado frontal de una cocina en L es ilegible: el muro girado se ve de
+    canto. Deshaciendo el giro, cada tramo se dibuja de frente como si fuera
+    una cocina de un muro — que es como el carpintero la va a montar.
+    """
+    rot, ox, oy = marco
+    r = math.radians(rot)
+    co, si = math.cos(r), math.sin(r)
+    dx, dy = c["x"] - ox, c["y"] - oy
+    return {**c, "x": dx * co + dy * si, "y": -dx * si + dy * co, "rz": 0.0}
+
+
+def _rects(paneles, vista: str, marco=None) -> list[tuple[float, float, float, float, str]]:
     """(x0, y0, ancho, alto, nombre) en mm del proyecto."""
     eh, ev, sh, sv = VISTAS[vista]
     out = []
     for p in paneles:
         for i, c in enumerate(p.colocacion or []):
             nombre = p.name if len(p.colocacion) == 1 else f"{p.name}_{i+1}"
-            out.append((c[eh] - c[sh] / 2, c[ev] - c[sv] / 2, c[sh], c[sv], nombre))
+            if marco is not None:
+                c = _local(c, marco)
+            th, tv = _extension(c, sh), _extension(c, sv)
+            out.append((c[eh] - th / 2, c[ev] - tv / 2, th, tv, nombre))
     return out
+
+
+def _marco_de(t) -> tuple[float, float, float]:
+    rot = float(getattr(t, "rotacion", 0.0) or 0.0)
+    ox, oy = (list(getattr(t, "origen", None) or [0.0, 0.0]) + [0.0, 0.0])[:2]
+    return rot, float(ox), float(oy)
+
+
+def marcos_por_modulo(project) -> dict[str, tuple[float, float, float]]:
+    """id de módulo → marco de su muro. Espeja el agrupamiento de posicion.py:
+    los módulos sueltos viven en el marco del primer tramo."""
+    if not project.tramos:
+        return {}
+    principal = _marco_de(project.tramos[0])
+    fuera = {m.id for m in project.modules}
+    salida: dict[str, tuple[float, float, float]] = {}
+    for t in project.tramos:
+        for mid in t.modulos:
+            salida.setdefault(mid, _marco_de(t))
+            fuera.discard(mid)
+    for mid in fuera:
+        salida[mid] = principal
+    return salida
+
+
+def alzados(project) -> list[tuple[str, list, tuple | None]]:
+    """(título, paneles, marco) — un alzado por muro.
+
+    Con un solo muro se devuelve el conjunto completo, como siempre. En cuanto
+    hay un tramo girado (L o U) se separa por muro: un alzado del conjunto con
+    un muro de canto no le sirve a nadie.
+    """
+    todos = [p for p in project.all_panels() if p.colocacion]
+    if not any(_marco_de(t)[0] for t in project.tramos):
+        return [("alzado frontal", todos, None)]
+
+    # varios tramos pueden compartir muro (torre + corrida de piso + alacenas):
+    # es UN alzado, no tres. El marco es el del primer tramo de ese muro; una
+    # diferencia de origen sólo desplaza el dibujo, que se reencuadra solo.
+    orden: list[str] = []
+    por_muro: dict[str, list] = {}
+    for t in project.tramos:
+        if t.muro not in por_muro:
+            por_muro[t.muro] = []
+            orden.append(t.muro)
+        por_muro[t.muro].append(t)
+
+    salida: list[tuple[str, list, tuple | None]] = []
+    for muro in orden:
+        tramos = por_muro[muro]
+        marco = _marco_de(tramos[0])
+        ids = {mid for t in tramos for mid in t.modulos}
+        if muro == project.tramos[0].muro:      # los sueltos viven aquí
+            ids |= {m.id for m in project.modules
+                    if not any(m.id in t.modulos for t in project.tramos)}
+        paneles = [p for m in project.modules if m.id in ids
+                   for p in m.panels if p.colocacion]
+        paneles += [p for t in tramos for p in t.panels if p.colocacion]
+        if paneles:
+            salida.append((f"alzado · muro {muro}", paneles, marco))
+    return salida or [("alzado frontal", todos, None)]
 
 
 class Plano(Flowable):
     """Dibuja una vista ortogonal a escala, con cotas generales."""
 
     def __init__(self, paneles, vista: str = "frontal", ancho_disp: float = 170 * mm,
-                 alto_max: float = 95 * mm, titulo: str = "", cotas: bool = True):
+                 alto_max: float = 95 * mm, titulo: str = "", cotas: bool = True,
+                 marco=None):
+        """`marco` = (rotacion, origen_x, origen_y) de un tramo girado: dibuja
+        ese muro de frente en lugar de verlo de canto."""
         super().__init__()
-        self.rects = _rects(paneles, vista)
+        self.rects = _rects(paneles, vista, marco)
         self.titulo = titulo
         self.cotas = cotas
         self.ancho_disp = ancho_disp

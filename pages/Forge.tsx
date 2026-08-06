@@ -10,7 +10,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
     Hammer, Upload, Smartphone, Trash2, Loader2, Box, QrCode,
     CheckCircle2, RefreshCw, FlaskConical, X, Sparkles, SendHorizonal,
-    AlertTriangle, Clock
+    AlertTriangle, Clock, FileSpreadsheet, FileText, Download, Lock
 } from 'lucide-react';
 import QRCode from 'qrcode';
 import { api } from '../lib/api';
@@ -20,6 +20,17 @@ import {
     ForgeProjectData, construirProyecto, exportarGLB, exportarUSDZ,
     resumenProyecto, tieneColocacion
 } from '../lib/forge3d';
+
+/** Cómo se presenta cada entregable. El orden es el del flujo del taller. */
+const ENTREGABLES: { archivo: string; titulo: string; para: string; icono: 'hoja' | 'pdf' | 'dato' }[] = [
+    { archivo: 'cotizacion.pdf', titulo: 'Cotización', para: 'Cliente', icono: 'pdf' },
+    { archivo: 'entrega.pdf', titulo: 'Documento de entrega', para: 'Cliente', icono: 'pdf' },
+    { archivo: 'manual_ensamble.pdf', titulo: 'Manual de ensamble', para: 'Carpintero', icono: 'pdf' },
+    { archivo: 'cutlist.xlsx', titulo: 'Cutlist', para: 'Taller · corte y canto', icono: 'hoja' },
+    { archivo: 'herrajes.xlsx', titulo: 'Herrajes', para: 'Compras', icono: 'hoja' },
+    { archivo: 'project.json', titulo: 'project.json', para: 'Fuente de verdad', icono: 'dato' },
+    { archivo: 'preview.glb', titulo: 'Modelo 3D (GLB)', para: 'Visor y AR', icono: 'dato' },
+];
 
 const Forge: React.FC = () => {
     const [models, setModels] = useState<ForgeModel[]>([]);
@@ -34,6 +45,7 @@ const Forge: React.FC = () => {
     const [jobs, setJobs] = useState<ForgeJob[]>([]);
     const [prompt, setPrompt] = useState('');
     const [sending, setSending] = useState(false);
+    const [abriendoCostos, setAbriendoCostos] = useState(false);
     const fileRef = useRef<HTMLInputElement>(null);
     const darkMode = typeof document !== 'undefined' &&
         document.documentElement.classList.contains('dark');
@@ -158,6 +170,20 @@ const Forge: React.FC = () => {
     };
 
     // ── Publicar AR: genera GLB + USDZ en el navegador y los sube ────
+    /** El reporte de costos vive en un bucket privado: se firma al abrir. */
+    const abrirCostosInternos = async (model: ForgeModel) => {
+        if (!model.costosPath) return;
+        setAbriendoCostos(true);
+        try {
+            const url = await api.firmarCostosInternos(model.costosPath);
+            window.open(url, '_blank', 'noopener');
+        } catch (e) {
+            setError('No se pudo abrir el reporte de costos. ¿Corriste la migración 20260807_forge_documentos.sql?');
+        } finally {
+            setAbriendoCostos(false);
+        }
+    };
+
     const publicarAR = async (model: ForgeModel) => {
         setPublishing(true);
         setError(null);
@@ -436,7 +462,77 @@ const Forge: React.FC = () => {
                                     </button>
                                 </div>
                             ) : selected && (
-                                /* Acciones del diseño guardado */
+                              <>
+                                {/* Entregables — los mismos archivos que produce el motor */}
+                                <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-6">
+                                    <div className="flex items-baseline justify-between mb-4">
+                                        <p className="text-[10px] font-mono uppercase tracking-widest text-gray-400">
+                                            Entregables
+                                        </p>
+                                        <p className="text-[10px] font-mono text-gray-400">
+                                            derivados del project.json
+                                        </p>
+                                    </div>
+
+                                    {!selected.documentos || Object.keys(selected.documentos).length === 0 ? (
+                                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                                            Este diseño todavía no tiene entregables publicados. Los genera el
+                                            Forge Agent en la máquina del taller; si lo corriste antes de la
+                                            migración <span className="font-mono">20260807_forge_documentos.sql</span>,
+                                            vuelve a lanzar el prompt para que queden registrados.
+                                        </p>
+                                    ) : (
+                                        <div className="grid sm:grid-cols-2 gap-2">
+                                            {ENTREGABLES.filter(e => selected.documentos?.[e.archivo]).map(e => (
+                                                <a
+                                                    key={e.archivo}
+                                                    href={selected.documentos![e.archivo]}
+                                                    target="_blank" rel="noreferrer" download
+                                                    className="group flex items-center gap-3 border border-gray-200 dark:border-gray-700 p-3 hover:border-primary transition-colors"
+                                                >
+                                                    <span className="text-gray-400 group-hover:text-primary transition-colors">
+                                                        {e.icono === 'hoja' ? <FileSpreadsheet size={18} />
+                                                            : e.icono === 'pdf' ? <FileText size={18} />
+                                                            : <Box size={18} />}
+                                                    </span>
+                                                    <span className="flex-1 min-w-0">
+                                                        <span className="block text-sm dark:text-white truncate">{e.titulo}</span>
+                                                        <span className="block text-[10px] font-mono uppercase tracking-widest text-gray-400">
+                                                            {e.para}
+                                                        </span>
+                                                    </span>
+                                                    <Download size={14} className="text-gray-300 group-hover:text-primary transition-colors" />
+                                                </a>
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    {selected.costosPath && (
+                                        <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
+                                            <button
+                                                onClick={() => abrirCostosInternos(selected)}
+                                                disabled={abriendoCostos}
+                                                className="group flex items-center gap-3 w-full sm:w-1/2 border border-dashed border-gray-300 dark:border-gray-600 p-3 hover:border-danger transition-colors disabled:opacity-50 text-left"
+                                            >
+                                                <span className="text-gray-400 group-hover:text-danger transition-colors">
+                                                    {abriendoCostos ? <Loader2 size={18} className="animate-spin" /> : <Lock size={18} />}
+                                                </span>
+                                                <span className="flex-1 min-w-0">
+                                                    <span className="block text-sm dark:text-white">Costos internos</span>
+                                                    <span className="block text-[10px] font-mono uppercase tracking-widest text-gray-400">
+                                                        Sólo taller · lleva el margen
+                                                    </span>
+                                                </span>
+                                            </button>
+                                            <p className="text-[11px] text-gray-400 mt-2">
+                                                Se abre con un enlace temporal de 5 minutos. No lo reenvíes: es el
+                                                único documento que muestra el margen.
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Acciones del diseño guardado */}
                                 <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-6">
                                     <div className="flex flex-wrap items-start gap-8">
                                         <div className="flex-1 min-w-[260px] space-y-4">
@@ -499,6 +595,7 @@ const Forge: React.FC = () => {
                                         )}
                                     </div>
                                 </div>
+                              </>
                             )}
                         </>
                     ) : (

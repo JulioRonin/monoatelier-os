@@ -19,7 +19,10 @@ import { USDZExporter } from 'three/examples/jsm/exporters/USDZExporter.js';
 
 export interface ForgeColocacion {
     x: number; y: number; z: number;
+    /** extensión LOCAL del muro; con `rz` la caja se gira sobre su centro */
     sx: number; sy: number; sz: number;
+    /** giro del tramo en grados (cocinas en L / U). Ausente = muro recto */
+    rz?: number;
 }
 
 export interface ForgePanel {
@@ -51,6 +54,8 @@ export interface ForgeTramo {
     modulos: string[];
     panels: ForgePanel[];
     notas: string[];
+    rotacion?: number;
+    origen?: number[];
 }
 
 export interface ForgeProjectData {
@@ -73,6 +78,12 @@ const PALETA: Record<string, { color: number; roughness: number; metalness?: num
     'MEL-BLA-19-CUB': { color: 0xf0f0eb, roughness: 0.35 },
     'NEGRO-MATE': { color: 0x0d0d0d, roughness: 0.70 },
     'ROBLE-CLARO': { color: 0xb89466, roughness: 0.45 },
+    'MEL-ROBLE-NAT-15': { color: 0xbf996b, roughness: 0.42 },
+    'LAC-VERDE-SAGE-15': { color: 0xa6b394, roughness: 0.30 },
+    'MEL-ROSA-PASTEL-15': { color: 0xf2d4da, roughness: 0.52 },
+    'LAC-ROSA-PASTEL-15': { color: 0xf4c9d3, roughness: 0.28 },
+    'CUA-ROSA-PASTEL-19': { color: 0xe8bcc6, roughness: 0.22 },
+    'MET-ROSA-MONO': { color: 0xd98ba3, roughness: 0.25, metalness: 0.35 },
 };
 
 const MM = 0.001; // el GLB/USDZ va en METROS: escala real para AR
@@ -116,6 +127,9 @@ export function construirProyecto(data: ForgeProjectData): THREE.Group {
                 const mesh = new THREE.Mesh(geo, materialDe(p.material));
                 mesh.name = colocaciones.length > 1 ? `${p.name}_${i + 1}` : p.name;
                 mesh.position.set(c.x * MM, c.z * MM, -c.y * MM);
+                // forge X→three X, forge Y→three −Z: un giro de rz grados sobre
+                // el eje Z del proyecto es el mismo giro sobre el eje Y de three.
+                if (c.rz) mesh.rotation.y = (c.rz * Math.PI) / 180;
                 mesh.userData = { rol: p.rol_estructural, material: p.material, modulo: cont.id };
                 group.add(mesh);
             });

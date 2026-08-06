@@ -1,1 +1,4 @@
 anthropic>=0.60
+# sólo para FORGE_PROVEEDOR=nvidia u openai_compat (NIM, vLLM, Ollama).
+# El backend de Anthropic no lo usa.
+openai>=1.40

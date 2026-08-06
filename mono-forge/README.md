@@ -48,8 +48,8 @@ mono_forge/
   publish.py       ← sube project.json + GLB/USDZ a la plataforma (bucket 'forge').
   docs/            ← cutlist.xlsx, herrajes.xlsx, cotización, manual, entrega, costos.
 catalog/           ← materiales, herrajes, golas. Los precios viven aquí, no en el código.
-style/             ← manifiesto de estilo Mono Atelier (LLENAR).
-blender/           ← build_from_json, materiales, presets de render.
+style/             ← manifiesto de estilo Mono Atelier: identidad, paleta, luz.
+blender/           ← build_from_json, render, materiales, presets de escena.
 tests/             ← red de seguridad de medidas.
 ```
 
@@ -87,6 +87,21 @@ El agente traduce lenguaje natural a parámetros del motor: elige los módulos,
 pero TODAS las medidas las sigue derivando mono-forge. Paso a paso en
 `docs/AGENTE_PROMPTS.md`.
 
+## Renders
+
+En Windows: `.\forge.ps1 render projects\x` (encuentra Blender solo).
+Para VER el modelo en la interfaz en vez de renderizar: `.\forge.ps1 ver projects\x`.
+
+```bash
+blender --background --python blender/render.py -- projects/x/project.json
+blender --background --python blender/render.py -- projects/x/project.json \
+        --escena noche --vistas frontal_34,detalle --muestras 256
+```
+
+Escenas `cocina` / `estudio` / `noche`; encuadres derivados del bounding box
+del proyecto. El LED del render sale de los módulos con `led=True`. Detalle en
+`docs/RENDERS.md`.
+
 ## Entregables
 
 ```bash
@@ -106,4 +121,7 @@ El margen vive SÓLO en el reporte interno. Detalle en `docs/ENTREGABLES.md`.
 - [x] cutlist.xlsx, herrajes.xlsx, cotizacion.pdf, manual_ensamble.pdf, entrega.pdf
 - [x] Reporte interno de costos con simulación por proveedor
 - [x] Diseño por prompts desde la plataforma (forge_agent/ — ver docs/AGENTE_PROMPTS.md)
-- [ ] Renders hiperrealistas por escena (atmósferas) desde render_presets.py
+- [x] Renders por escena y atmósfera (`blender/render.py` — ver docs/RENDERS.md)
+- [ ] Frentes curvos / termoformados — hoy el motor sólo corta piezas planas
+      rectangulares; un frente genuinamente curvo necesita un generador nuevo
+      (ver style/mono_atelier_style.md § Reglas de composición).

@@ -54,6 +54,9 @@ class Panel:
     justificacion: str = ""        # POR QUÉ va así — se imprime en el manual de ensamble
     cantos: dict[str, bool] = field(default_factory=cantos)
     veta: str = "libre"            # libre | vertical | horizontal
+    #: True = pieza de REFERENCIA (tarja, electrodoméstico). Se ve en el 3D y
+    #: en el render, pero NO se corta ni entra al cutlist ni al costeo.
+    accesorio: bool = False
     drilling: list[DrillOp] = field(default_factory=list)
     # Colocación 3D DERIVADA por rules/posicion.py — una entrada por copia:
     # {"x","y","z","sx","sy","sz"} (centro y extensión por eje, en mm).
@@ -114,7 +117,13 @@ class Module:
 @dataclass
 class Tramo:
     """Conjunto de módulos contiguos sobre un mismo muro.
-    La cubierta, la gola y el zoclo se calculan A NIVEL DE TRAMO, no por módulo."""
+    La cubierta, la gola y el zoclo se calculan A NIVEL DE TRAMO, no por módulo.
+
+    El tramo es también el MARCO DE REFERENCIA del muro: sus módulos se colocan
+    en coordenadas locales (X a lo largo del muro, Y hacia el muro) y luego se
+    transforman con `rotacion` y `origen`. Así una cocina en L, en U o en isla
+    son varios tramos con distinta rotación — la aritmética del mueble no cambia.
+    """
     id: str
     muro: str
     modulos: list[str] = field(default_factory=list)   # ids de Module
@@ -122,6 +131,14 @@ class Tramo:
     panels: list[Panel] = field(default_factory=list)  # cubierta, zoclo, gola de tablero
     hardware: list[HardwareItem] = field(default_factory=list)
     notas: list[str] = field(default_factory=list)
+    #: giro del muro en grados, antihorario visto en planta (0 = muro frontal)
+    rotacion: float = 0.0
+    #: [X, Y] en mm del origen local del tramo dentro del proyecto
+    origen: list[float] = field(default_factory=lambda: [0.0, 0.0])
+    #: arranque del tramo A LO LARGO de su propio muro, en mm. Es lo que
+    #: permite tener varias corridas sobre el mismo muro (torre, corrida de
+    #: piso, corrida de alacenas) sin que todas empiecen pegadas a la esquina.
+    desplazamiento: float = 0.0
 
 
 @dataclass
@@ -180,6 +197,10 @@ class Project:
         for t in self.tramos:
             out.extend(t.panels)
         return out
+
+    def piezas_de_corte(self) -> list[Panel]:
+        """Sólo lo que el taller CORTA: sin accesorios de referencia."""
+        return [p for p in self.all_panels() if not p.accesorio]
 
     def all_hardware(self) -> list[HardwareItem]:
         out: list[HardwareItem] = []

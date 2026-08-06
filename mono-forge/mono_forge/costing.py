@@ -80,7 +80,7 @@ def costear(project: Project, tarifas: Tarifas | None = None,
     faltantes: list[str] = []
     sustituciones: dict[str, str] = {}
     area_por_sku: dict[str, float] = {}
-    for p in project.all_panels():
+    for p in project.piezas_de_corte():
         area_por_sku[p.material] = area_por_sku.get(p.material, 0.0) + p.area_m2
 
     for sku, area in area_por_sku.items():
@@ -98,7 +98,7 @@ def costear(project: Project, tarifas: Tarifas | None = None,
 
     # cubrecanto: manual si el material es alto brillo
     ml_maq = ml_man = 0.0
-    for p in project.all_panels():
+    for p in project.piezas_de_corte():
         fila = mats.get(p.material, {})
         manual = "brillo" in (fila.get("descripcion", "") + p.material).lower()
         if manual:

@@ -9,11 +9,18 @@ entregables y sube todo de vuelta a la plataforma.
     python -m forge_agent.worker --prompt "cocina de 3m con tarja y torre de horno"
 
 Variables de entorno:
-    ANTHROPIC_API_KEY   obligatoria — console.anthropic.com
+    FORGE_PROVEEDOR     anthropic (default) | nvidia | openai_compat
+    ANTHROPIC_API_KEY   con FORGE_PROVEEDOR=anthropic — console.anthropic.com
+    NVIDIA_API_KEY      con FORGE_PROVEEDOR=nvidia — build.nvidia.com
+    FORGE_MODEL         id del modelo (obligatorio fuera de Anthropic)
+    FORGE_BASE_URL      endpoint OpenAI-compatible (NIM local, vLLM, Ollama)
     SUPABASE_URL        obligatoria para el modo escucha
     SUPABASE_KEY        service_role (recomendado) o anon key
     BLENDER_PATH        opcional — ruta a blender.exe; sin ella se omite el 3D
     FORGE_PROJECTS_DIR  opcional — dónde escribir los proyectos (default: ./projects)
+    FORGE_SUBIR_COSTOS  "1" para subir también costos_internos.pdf al bucket
+                        PRIVADO forge-interno. Apagado por defecto: ese PDF
+                        lleva el margen. Lee la nota de la migración antes.
 """
 
 from __future__ import annotations
@@ -34,6 +41,7 @@ from mono_forge.costing import Tarifas
 from mono_forge.docs import generar_todo, verificar
 from mono_forge.models import Project
 
+from . import proveedores
 from .agente import disenar
 
 INTERVALO = float(os.environ.get("FORGE_POLL_SECONDS", "5"))
@@ -67,6 +75,17 @@ def _req(path: str, data: bytes | None = None, method: str = "GET",
     with urllib.request.urlopen(r) as resp:
         cuerpo = resp.read()
         return json.loads(cuerpo) if cuerpo else None
+
+
+def _subir_a(bucket: str, model_id: str, nombre: str, ruta: str) -> str:
+    """Sube un archivo y devuelve su ruta dentro del bucket."""
+    destino = f"{model_id}/{nombre}"
+    tipo = mimetypes.guess_type(nombre)[0] or "application/octet-stream"
+    with open(ruta, "rb") as f:
+        datos = f.read()
+    _req(f"/storage/v1/object/{bucket}/{destino}", datos, "POST",
+         extra={"Content-Type": tipo, "x-upsert": "true"})
+    return destino
 
 
 def _subir(model_id: str, nombre: str, ruta: str) -> str:
@@ -166,6 +185,7 @@ def procesar(prompt: str, base: dict | None = None,
         print(f"  ! {p}")
 
     urls: dict[str, str] = {}
+    costos_path: str | None = None
     if subir:
         print("  · Publicando en la plataforma…")
         urls["project.json"] = _subir(model_id, "project.json", ruta_json)
@@ -173,9 +193,17 @@ def procesar(prompt: str, base: dict | None = None,
             urls[nombre] = _subir(model_id, nombre, os.path.join(destino, nombre))
         for nombre, ruta in docs.items():
             if nombre == "costos_internos.pdf":
-                continue          # documento interno: no sale del taller
+                # lleva margen y costo directo: bucket PRIVADO, y sólo si se
+                # pide explícitamente. Nunca al bucket público.
+                if os.environ.get("FORGE_SUBIR_COSTOS") == "1":
+                    costos_path = _subir_a("forge-interno", model_id, nombre, ruta)
+                    print("    · costos_internos.pdf → bucket privado")
+                continue
             urls[nombre] = _subir(model_id, nombre, ruta)
 
+        # todo lo que el cliente puede descargar, para que la plataforma lo
+        # encuentre. Antes se calculaban estas URLs y se tiraban.
+        documentos = {n: u for n, u in urls.items() if n != "preview.usdz"}
         fila = {
             "id": model_id,
             "name": project.nombre,
@@ -183,6 +211,8 @@ def procesar(prompt: str, base: dict | None = None,
             "project_json": project_dict,
             "glb_url": urls.get("preview.glb"),
             "usdz_url": urls.get("preview.usdz"),
+            "documentos": documentos,
+            "costos_path": costos_path,
             "status": "published" if urls.get("preview.glb") else "draft",
         }
         _req("/rest/v1/forge_models", json.dumps(fila).encode(), "POST",
@@ -194,6 +224,7 @@ def procesar(prompt: str, base: dict | None = None,
         "resumen": r["resumen"],
         "carpeta": carpeta,
         "urls": urls,
+        "costos_path": costos_path,
         "verificacion": v,
         "bitacora": r["bitacora"],
     }
@@ -217,9 +248,17 @@ def atender(job: dict) -> None:
 
 
 def main(argv: list[str]) -> int:
-    if not os.environ.get("ANTHROPIC_API_KEY"):
-        print("ERROR: define ANTHROPIC_API_KEY (console.anthropic.com).")
+    # falla aquí, con un mensaje claro, y no a media hora de trabajo
+    try:
+        cfg = proveedores.configurar()
+    except RuntimeError as e:
+        print(f"ERROR de configuración: {e}")
         return 1
+    if cfg["proveedor"] == "anthropic" and not os.environ.get("ANTHROPIC_API_KEY"):
+        print("ERROR: define ANTHROPIC_API_KEY (console.anthropic.com), o usa "
+              "FORGE_PROVEEDOR=nvidia con NVIDIA_API_KEY.")
+        return 1
+    print(f"Modelo: {cfg['proveedor']}/{cfg['modelo']}")
 
     if "--prompt" in argv:
         prompt = argv[argv.index("--prompt") + 1]

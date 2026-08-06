@@ -269,6 +269,10 @@ export interface ForgeModel {
   projectJson: any; // project.json completo generado por mono-forge
   glbUrl?: string | null;   // AR Android / visor web
   usdzUrl?: string | null;  // AR iOS (Quick Look)
+  /** nombre de archivo → URL pública. Los entregables del cliente. */
+  documentos?: Record<string, string> | null;
+  /** ruta en el bucket privado forge-interno. NO es una URL: se firma al abrir. */
+  costosPath?: string | null;
   status: 'draft' | 'published';
   createdAt?: string;
 }

@@ -103,7 +103,7 @@ def nesting(panels: list[Panel], kerf: float = KERF) -> dict[str, list[Hoja]]:
 
 
 def resumen(project: Project) -> dict:
-    panels = project.all_panels()
+    panels = project.piezas_de_corte()
     hojas = nesting(panels)
     alertas: list[str] = []
 
@@ -132,7 +132,7 @@ def imprimir(project: Project) -> None:
     print(f"\n{'='*78}\nCUTLIST — {project.nombre} ({project.cliente})\n{'='*78}")
     print(f"{'PIEZA':<34}{'CANT':>5}{'LARGO':>8}{'ANCHO':>8}{'ESP':>5}  CANTOS")
     print("-" * 78)
-    for p in project.all_panels():
+    for p in project.piezas_de_corte():
         c = "".join(k[0].upper() for k, v in p.cantos.items() if v) or "-"
         print(f"{p.name:<34}{int(p.cantidad):>5}{p.largo:>8.1f}{p.ancho:>8.1f}"
               f"{p.espesor:>5.0f}  {c}")

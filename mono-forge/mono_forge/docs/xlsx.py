@@ -55,6 +55,8 @@ def cutlist_xlsx(project: Project, destino: str) -> str:
                    [(t.id, t.panels) for t in project.tramos]
     for mid, panels in contenedores:
         for p in panels:
+            if p.accesorio:
+                continue    # se compra, no se corta
             for col, val in enumerate([
                 mid, p.name, int(p.cantidad), p.largo, p.ancho, p.espesor,
                 p.material, p.veta, _cantos_txt(p), p.rol_estructural,
@@ -64,7 +66,7 @@ def cutlist_xlsx(project: Project, destino: str) -> str:
             fila += 1
     ws.cell(row=fila + 1, column=1, value="ÁREA TOTAL m²").font = Font(bold=True)
     ws.cell(row=fila + 1, column=11,
-            value=round(sum(p.area_m2 for p in project.all_panels()), 3)
+            value=round(sum(p.area_m2 for p in project.piezas_de_corte()), 3)
             ).font = Font(bold=True)
 
     # ── Cubrecanto ──────────────────────────────────────────────────
@@ -74,7 +76,7 @@ def cutlist_xlsx(project: Project, destino: str) -> str:
                     ("Aplicación", 14)])
     fila = 2
     mats = catalogo_materiales()
-    for p in project.all_panels():
+    for p in project.piezas_de_corte():
         if p.ml_canto <= 0:
             continue
         desc = (mats.get(p.material, {}).get("descripcion", "") + p.material).lower()
@@ -87,7 +89,7 @@ def cutlist_xlsx(project: Project, destino: str) -> str:
         fila += 1
     ws.cell(row=fila + 1, column=1, value="TOTAL ml").font = Font(bold=True)
     ws.cell(row=fila + 1, column=5,
-            value=round(sum(p.ml_canto for p in project.all_panels()), 2)
+            value=round(sum(p.ml_canto for p in project.piezas_de_corte()), 2)
             ).font = Font(bold=True)
     ws.cell(row=fila + 3, column=1,
             value="El alto brillo SIEMPRE lleva cintilla PVC pegada a mano.")
@@ -97,7 +99,7 @@ def cutlist_xlsx(project: Project, destino: str) -> str:
     _encabezar(ws, [("Pieza", 30), ("Tipo", 14), ("Ø mm", 8), ("X mm", 10),
                     ("Y mm", 10), ("Prof mm", 10), ("Cara", 12), ("Nota", 32)])
     fila = 2
-    for p in project.all_panels():
+    for p in project.piezas_de_corte():
         for d in p.drilling:
             for col, val in enumerate([p.name, d.tipo, d.diametro, d.x, d.y,
                                        d.profundidad, d.cara, d.nota], start=1):
@@ -111,7 +113,7 @@ def cutlist_xlsx(project: Project, destino: str) -> str:
     _encabezar(ws, [("Material", 20), ("Hoja #", 8), ("Pieza", 30), ("X mm", 10),
                     ("Y mm", 10), ("Largo mm", 10), ("Ancho mm", 10)])
     fila = 2
-    hojas = nesting(project.all_panels())
+    hojas = nesting(project.piezas_de_corte())
     for material, hs in hojas.items():
         for h in hs:
             for c in h.piezas:

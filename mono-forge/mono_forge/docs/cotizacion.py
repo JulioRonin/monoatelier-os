@@ -15,7 +15,7 @@ from reportlab.platypus import KeepTogether, PageBreak, Paragraph, SimpleDocTemp
 from ..costing import Tarifas, costear
 from ..models import Project
 from .estilo import A4, MARGEN, dinero, encabezado, estilos, marca, tabla
-from .planos import Plano
+from .planos import Plano, alzados
 
 ANCHO_UTIL = A4[0] - 2 * MARGEN
 
@@ -53,9 +53,10 @@ def cotizacion_pdf(project: Project, destino: str, tarifas: Tarifas | None = Non
     paneles_con_pos = [p for p in project.all_panels() if p.colocacion]
     if paneles_con_pos:
         fl.append(Paragraph("El conjunto", st["h2"]))
-        fl.append(Plano(paneles_con_pos, "frontal", ANCHO_UTIL, 80 * mm,
-                        titulo="alzado frontal"))
-        fl.append(Spacer(1, 10))
+        for titulo, paneles, marco in alzados(project):
+            fl.append(Plano(paneles, "frontal", ANCHO_UTIL, 80 * mm,
+                            titulo=titulo, marco=marco))
+            fl.append(Spacer(1, 10))
 
     # ── Partidas ────────────────────────────────────────────────────
     # El precio se prorratea por área de tablero de cada módulo: es la métrica

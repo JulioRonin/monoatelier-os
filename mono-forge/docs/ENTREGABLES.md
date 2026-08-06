@@ -79,3 +79,35 @@ python -m mono_forge.docs projects/perez --margen 0.35 --canto-maquina 12 \
        --canto-manual 45 --mano-obra 850
 python -m mono_forge.publish projects/perez --name "Cocina Pérez"
 ```
+
+---
+
+## Los entregables en la plataforma
+
+Cuando el diseño nace de un prompt en Forge, el worker sube los entregables al
+bucket `forge` y **guarda sus URLs** en `forge_models.documentos`. La página de
+Forge los muestra como descargas junto al visor 3D.
+
+Requiere la migración `supabase/migrations/20260807_forge_documentos.sql`.
+
+Antes de esa migración las URLs se calculaban y se tiraban: los archivos
+llegaban al bucket pero la plataforma no tenía cómo encontrarlos. Los diseños
+generados antes no tienen `documentos`; vuelve a lanzar el prompt para
+registrarlos.
+
+### costos_internos.pdf va aparte
+
+Es el único documento con el margen y el costo directo, así que **no** viaja
+con los demás:
+
+- Los entregables de cliente van al bucket **público** `forge`. Cualquiera con
+  el link los abre — que es justo lo que quieres para mandarle la cotización a
+  un cliente por WhatsApp.
+- `costos_internos.pdf` va al bucket **privado** `forge-interno`, y sólo si
+  defines `FORGE_SUBIR_COSTOS=1`. Viene apagado.
+- En la plataforma se abre con una URL firmada de 5 minutos
+  (`api.firmarCostosInternos`). No hay URL permanente que se pueda reenviar
+  por accidente.
+
+Mientras la plataforma no tenga login, la puerta real es el acceso a tu app,
+no el bucket. Está escrito con detalle al final de la migración.
