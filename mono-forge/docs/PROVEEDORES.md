@@ -99,6 +99,31 @@ Honestamente:
 - **Llamadas en paralelo bien manejadas.** Se soportan, pero los modelos
   abiertos las emiten con menos consistencia.
 
+## Elegir el modelo: pruébalo, no lo adivines
+
+El catálogo de build.nvidia.com no dice qué modelos hacen function calling
+multi-turno, y la etiqueta "agentic" no es garantía. Hay un probador:
+
+```powershell
+$env:FORGE_PROVEEDOR = "nvidia"
+$env:NVIDIA_API_KEY  = "nvapi-..."
+
+python -m forge_agent.probar_modelo --listar          # qué hay en tu cuenta
+python -m forge_agent.probar_modelo <id-1> <id-2>     # compáralos
+```
+
+Corre tres pruebas de dificultad creciente con el MISMO backend que usa la
+plataforma, así que lo que pase ahí es lo que va a pasar en producción:
+
+| | Qué mide | Si falla |
+|---|---|---|
+| **LLAMA** | ¿encadena herramientas? | No hace function calling de verdad. Descártalo. |
+| **CORRIGE** | ¿lee un `ERROR:` del motor y reintenta? | Sirve para prompts simples y nada más. |
+| **SOSTIENE** | ¿aguanta una cocina en L, ~20 llamadas? | Úsalo para muebles sueltos, no para cocinas. |
+
+Sale un veredicto por modelo y un resumen ordenado. Eso es un dato de tu
+cuenta y tus prompts, no una recomendación de catálogo.
+
 ## Una configuración mixta que tiene sentido
 
 No es todo o nada. El proveedor se resuelve por llamada:

@@ -45,6 +45,8 @@ const mapForgeModel = (data: any): ForgeModel => ({
     projectJson: data.project_json,
     glbUrl: data.glb_url,
     usdzUrl: data.usdz_url,
+    documentos: data.documentos || null,
+    costosPath: data.costos_path || null,
     status: data.status || 'draft',
     createdAt: data.created_at
 });
@@ -824,5 +826,21 @@ export const api = {
         if (error) throw error;
         const { data } = supabase.storage.from('forge').getPublicUrl(path);
         return data.publicUrl;
+    },
+
+    /**
+     * URL temporal para el reporte interno de costos.
+     *
+     * Vive en un bucket PRIVADO porque lleva el margen y el costo directo: no
+     * tiene URL pública, hay que firmarla cada vez y la firma caduca. Nunca
+     * guardes el resultado en la base ni lo mandes por correo.
+     */
+    async firmarCostosInternos(costosPath: string, segundos = 300) {
+        if (!supabase) throw new Error("Supabase not configured");
+        const { data, error } = await supabase.storage
+            .from('forge-interno')
+            .createSignedUrl(costosPath, segundos);
+        if (error) throw error;
+        return data.signedUrl;
     }
 };

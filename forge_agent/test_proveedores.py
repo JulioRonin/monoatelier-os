@@ -226,3 +226,44 @@ def test_anthropic_sigue_siendo_el_default(monkeypatch):
 def test_proveedor_desconocido_falla_claro():
     with pytest.raises(RuntimeError, match="desconocido"):
         proveedores.configurar("openai")
+
+
+# ── el probador de modelos ──────────────────────────────────────────────
+
+def test_los_revisores_del_probador_detectan_lo_que_deben(fingir):
+    """Cada prueba tiene que fallar cuando el modelo se equivoca de verdad,
+    no sólo cuando la llamada revienta."""
+    from forge_agent import probar_modelo as pm
+
+    vacio = {"modules": [], "tramos": []}
+    assert pm._revisar_mueble(vacio) == "no creó ningún módulo"
+    assert "cajonera" in pm._revisar_cajonera(vacio)
+    assert "2" in pm._revisar_l(vacio)
+
+    # un muro recto NO es una L, aunque traiga dos tramos
+    recto = {"modules": [{}] * 4,
+             "tramos": [{"rotacion": 0.0}, {"rotacion": 0.0}]}
+    assert "recta" in pm._revisar_l(recto)
+    assert pm._revisar_l({"modules": [{}] * 4,
+                          "tramos": [{"rotacion": 0.0},
+                                     {"rotacion": -90.0}]}) is None
+
+
+def test_el_probador_no_reimplementa_la_aritmetica_del_motor(fingir):
+    """Los frentes se CORTAN 263/263/265 (el generador descuenta el gap de 3mm)
+    aunque el modelo pida 266/266/268. Si el probador volviera a sumarlos
+    esperando 800, reprobaría a modelos que hicieron lo correcto."""
+    from forge_agent import probar_modelo as pm
+
+    fingir([
+        _turno(llamadas=[_llamada("c1", "definir_proyecto",
+                                  {"cliente": "P", "nombre": "n"})]),
+        _turno(llamadas=[_llamada("c2", "agregar_cajonera",
+                                  {"id": "C1", "ancho": 450,
+                                   "altos_frentes": [266, 266, 268]})]),
+        _turno(texto="lista"),
+    ])
+    herramientas.reiniciar()
+    proveedores.correr_openai_compat(
+        "s", "una cajonera", modelo="m", base_url="http://x/v1", api_key="k")
+    assert pm._revisar_cajonera(herramientas.finalizar()) is None
