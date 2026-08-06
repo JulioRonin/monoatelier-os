@@ -76,6 +76,15 @@ VISTAS_ENTREGA = ("frontal_34", "frontal", "detalle")
 
 # ── Matemática pura (testeable sin Blender) ──────────────────────────────
 
+def _huella(c: dict) -> tuple[float, float]:
+    """Extensión en X/Y de una caja girada `rz` grados sobre su centro."""
+    rz = float(c.get("rz", 0.0))
+    if not rz:
+        return c["sx"], c["sy"]
+    co, si = abs(math.cos(math.radians(rz))), abs(math.sin(math.radians(rz)))
+    return (c["sx"] * co + c["sy"] * si, c["sx"] * si + c["sy"] * co)
+
+
 def bbox_de(data: dict) -> dict:
     """Bounding box del proyecto EN METROS, derivado del JSON.
 
@@ -88,8 +97,11 @@ def bbox_de(data: dict) -> dict:
     for cont in list(data.get("modules", [])) + list(data.get("tramos", [])):
         for p in cont.get("panels", []):
             for c in p.get("colocacion") or []:
-                xs += [c["x"] - c["sx"] / 2, c["x"] + c["sx"] / 2]
-                ys += [c["y"] - c["sy"] / 2, c["y"] + c["sy"] / 2]
+                # sx/sy son las extensiones LOCALES; si el tramo va girado hay
+                # que usar la huella girada o el encuadre corta la cocina en L.
+                sx, sy = _huella(c)
+                xs += [c["x"] - sx / 2, c["x"] + sx / 2]
+                ys += [c["y"] - sy / 2, c["y"] + sy / 2]
                 zs += [c["z"] - c["sz"] / 2, c["z"] + c["sz"] / 2]
     if not xs:
         raise ValueError(
@@ -357,6 +369,12 @@ RECETAS = {
     "MEL-BLA-19-CUB":   ("piedra", (0.10, 0.10, 0.11, 1), (0.88, 0.87, 0.84, 1), 0.16),
     "GRANITO-OSCURO":   ("piedra", (0.08, 0.08, 0.09, 1), (0.92, 0.91, 0.88, 1), 0.14),
     "NEGRO-MATE":       ("plano", (0.04, 0.04, 0.04, 1), 0.62),
+    # rosa pastel: el lacado va liso (0.28) y el casco un punto más mate.
+    "MEL-ROSA-PASTEL-15": ("plano", (0.90, 0.72, 0.75, 1), 0.50),
+    "LAC-ROSA-PASTEL-15": ("plano", (0.91, 0.67, 0.72, 1), 0.28),
+    # cuarzo rosa: misma receta de piedra que el granito, con vetas más claras
+    "CUA-ROSA-PASTEL-19": ("piedra", (0.86, 0.66, 0.71, 1), (0.98, 0.94, 0.95, 1), 0.20),
+    "MET-ROSA-MONO":    ("plano", (0.78, 0.44, 0.55, 1), 0.22),
 }
 
 

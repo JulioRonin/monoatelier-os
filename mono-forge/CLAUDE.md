@@ -122,6 +122,32 @@ Los renders SIEMPRE usan blender/render_presets.py — nunca inventes iluminaci�
   en el project.json (campo colocacion: centro + extensión por eje, en mm).
 - Blender y el visor web/AR de la plataforma SÓLO leen colocacion. Si un panel
   aparece mal puesto, se corrige la regla en posicion.py, nunca la malla.
+- La alacena es 250mm menos profunda que el mueble de piso y va colgada del
+  MURO, no alineada al frente: posicion.py la recorre (prof_muro − m.prof).
+
+## Cocinas en L y en U — el TRAMO es el muro
+- Cada Tramo lleva rotacion (grados, antihorario en planta), origen [X,Y] y
+  desplazamiento (arranque A LO LARGO de su propio muro).
+- La aritmética del mueble se resuelve SIEMPRE en el marco local del muro; el
+  giro se aplica al final. Un mueble del muro B mide exactamente lo mismo que
+  uno del muro A: el giro no toca el cutlist.
+- Cuando un tramo va girado, cada colocación lleva "rz": sx/sy siguen siendo
+  las extensiones LOCALES y el visor gira la caja sobre su centro. Sin
+  rotación la clave NO se escribe (los JSON de un muro no cambian de forma).
+- El giro y el origen NUNCA se ponen a mano: rules.posicion.esquina_en_l()
+  los calcula, incluido el filler de esquina (HOLGURA_ESQUINA = 50mm). Sin ese
+  filler la última puerta de un muro golpea la primera del retorno.
+- Varias corridas pueden compartir muro (torre + corrida de piso + alacenas):
+  se distinguen con `desplazamiento`, y los documentos las dibujan en UN solo
+  alzado por muro (docs.planos.alzados deshace el giro por muro).
+
+## Jaladeras
+- generators/jaladera.py: se COMPRAN (van a herrajes.xlsx, no al cutlist) pero
+  se modelan como accesorio para que se vean en 3D, AR y render.
+- Siluetas: "bow" (moño, 3 cajas) y "barra". La geometría es una aproximación
+  volumétrica de la pieza real — lo que se cotiza es el SKU, no la malla.
+- La posición NO es un dato del mueble: se deriva del frente ya colocado
+  (cajón → centrada; puerta → a 80mm del canto superior).
 
 ## Blender
 - Interactivo: tools del MCP blender para iterar vistas y materiales.

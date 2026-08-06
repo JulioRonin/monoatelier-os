@@ -15,7 +15,7 @@ from reportlab.platypus import (
 
 from ..models import Project
 from .estilo import A4, MARGEN, encabezado, estilos, marca, tabla
-from .planos import Plano
+from .planos import Plano, alzados
 
 ANCHO_UTIL = A4[0] - 2 * MARGEN
 _EXT_IMG = (".png", ".jpg", ".jpeg")
@@ -65,8 +65,9 @@ def entrega_pdf(project: Project, destino: str, ar_url: str = "",
         paneles_pos = [p for p in project.all_panels() if p.colocacion]
         if paneles_pos:
             fl.append(Paragraph("El proyecto", st["h2"]))
-            fl.append(Plano(paneles_pos, "frontal", ANCHO_UTIL, 85 * mm,
-                            titulo="alzado frontal"))
+            for titulo, paneles, marco in alzados(project):
+                fl.append(Plano(paneles, "frontal", ANCHO_UTIL, 85 * mm,
+                                titulo=titulo, marco=marco))
             fl.append(Paragraph(
                 "Renders no incluidos en este paquete: genera la carpeta renders/ "
                 "con blender/render_presets.py y vuelve a construir el documento.",

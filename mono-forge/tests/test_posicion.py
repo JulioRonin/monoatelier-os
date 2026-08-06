@@ -12,7 +12,7 @@ from mono_forge.generators.cajonera import cajon
 from mono_forge.generators.cubierta import cubierta
 from mono_forge.generators.superior import alacena
 from mono_forge.models import Project, Tramo
-from mono_forge.rules.posicion import colocar, ALTO_COLGADO_DEFAULT
+from mono_forge.rules.posicion import colocar, esquina_en_l, ALTO_COLGADO_DEFAULT
 
 
 def _proyecto():
@@ -201,6 +201,180 @@ def test_los_cajones_van_dentro_del_casco():
             assert c["x"] + c["sx"] / 2 <= m.ancho - T + 0.01, f"{q.name} se sale por la derecha"
             assert c["z"] - c["sz"] / 2 >= ALTO_ZOCLO, f"{q.name} baja del zoclo"
             assert c["z"] + c["sz"] / 2 <= ALTO_TOTAL_BASE, f"{q.name} rebasa los 900"
+
+
+def _cocina_en_l():
+    """Muro A de 1200 sobre X; muro B girado −90°, arrancando donde termina A."""
+    p = Project(cliente="TEST", nombre="L")
+    p.modules.append(gabinete_base("B01", ancho=600))
+    p.modules.append(gabinete_base("B02", ancho=600))
+    p.modules.append(gabinete_base("B03", ancho=600))
+    p.tramos.append(Tramo(id="TA", muro="A", modulos=["B01", "B02"]))
+    p.tramos.append(Tramo(id="TB", muro="B", modulos=["B03"],
+                          **esquina_en_l(1200)))
+    return p
+
+
+def test_un_muro_recto_no_escribe_rz():
+    """Los project.json de un solo muro no deben cambiar de forma."""
+    p = _proyecto()
+    colocar(p)
+    assert all("rz" not in c for q in p.all_panels() for c in q.colocacion)
+
+
+def test_el_tramo_girado_transforma_la_colocacion():
+    """La aritmética del mueble se resuelve en el marco LOCAL del muro y sólo
+    al final se gira: un mueble en el muro B mide lo mismo que en el muro A."""
+    p = _cocina_en_l()
+    colocar(p)
+
+    b01 = next(m for m in p.modules if m.id == "B01")
+    b03 = next(m for m in p.modules if m.id == "B03")
+    base_a = next(q for q in b01.panels if q.rol_estructural == "base_portante")
+    base_b = next(q for q in b03.panels if q.rol_estructural == "base_portante")
+    ca, cb = base_a.colocacion[0], base_b.colocacion[0]
+
+    # mismas medidas: el giro no toca el cutlist
+    assert (base_a.largo, base_a.ancho) == (base_b.largo, base_b.ancho)
+    assert (cb["sx"], cb["sy"], cb["sz"]) == (ca["sx"], ca["sy"], ca["sz"])
+
+    # local (300, 300), origen (1200−600, −50), girado −90° → (900, −350)
+    assert cb["rz"] == -90.0
+    assert cb["x"] == pytest.approx(900.0)
+    assert cb["y"] == pytest.approx(-350.0)
+    assert cb["z"] == pytest.approx(ca["z"])          # misma altura
+
+
+def test_los_dos_muros_de_la_l_no_se_encinan():
+    """El muro B arranca donde termina el A: en planta no pueden solaparse."""
+    from mono_forge.docs.planos import _rects
+
+    p = _cocina_en_l()
+    colocar(p)
+    ids = {"TA": ["B01", "B02"], "TB": ["B03"]}
+    huellas = {}
+    for tid, mids in ids.items():
+        rs = _rects([q for m in p.modules if m.id in mids for q in m.panels],
+                    "planta")
+        huellas[tid] = (min(r[0] for r in rs), min(r[1] for r in rs),
+                        max(r[0] + r[2] for r in rs),
+                        max(r[1] + r[3] for r in rs))
+    (ax0, ay0, ax1, ay1), (bx0, by0, bx1, by1) = huellas["TA"], huellas["TB"]
+    solape = (max(0.0, min(ax1, bx1) - max(ax0, bx0))
+              * max(0.0, min(ay1, by1) - max(ay0, by0)))
+    assert solape < 1.0, f"los muros se encinan {solape:.0f} mm²"
+
+
+def _aabb(c):
+    """Caja envolvente real: con rz=±90 las extensiones locales se intercambian."""
+    if (c.get("rz", 0.0) % 360) in (90.0, 270.0):
+        return {**c, "sx": c["sy"], "sy": c["sx"]}
+    return c
+
+
+def test_en_una_l_ningun_mueble_se_atraviesa_con_otro():
+    """El giro no puede meter una pieza dentro de otra.
+
+    Se comparan cajas envolventes REALES: comparar sx/sy locales de un muro
+    girado da falsos positivos y esconde los choques de verdad.
+    """
+    p = _cocina_en_l()
+    p.modules.append(alacena("A01", ancho=600))
+    p.tramos[1].modulos.append("A01")
+    colocar(p)
+
+    cajas = [(q.name, _aabb(c)) for q in p.all_panels()
+             if not q.accesorio for c in q.colocacion]
+    for i, (n1, c1) in enumerate(cajas):
+        for n2, c2 in cajas[i + 1:]:
+            v = _volumen_traslape(c1, c2)
+            assert v < 1.0, f"{n1} y {n2} se atraviesan ({v:.0f} mm³)"
+
+
+def test_la_alacena_se_cuelga_del_muro_no_del_frente():
+    """La alacena es 250mm menos profunda que el mueble de piso. Alineada al
+    frente quedaría flotando esos 250mm adentro del cuarto."""
+    p = Project(cliente="TEST", nombre="muro")
+    p.modules.append(gabinete_base("B01", ancho=600))
+    p.modules.append(alacena("A01", ancho=600))
+    colocar(p)
+
+    def respaldo(mid):
+        m = next(x for x in p.modules if x.id == mid)
+        f = next(q for q in m.panels if q.rol_estructural == "fondo")
+        c = f.colocacion[0]
+        return c["y"] + c["sy"] / 2
+
+    assert respaldo("A01") == pytest.approx(respaldo("B01"))
+
+
+def test_el_alzado_de_un_muro_girado_se_dibuja_de_frente():
+    """Sin deshacer el giro, el muro B se vería de canto (ancho ≈ 0)."""
+    from mono_forge.docs.planos import _rects, alzados
+
+    p = _cocina_en_l()
+    colocar(p)
+    por_muro = {t: (pn, mc) for t, pn, mc in alzados(p)}
+    assert len(por_muro) == 2, "una L necesita un alzado por muro"
+
+    titulo_b = next(t for t in por_muro if t.endswith("B"))
+    paneles, marco = por_muro[titulo_b]
+    rs = _rects(paneles, "frontal", marco)
+    ancho = max(r[0] + r[2] for r in rs) - min(r[0] for r in rs)
+    assert ancho == pytest.approx(600.0), "el muro girado debe verse de frente"
+
+
+def test_las_jaladeras_se_cuelgan_del_frente_y_no_se_cortan():
+    from mono_forge.generators.jaladera import jaladeras
+
+    p = Project(cliente="TEST", nombre="jaladeras")
+    m = gabinete_base("B01", ancho=800, puertas=2)
+    piezas = jaladeras(m, silueta="bow")
+    p.modules.append(m)
+    colocar(p)
+
+    hojas = sum(int(q.cantidad) for q in m.panels
+                if q.rol_estructural == "frente")
+    assert hojas == 2
+    assert len(piezas) == 3                       # lazo + nudo + lazo
+    for q in piezas:
+        assert q.accesorio and q not in p.piezas_de_corte()
+        assert len(q.colocacion) == q.cantidad == hojas
+
+    frente = next(q for q in m.panels if q.rol_estructural == "frente")
+    cara = min(c["y"] - c["sy"] / 2 for c in frente.colocacion)
+    for q in piezas:
+        for c in q.colocacion:
+            assert c["y"] + c["sy"] / 2 <= cara + 0.01, \
+                f"{q.name} se mete dentro del frente en lugar de sobresalir"
+
+    herraje = {h.sku: h.cantidad for h in m.hardware}
+    assert herraje["JAL-MONO-BOW"] == hojas
+
+
+def test_la_jaladera_del_cajon_va_centrada_y_la_de_la_puerta_arriba():
+    from mono_forge.generators.cajonera import cajonera
+    from mono_forge.generators.jaladera import jaladeras, RETRANQUEO_SUPERIOR
+
+    p = Project(cliente="TEST", nombre="jal2")
+    caj = cajonera("B01", ancho=450, altos_frentes=[266, 266, 268])
+    jaladeras(caj, silueta="bow")
+    puerta = gabinete_base("B02", ancho=600)
+    jaladeras(puerta, silueta="bow")
+    p.modules += [caj, puerta]
+    colocar(p)
+
+    nudo_caj = next(q for q in caj.panels if q.name.endswith("_jal_nudo"))
+    frentes_caj = [c for q in caj.panels if q.rol_estructural == "frente"
+                   for c in q.colocacion]
+    for c, cf in zip(nudo_caj.colocacion, frentes_caj):
+        assert c["z"] == pytest.approx(cf["z"])        # cajón: centrada
+
+    nudo_p = next(q for q in puerta.panels if q.name.endswith("_jal_nudo"))
+    cf = next(q for q in puerta.panels
+              if q.rol_estructural == "frente").colocacion[0]
+    assert nudo_p.colocacion[0]["z"] == pytest.approx(
+        cf["z"] + cf["sz"] / 2 - RETRANQUEO_SUPERIOR)   # puerta: arriba
 
 
 def test_la_cajonera_valida_la_aritmetica_vertical():

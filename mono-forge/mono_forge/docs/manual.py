@@ -19,7 +19,7 @@ from ..constants import (
 from ..cutlist import nesting
 from ..models import Module, Project
 from .estilo import A4, MARGEN, encabezado, estilos, marca, tabla
-from .planos import Despiece, HojaNesting, Plano
+from .planos import Despiece, HojaNesting, Plano, alzados, marcos_por_modulo
 
 ANCHO_UTIL = A4[0] - 2 * MARGEN
 
@@ -167,12 +167,14 @@ def manual_pdf(project: Project, destino: str) -> str:
     ]:
         fl.append(Paragraph(f"— {n}", st["cuerpo"]))
 
+    marcos = marcos_por_modulo(project)
     paneles_pos = [p for p in project.all_panels() if p.colocacion]
     if paneles_pos:
         fl.append(Paragraph("Conjunto", st["h2"]))
-        fl.append(Plano(paneles_pos, "frontal", ANCHO_UTIL, 75 * mm,
-                        titulo="alzado frontal"))
-        fl.append(Spacer(1, 6))
+        for titulo, paneles, marco in alzados(project):
+            fl.append(Plano(paneles, "frontal", ANCHO_UTIL, 75 * mm,
+                            titulo=titulo, marco=marco))
+            fl.append(Spacer(1, 6))
         fl.append(Plano(paneles_pos, "planta", ANCHO_UTIL, 55 * mm,
                         titulo="planta"))
 
@@ -187,7 +189,8 @@ def manual_pdf(project: Project, destino: str) -> str:
 
         if any(p.colocacion for p in m.panels):
             fl.append(Plano([p for p in m.panels if p.colocacion], "frontal",
-                            ANCHO_UTIL, 62 * mm, titulo=f"{m.id} · alzado"))
+                            ANCHO_UTIL, 62 * mm, titulo=f"{m.id} · alzado",
+                            marco=marcos.get(m.id)))
             fl.append(Spacer(1, 6))
 
         # el título viaja con el dibujo: si no cabe, saltan juntos de página

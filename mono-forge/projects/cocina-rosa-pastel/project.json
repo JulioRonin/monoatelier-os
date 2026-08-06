@@ -1,0 +1,5786 @@
+{
+  "cliente": "Mono Atelier — prueba en casa",
+  "nombre": "cocina-rosa-pastel",
+  "moneda": "MXN",
+  "proveedor_preferente": "Importacion",
+  "style_preset": "mono-atelier-base",
+  "modules": [
+    {
+      "id": "T01",
+      "tipo": "torre",
+      "ancho": 600,
+      "alto": 2100,
+      "prof": 600,
+      "panels": [
+        {
+          "name": "T01_base",
+          "largo": 600,
+          "ancho": 600,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "base_portante",
+          "justificacion": "Corre a todo el ancho exterior. Los laterales se apoyan encima: la carga entra en compresión, el tornillo sólo alinea.",
+          "cantos": {
+            "frontal": true,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 300.0,
+              "y": 300.0,
+              "z": 107.5,
+              "sx": 600,
+              "sy": 600,
+              "sz": 15
+            }
+          ]
+        },
+        {
+          "name": "T01_lateral",
+          "largo": 1985,
+          "ancho": 600,
+          "espesor": 15,
+          "cantidad": 2,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "lateral_apoyado",
+          "justificacion": "Alto 1985 = alto_cuerpo − espesor de base. DESCANSA sobre la base, no va capturado entre ella.",
+          "cantos": {
+            "frontal": true,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "vertical",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 7.5,
+              "y": 300.0,
+              "z": 1107.5,
+              "sx": 15,
+              "sy": 600,
+              "sz": 1985
+            },
+            {
+              "x": 592.5,
+              "y": 300.0,
+              "z": 1107.5,
+              "sx": 15,
+              "sy": 600,
+              "sz": 1985
+            }
+          ]
+        },
+        {
+          "name": "T01_ref_sup_frente",
+          "largo": 570,
+          "ancho": 100,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "refuerzo",
+          "justificacion": "Refuerzo superior frontal entre laterales.",
+          "cantos": {
+            "frontal": true,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 300.0,
+              "y": 50.0,
+              "z": 2092.5,
+              "sx": 570,
+              "sy": 100,
+              "sz": 15
+            }
+          ]
+        },
+        {
+          "name": "T01_ref_sup_trasero",
+          "largo": 570,
+          "ancho": 100,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "refuerzo",
+          "justificacion": "Refuerzo superior trasero entre laterales.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 300.0,
+              "y": 550.0,
+              "z": 2092.5,
+              "sx": 570,
+              "sy": 100,
+              "sz": 15
+            }
+          ]
+        },
+        {
+          "name": "T01_ref_post_inferior",
+          "largo": 570,
+          "ancho": 100,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "refuerzo",
+          "justificacion": "Refuerzo posterior inferior: rigidiza contra el paralelogramo.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 300.0,
+              "y": 592.5,
+              "z": 165.0,
+              "sx": 570,
+              "sy": 15,
+              "sz": 100
+            }
+          ]
+        },
+        {
+          "name": "T01_fondo",
+          "largo": 600,
+          "ancho": 2000,
+          "espesor": 3,
+          "cantidad": 1,
+          "material": "MDF-003-FON",
+          "rol_estructural": "fondo",
+          "justificacion": "Aplicado sobre el canto trasero cubriendo los refuerzos. Escuadra el mueble: atornillar sólo después de verificar diagonales iguales.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 300.0,
+              "y": 601.5,
+              "z": 1100.0,
+              "sx": 600,
+              "sy": 3,
+              "sz": 2000
+            }
+          ]
+        },
+        {
+          "name": "T01_zoclo",
+          "largo": 600,
+          "ancho": 100,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "zoclo",
+          "justificacion": "Retranqueo 60mm.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": true,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 300.0,
+              "y": 67.5,
+              "z": 50.0,
+              "sx": 600,
+              "sy": 15,
+              "sz": 100
+            }
+          ]
+        },
+        {
+          "name": "T01_horno_entrepano",
+          "largo": 568,
+          "ancho": 580,
+          "espesor": 15,
+          "cantidad": 2,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "entrepano_fijo",
+          "justificacion": "Entrepaño FIJO: carga el electrodoméstico.",
+          "cantos": {
+            "frontal": true,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 300.0,
+              "y": 310.0,
+              "z": 771.67,
+              "sx": 568,
+              "sy": 580,
+              "sz": 15
+            },
+            {
+              "x": 300.0,
+              "y": 310.0,
+              "z": 1428.33,
+              "sx": 568,
+              "sy": 580,
+              "sz": 15
+            }
+          ]
+        },
+        {
+          "name": "T01_puerta",
+          "largo": 659.5,
+          "ancho": 597,
+          "espesor": 15,
+          "cantidad": 2,
+          "material": "LAC-ROSA-PASTEL-15",
+          "rol_estructural": "frente",
+          "justificacion": "Puertas superior e inferior de torre.",
+          "cantos": {
+            "frontal": true,
+            "trasero": true,
+            "superior": true,
+            "inferior": true
+          },
+          "veta": "vertical",
+          "accesorio": false,
+          "drilling": [
+            {
+              "tipo": "cazoleta",
+              "diametro": 35,
+              "x": 21.5,
+              "y": 100.0,
+              "profundidad": 12.5,
+              "cara": "interior",
+              "nota": "centro de cazoleta a 21.5mm del canto"
+            },
+            {
+              "tipo": "cazoleta",
+              "diametro": 35,
+              "x": 21.5,
+              "y": 559.5,
+              "profundidad": 12.5,
+              "cara": "interior",
+              "nota": "centro de cazoleta a 21.5mm del canto"
+            }
+          ],
+          "colocacion": [
+            {
+              "x": 300.0,
+              "y": -7.5,
+              "z": 447.75,
+              "sx": 597,
+              "sy": 15,
+              "sz": 659.5
+            },
+            {
+              "x": 300.0,
+              "y": -7.5,
+              "z": 1770.25,
+              "sx": 597,
+              "sy": 15,
+              "sz": 659.5
+            }
+          ]
+        },
+        {
+          "name": "T01_jal_lazo_izq",
+          "largo": 56.0,
+          "ancho": 34.0,
+          "espesor": 18.0,
+          "cantidad": 2,
+          "material": "MET-ROSA-MONO",
+          "rol_estructural": "accesorio_jaladera",
+          "justificacion": "Jaladera tipo moño (bow) 128mm — se COMPRA (JAL-MONO-BOW). No entra al cutlist ni al costeo de tablero; se modela para el 3D, el AR y el render.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": true,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 263.0,
+              "y": -24.0,
+              "z": 697.5,
+              "sx": 56.0,
+              "sy": 18.0,
+              "sz": 34.0
+            },
+            {
+              "x": 263.0,
+              "y": -24.0,
+              "z": 2020.0,
+              "sx": 56.0,
+              "sy": 18.0,
+              "sz": 34.0
+            }
+          ]
+        },
+        {
+          "name": "T01_jal_nudo",
+          "largo": 20.0,
+          "ancho": 22.0,
+          "espesor": 24.0,
+          "cantidad": 2,
+          "material": "MET-ROSA-MONO",
+          "rol_estructural": "accesorio_jaladera",
+          "justificacion": "Jaladera tipo moño (bow) 128mm — se COMPRA (JAL-MONO-BOW). No entra al cutlist ni al costeo de tablero; se modela para el 3D, el AR y el render.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": true,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 300.0,
+              "y": -27.0,
+              "z": 697.5,
+              "sx": 20.0,
+              "sy": 24.0,
+              "sz": 22.0
+            },
+            {
+              "x": 300.0,
+              "y": -27.0,
+              "z": 2020.0,
+              "sx": 20.0,
+              "sy": 24.0,
+              "sz": 22.0
+            }
+          ]
+        },
+        {
+          "name": "T01_jal_lazo_der",
+          "largo": 56.0,
+          "ancho": 34.0,
+          "espesor": 18.0,
+          "cantidad": 2,
+          "material": "MET-ROSA-MONO",
+          "rol_estructural": "accesorio_jaladera",
+          "justificacion": "Jaladera tipo moño (bow) 128mm — se COMPRA (JAL-MONO-BOW). No entra al cutlist ni al costeo de tablero; se modela para el 3D, el AR y el render.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": true,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 337.0,
+              "y": -24.0,
+              "z": 697.5,
+              "sx": 56.0,
+              "sy": 18.0,
+              "sz": 34.0
+            },
+            {
+              "x": 337.0,
+              "y": -24.0,
+              "z": 2020.0,
+              "sx": 56.0,
+              "sy": 18.0,
+              "sz": 34.0
+            }
+          ]
+        }
+      ],
+      "hardware": [
+        {
+          "sku": "BIS-35-REC",
+          "descripcion": "Bisagra cazoleta 35mm recta (sobreposición total)",
+          "cantidad": 4,
+          "unidad": "pza"
+        },
+        {
+          "sku": "PAT-NIV-100",
+          "descripcion": "Pata niveladora 100mm",
+          "cantidad": 4,
+          "unidad": "pza"
+        },
+        {
+          "sku": "UNI-MIN-15",
+          "descripcion": "Minifix + tarugo",
+          "cantidad": 12,
+          "unidad": "jgo"
+        },
+        {
+          "sku": "TOR-35X45",
+          "descripcion": "Tornillo 3.5x45",
+          "cantidad": 12,
+          "unidad": "pza"
+        },
+        {
+          "sku": "JAL-MONO-BOW",
+          "descripcion": "Jaladera tipo moño (bow) 128mm",
+          "cantidad": 2,
+          "unidad": "pza"
+        }
+      ],
+      "apertura": "jaladera",
+      "gola_sku": null,
+      "led": false,
+      "notas": [
+        "Nicho horno: 600mm de alto, ventilación 30mm. Entrepaños FIJOS.",
+        "Laterales de UNA sola pieza (1985mm): nunca partidos — el empalme quedaría justo donde carga el electrodoméstico.",
+        "2 jaladera(s) jaladera tipo moño (bow) 128mm. En puertas va a 80mm del canto superior; en cajones, centrada. Perforar el frente ANTES de lacar."
+      ],
+      "flags": {
+        "jaladeras": {
+          "sku": "JAL-MONO-BOW",
+          "silueta": "bow",
+          "offsets": {
+            "lazo_izq": -37.0,
+            "nudo": 0.0,
+            "lazo_der": 37.0
+          },
+          "retranqueo_superior": 80.0
+        }
+      }
+    },
+    {
+      "id": "B01",
+      "tipo": "cajonera",
+      "ancho": 600,
+      "alto": 900,
+      "prof": 600,
+      "panels": [
+        {
+          "name": "B01_base",
+          "largo": 600,
+          "ancho": 600,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "base_portante",
+          "justificacion": "Corre a todo el ancho exterior. Los laterales se apoyan encima: la carga entra en compresión, el tornillo sólo alinea.",
+          "cantos": {
+            "frontal": true,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 900.0,
+              "y": 300.0,
+              "z": 107.5,
+              "sx": 600,
+              "sy": 600,
+              "sz": 15
+            }
+          ]
+        },
+        {
+          "name": "B01_lateral",
+          "largo": 785,
+          "ancho": 600,
+          "espesor": 15,
+          "cantidad": 2,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "lateral_apoyado",
+          "justificacion": "Alto 785 = alto_cuerpo − espesor de base. DESCANSA sobre la base, no va capturado entre ella.",
+          "cantos": {
+            "frontal": true,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "vertical",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 607.5,
+              "y": 300.0,
+              "z": 507.5,
+              "sx": 15,
+              "sy": 600,
+              "sz": 785
+            },
+            {
+              "x": 1192.5,
+              "y": 300.0,
+              "z": 507.5,
+              "sx": 15,
+              "sy": 600,
+              "sz": 785
+            }
+          ]
+        },
+        {
+          "name": "B01_ref_sup_frente",
+          "largo": 570,
+          "ancho": 100,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "refuerzo",
+          "justificacion": "Refuerzo superior frontal entre laterales.",
+          "cantos": {
+            "frontal": true,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 900.0,
+              "y": 50.0,
+              "z": 892.5,
+              "sx": 570,
+              "sy": 100,
+              "sz": 15
+            }
+          ]
+        },
+        {
+          "name": "B01_ref_sup_trasero",
+          "largo": 570,
+          "ancho": 100,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "refuerzo",
+          "justificacion": "Refuerzo superior trasero entre laterales.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 900.0,
+              "y": 550.0,
+              "z": 892.5,
+              "sx": 570,
+              "sy": 100,
+              "sz": 15
+            }
+          ]
+        },
+        {
+          "name": "B01_ref_post_inferior",
+          "largo": 570,
+          "ancho": 100,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "refuerzo",
+          "justificacion": "Refuerzo posterior inferior: rigidiza contra el paralelogramo.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 900.0,
+              "y": 592.5,
+              "z": 165.0,
+              "sx": 570,
+              "sy": 15,
+              "sz": 100
+            }
+          ]
+        },
+        {
+          "name": "B01_fondo",
+          "largo": 600,
+          "ancho": 800,
+          "espesor": 3,
+          "cantidad": 1,
+          "material": "MDF-003-FON",
+          "rol_estructural": "fondo",
+          "justificacion": "Aplicado sobre el canto trasero cubriendo los refuerzos. Escuadra el mueble: atornillar sólo después de verificar diagonales iguales.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 900.0,
+              "y": 601.5,
+              "z": 500.0,
+              "sx": 600,
+              "sy": 3,
+              "sz": 800
+            }
+          ]
+        },
+        {
+          "name": "B01_zoclo",
+          "largo": 600,
+          "ancho": 100,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "zoclo",
+          "justificacion": "Pieza independiente, retranqueada 60mm del frente.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": true,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 900.0,
+              "y": 67.5,
+              "z": 50.0,
+              "sx": 600,
+              "sy": 15,
+              "sz": 100
+            }
+          ]
+        },
+        {
+          "name": "B01_c1_lateral_caja",
+          "largo": 500,
+          "ancho": 196,
+          "espesor": 15,
+          "cantidad": 2,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "lateral_caja",
+          "justificacion": "Corre COMPLETO: la corredera se atornilla a él en toda su longitud. Captura al frente de caja y a la trasera.",
+          "cantos": {
+            "frontal": true,
+            "trasero": false,
+            "superior": true,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 635.5,
+              "y": 250.0,
+              "z": 233.0,
+              "sx": 15,
+              "sy": 500,
+              "sz": 196
+            },
+            {
+              "x": 1164.5,
+              "y": 250.0,
+              "z": 233.0,
+              "sx": 15,
+              "sy": 500,
+              "sz": 196
+            }
+          ]
+        },
+        {
+          "name": "B01_c1_frente_caja",
+          "largo": 514,
+          "ancho": 196,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "capturado",
+          "justificacion": "Capturado entre los laterales (ancho_caja − 2T).",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": true,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 900.0,
+              "y": 7.5,
+              "z": 233.0,
+              "sx": 514,
+              "sy": 15,
+              "sz": 196
+            }
+          ]
+        },
+        {
+          "name": "B01_c1_trasera_caja",
+          "largo": 514,
+          "ancho": 196,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "capturado",
+          "justificacion": "Capturada entre los laterales.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": true,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 900.0,
+              "y": 492.5,
+              "z": 233.0,
+              "sx": 514,
+              "sy": 15,
+              "sz": 196
+            }
+          ]
+        },
+        {
+          "name": "B01_c1_fondo_caja",
+          "largo": 514,
+          "ancho": 470,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "fondo_caja",
+          "justificacion": "Tablero de 15mm ATRAPADO entre los cuatro lados de la caja: ni descansa debajo ni sobresale. Carga el contenido — un fondo de 3mm se pandea con peso.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 900.0,
+              "y": 250.0,
+              "z": 142.5,
+              "sx": 514,
+              "sy": 470,
+              "sz": 15
+            }
+          ]
+        },
+        {
+          "name": "B01_c1_frente",
+          "largo": 263,
+          "ancho": 597,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "LAC-ROSA-PASTEL-15",
+          "rol_estructural": "frente",
+          "justificacion": "Frente visible del cajón 1 (de abajo hacia arriba).",
+          "cantos": {
+            "frontal": true,
+            "trasero": true,
+            "superior": true,
+            "inferior": true
+          },
+          "veta": "vertical",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 900.0,
+              "y": -7.5,
+              "z": 231.5,
+              "sx": 597,
+              "sy": 15,
+              "sz": 263
+            }
+          ]
+        },
+        {
+          "name": "B01_c2_lateral_caja",
+          "largo": 500,
+          "ancho": 196,
+          "espesor": 15,
+          "cantidad": 2,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "lateral_caja",
+          "justificacion": "Corre COMPLETO: la corredera se atornilla a él en toda su longitud. Captura al frente de caja y a la trasera.",
+          "cantos": {
+            "frontal": true,
+            "trasero": false,
+            "superior": true,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 635.5,
+              "y": 250.0,
+              "z": 499.0,
+              "sx": 15,
+              "sy": 500,
+              "sz": 196
+            },
+            {
+              "x": 1164.5,
+              "y": 250.0,
+              "z": 499.0,
+              "sx": 15,
+              "sy": 500,
+              "sz": 196
+            }
+          ]
+        },
+        {
+          "name": "B01_c2_frente_caja",
+          "largo": 514,
+          "ancho": 196,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "capturado",
+          "justificacion": "Capturado entre los laterales (ancho_caja − 2T).",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": true,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 900.0,
+              "y": 7.5,
+              "z": 499.0,
+              "sx": 514,
+              "sy": 15,
+              "sz": 196
+            }
+          ]
+        },
+        {
+          "name": "B01_c2_trasera_caja",
+          "largo": 514,
+          "ancho": 196,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "capturado",
+          "justificacion": "Capturada entre los laterales.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": true,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 900.0,
+              "y": 492.5,
+              "z": 499.0,
+              "sx": 514,
+              "sy": 15,
+              "sz": 196
+            }
+          ]
+        },
+        {
+          "name": "B01_c2_fondo_caja",
+          "largo": 514,
+          "ancho": 470,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "fondo_caja",
+          "justificacion": "Tablero de 15mm ATRAPADO entre los cuatro lados de la caja: ni descansa debajo ni sobresale. Carga el contenido — un fondo de 3mm se pandea con peso.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 900.0,
+              "y": 250.0,
+              "z": 408.5,
+              "sx": 514,
+              "sy": 470,
+              "sz": 15
+            }
+          ]
+        },
+        {
+          "name": "B01_c2_frente",
+          "largo": 263,
+          "ancho": 597,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "LAC-ROSA-PASTEL-15",
+          "rol_estructural": "frente",
+          "justificacion": "Frente visible del cajón 2 (de abajo hacia arriba).",
+          "cantos": {
+            "frontal": true,
+            "trasero": true,
+            "superior": true,
+            "inferior": true
+          },
+          "veta": "vertical",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 900.0,
+              "y": -7.5,
+              "z": 497.5,
+              "sx": 597,
+              "sy": 15,
+              "sz": 263
+            }
+          ]
+        },
+        {
+          "name": "B01_c3_lateral_caja",
+          "largo": 500,
+          "ancho": 198,
+          "espesor": 15,
+          "cantidad": 2,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "lateral_caja",
+          "justificacion": "Corre COMPLETO: la corredera se atornilla a él en toda su longitud. Captura al frente de caja y a la trasera.",
+          "cantos": {
+            "frontal": true,
+            "trasero": false,
+            "superior": true,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 635.5,
+              "y": 250.0,
+              "z": 766.0,
+              "sx": 15,
+              "sy": 500,
+              "sz": 198
+            },
+            {
+              "x": 1164.5,
+              "y": 250.0,
+              "z": 766.0,
+              "sx": 15,
+              "sy": 500,
+              "sz": 198
+            }
+          ]
+        },
+        {
+          "name": "B01_c3_frente_caja",
+          "largo": 514,
+          "ancho": 198,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "capturado",
+          "justificacion": "Capturado entre los laterales (ancho_caja − 2T).",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": true,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 900.0,
+              "y": 7.5,
+              "z": 766.0,
+              "sx": 514,
+              "sy": 15,
+              "sz": 198
+            }
+          ]
+        },
+        {
+          "name": "B01_c3_trasera_caja",
+          "largo": 514,
+          "ancho": 198,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "capturado",
+          "justificacion": "Capturada entre los laterales.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": true,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 900.0,
+              "y": 492.5,
+              "z": 766.0,
+              "sx": 514,
+              "sy": 15,
+              "sz": 198
+            }
+          ]
+        },
+        {
+          "name": "B01_c3_fondo_caja",
+          "largo": 514,
+          "ancho": 470,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "fondo_caja",
+          "justificacion": "Tablero de 15mm ATRAPADO entre los cuatro lados de la caja: ni descansa debajo ni sobresale. Carga el contenido — un fondo de 3mm se pandea con peso.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 900.0,
+              "y": 250.0,
+              "z": 674.5,
+              "sx": 514,
+              "sy": 470,
+              "sz": 15
+            }
+          ]
+        },
+        {
+          "name": "B01_c3_frente",
+          "largo": 265,
+          "ancho": 597,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "LAC-ROSA-PASTEL-15",
+          "rol_estructural": "frente",
+          "justificacion": "Frente visible del cajón 3 (de abajo hacia arriba).",
+          "cantos": {
+            "frontal": true,
+            "trasero": true,
+            "superior": true,
+            "inferior": true
+          },
+          "veta": "vertical",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 900.0,
+              "y": -7.5,
+              "z": 764.5,
+              "sx": 597,
+              "sy": 15,
+              "sz": 265
+            }
+          ]
+        },
+        {
+          "name": "B01_jal_lazo_izq",
+          "largo": 56.0,
+          "ancho": 34.0,
+          "espesor": 18.0,
+          "cantidad": 3,
+          "material": "MET-ROSA-MONO",
+          "rol_estructural": "accesorio_jaladera",
+          "justificacion": "Jaladera tipo moño (bow) 128mm — se COMPRA (JAL-MONO-BOW). No entra al cutlist ni al costeo de tablero; se modela para el 3D, el AR y el render.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": true,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 863.0,
+              "y": -24.0,
+              "z": 231.5,
+              "sx": 56.0,
+              "sy": 18.0,
+              "sz": 34.0
+            },
+            {
+              "x": 863.0,
+              "y": -24.0,
+              "z": 497.5,
+              "sx": 56.0,
+              "sy": 18.0,
+              "sz": 34.0
+            },
+            {
+              "x": 863.0,
+              "y": -24.0,
+              "z": 764.5,
+              "sx": 56.0,
+              "sy": 18.0,
+              "sz": 34.0
+            }
+          ]
+        },
+        {
+          "name": "B01_jal_nudo",
+          "largo": 20.0,
+          "ancho": 22.0,
+          "espesor": 24.0,
+          "cantidad": 3,
+          "material": "MET-ROSA-MONO",
+          "rol_estructural": "accesorio_jaladera",
+          "justificacion": "Jaladera tipo moño (bow) 128mm — se COMPRA (JAL-MONO-BOW). No entra al cutlist ni al costeo de tablero; se modela para el 3D, el AR y el render.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": true,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 900.0,
+              "y": -27.0,
+              "z": 231.5,
+              "sx": 20.0,
+              "sy": 24.0,
+              "sz": 22.0
+            },
+            {
+              "x": 900.0,
+              "y": -27.0,
+              "z": 497.5,
+              "sx": 20.0,
+              "sy": 24.0,
+              "sz": 22.0
+            },
+            {
+              "x": 900.0,
+              "y": -27.0,
+              "z": 764.5,
+              "sx": 20.0,
+              "sy": 24.0,
+              "sz": 22.0
+            }
+          ]
+        },
+        {
+          "name": "B01_jal_lazo_der",
+          "largo": 56.0,
+          "ancho": 34.0,
+          "espesor": 18.0,
+          "cantidad": 3,
+          "material": "MET-ROSA-MONO",
+          "rol_estructural": "accesorio_jaladera",
+          "justificacion": "Jaladera tipo moño (bow) 128mm — se COMPRA (JAL-MONO-BOW). No entra al cutlist ni al costeo de tablero; se modela para el 3D, el AR y el render.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": true,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 937.0,
+              "y": -24.0,
+              "z": 231.5,
+              "sx": 56.0,
+              "sy": 18.0,
+              "sz": 34.0
+            },
+            {
+              "x": 937.0,
+              "y": -24.0,
+              "z": 497.5,
+              "sx": 56.0,
+              "sy": 18.0,
+              "sz": 34.0
+            },
+            {
+              "x": 937.0,
+              "y": -24.0,
+              "z": 764.5,
+              "sx": 56.0,
+              "sy": 18.0,
+              "sz": 34.0
+            }
+          ]
+        }
+      ],
+      "hardware": [
+        {
+          "sku": "COR-LAT-500",
+          "descripcion": "Corredera lateral extensión 500mm",
+          "cantidad": 1,
+          "unidad": "par"
+        },
+        {
+          "sku": "TOR-35X16",
+          "descripcion": "Tornillo 3.5x16 para corredera",
+          "cantidad": 12,
+          "unidad": "pza"
+        },
+        {
+          "sku": "COR-LAT-500",
+          "descripcion": "Corredera lateral extensión 500mm",
+          "cantidad": 1,
+          "unidad": "par"
+        },
+        {
+          "sku": "TOR-35X16",
+          "descripcion": "Tornillo 3.5x16 para corredera",
+          "cantidad": 12,
+          "unidad": "pza"
+        },
+        {
+          "sku": "COR-LAT-500",
+          "descripcion": "Corredera lateral extensión 500mm",
+          "cantidad": 1,
+          "unidad": "par"
+        },
+        {
+          "sku": "TOR-35X16",
+          "descripcion": "Tornillo 3.5x16 para corredera",
+          "cantidad": 12,
+          "unidad": "pza"
+        },
+        {
+          "sku": "PAT-NIV-100",
+          "descripcion": "Pata niveladora 100mm",
+          "cantidad": 4,
+          "unidad": "pza"
+        },
+        {
+          "sku": "UNI-MIN-15",
+          "descripcion": "Minifix + tarugo",
+          "cantidad": 8,
+          "unidad": "jgo"
+        },
+        {
+          "sku": "TOR-35X45",
+          "descripcion": "Tornillo 3.5x45",
+          "cantidad": 8,
+          "unidad": "pza"
+        },
+        {
+          "sku": "JAL-MONO-BOW",
+          "descripcion": "Jaladera tipo moño (bow) 128mm",
+          "cantidad": 3,
+          "unidad": "pza"
+        }
+      ],
+      "apertura": "jaladera",
+      "gola_sku": null,
+      "led": false,
+      "notas": [
+        "Apoyar los laterales SOBRE la base; atornillar desde abajo.",
+        "3 cajones con corredera 500mm (lateral), holgura 13mm por lado. Caja: 544mm de ancho.",
+        "Fondo de caja en tablero de 15mm ATRAPADO entre los cuatro lados, NO en MDF de 3mm: carga el contenido del cajón.",
+        "Encintar canto FRONTAL y SUPERIOR de los laterales; el trasero NO.",
+        "3 jaladera(s) jaladera tipo moño (bow) 128mm. En puertas va a 80mm del canto superior; en cajones, centrada. Perforar el frente ANTES de lacar."
+      ],
+      "flags": {
+        "cajones": [
+          {
+            "i": 1,
+            "z_frente": 100,
+            "alto_frente": 266,
+            "z_caja": 135.0,
+            "alto_caja": 196,
+            "ancho_caja": 544,
+            "corredera": 500
+          },
+          {
+            "i": 2,
+            "z_frente": 366,
+            "alto_frente": 266,
+            "z_caja": 401.0,
+            "alto_caja": 196,
+            "ancho_caja": 544,
+            "corredera": 500
+          },
+          {
+            "i": 3,
+            "z_frente": 632,
+            "alto_frente": 268,
+            "z_caja": 667.0,
+            "alto_caja": 198,
+            "ancho_caja": 544,
+            "corredera": 500
+          }
+        ],
+        "jaladeras": {
+          "sku": "JAL-MONO-BOW",
+          "silueta": "bow",
+          "offsets": {
+            "lazo_izq": -37.0,
+            "nudo": 0.0,
+            "lazo_der": 37.0
+          },
+          "retranqueo_superior": 80.0
+        }
+      }
+    },
+    {
+      "id": "B02",
+      "tipo": "base_tarja",
+      "ancho": 900,
+      "alto": 900,
+      "prof": 600,
+      "panels": [
+        {
+          "name": "B02_base",
+          "largo": 900,
+          "ancho": 600,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "base_portante",
+          "justificacion": "Corre a todo el ancho exterior. Los laterales se apoyan encima: la carga entra en compresión, el tornillo sólo alinea.",
+          "cantos": {
+            "frontal": true,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 1650.0,
+              "y": 300.0,
+              "z": 107.5,
+              "sx": 900,
+              "sy": 600,
+              "sz": 15
+            }
+          ]
+        },
+        {
+          "name": "B02_lateral",
+          "largo": 785,
+          "ancho": 600,
+          "espesor": 15,
+          "cantidad": 2,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "lateral_apoyado",
+          "justificacion": "Alto 785 = alto_cuerpo − espesor de base. DESCANSA sobre la base, no va capturado entre ella.",
+          "cantos": {
+            "frontal": true,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "vertical",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 1207.5,
+              "y": 300.0,
+              "z": 507.5,
+              "sx": 15,
+              "sy": 600,
+              "sz": 785
+            },
+            {
+              "x": 2092.5,
+              "y": 300.0,
+              "z": 507.5,
+              "sx": 15,
+              "sy": 600,
+              "sz": 785
+            }
+          ]
+        },
+        {
+          "name": "B02_ref_sup_frente",
+          "largo": 870,
+          "ancho": 80,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "refuerzo",
+          "justificacion": "Refuerzo superior frontal entre laterales.",
+          "cantos": {
+            "frontal": true,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 1650.0,
+              "y": 40.0,
+              "z": 892.5,
+              "sx": 870,
+              "sy": 80,
+              "sz": 15
+            }
+          ]
+        },
+        {
+          "name": "B02_ref_sup_trasero",
+          "largo": 870,
+          "ancho": 80,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "refuerzo",
+          "justificacion": "Refuerzo superior trasero entre laterales.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 1650.0,
+              "y": 560.0,
+              "z": 892.5,
+              "sx": 870,
+              "sy": 80,
+              "sz": 15
+            }
+          ]
+        },
+        {
+          "name": "B02_ref_post_inferior",
+          "largo": 870,
+          "ancho": 80,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "refuerzo",
+          "justificacion": "Refuerzo posterior inferior: rigidiza contra el paralelogramo.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 1650.0,
+              "y": 592.5,
+              "z": 155.0,
+              "sx": 870,
+              "sy": 15,
+              "sz": 80
+            }
+          ]
+        },
+        {
+          "name": "B02_fondo",
+          "largo": 900,
+          "ancho": 800,
+          "espesor": 3,
+          "cantidad": 1,
+          "material": "MDF-003-FON",
+          "rol_estructural": "fondo",
+          "justificacion": "Aplicado sobre el canto trasero cubriendo los refuerzos. Escuadra el mueble: atornillar sólo después de verificar diagonales iguales.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 1650.0,
+              "y": 601.5,
+              "z": 500.0,
+              "sx": 900,
+              "sy": 3,
+              "sz": 800
+            }
+          ]
+        },
+        {
+          "name": "B02_zoclo",
+          "largo": 900,
+          "ancho": 100,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "zoclo",
+          "justificacion": "Pieza independiente, retranqueada 60mm del frente.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": true,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 1650.0,
+              "y": 67.5,
+              "z": 50.0,
+              "sx": 900,
+              "sy": 15,
+              "sz": 100
+            }
+          ]
+        },
+        {
+          "name": "B02_puerta",
+          "largo": 797,
+          "ancho": 897,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "LAC-ROSA-PASTEL-15",
+          "rol_estructural": "frente",
+          "justificacion": "Bisagra recta. Apertura: jaladera.",
+          "cantos": {
+            "frontal": true,
+            "trasero": true,
+            "superior": true,
+            "inferior": true
+          },
+          "veta": "vertical",
+          "accesorio": false,
+          "drilling": [
+            {
+              "tipo": "cazoleta",
+              "diametro": 35,
+              "x": 21.5,
+              "y": 100.0,
+              "profundidad": 12.5,
+              "cara": "interior",
+              "nota": "centro de cazoleta a 21.5mm del canto"
+            },
+            {
+              "tipo": "cazoleta",
+              "diametro": 35,
+              "x": 21.5,
+              "y": 697.0,
+              "profundidad": 12.5,
+              "cara": "interior",
+              "nota": "centro de cazoleta a 21.5mm del canto"
+            }
+          ],
+          "colocacion": [
+            {
+              "x": 1650.0,
+              "y": -7.5,
+              "z": 501.5,
+              "sx": 897,
+              "sy": 15,
+              "sz": 797
+            }
+          ]
+        },
+        {
+          "name": "B02_tarja",
+          "largo": 600,
+          "ancho": 450,
+          "espesor": 200,
+          "cantidad": 1,
+          "material": "ACERO-INOX",
+          "rol_estructural": "accesorio_tarja",
+          "justificacion": "Tarja de referencia: se COMPRA, no se fabrica. No entra al cutlist ni al costeo; sirve para el render y para acotar el recorte de la cubierta.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": true,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 1650.0,
+              "y": 240.0,
+              "z": 800.0,
+              "sx": 600,
+              "sy": 450,
+              "sz": 200
+            }
+          ]
+        },
+        {
+          "name": "B02_jal_lazo_izq",
+          "largo": 56.0,
+          "ancho": 34.0,
+          "espesor": 18.0,
+          "cantidad": 1,
+          "material": "MET-ROSA-MONO",
+          "rol_estructural": "accesorio_jaladera",
+          "justificacion": "Jaladera tipo moño (bow) 128mm — se COMPRA (JAL-MONO-BOW). No entra al cutlist ni al costeo de tablero; se modela para el 3D, el AR y el render.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": true,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 1613.0,
+              "y": -24.0,
+              "z": 820.0,
+              "sx": 56.0,
+              "sy": 18.0,
+              "sz": 34.0
+            }
+          ]
+        },
+        {
+          "name": "B02_jal_nudo",
+          "largo": 20.0,
+          "ancho": 22.0,
+          "espesor": 24.0,
+          "cantidad": 1,
+          "material": "MET-ROSA-MONO",
+          "rol_estructural": "accesorio_jaladera",
+          "justificacion": "Jaladera tipo moño (bow) 128mm — se COMPRA (JAL-MONO-BOW). No entra al cutlist ni al costeo de tablero; se modela para el 3D, el AR y el render.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": true,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 1650.0,
+              "y": -27.0,
+              "z": 820.0,
+              "sx": 20.0,
+              "sy": 24.0,
+              "sz": 22.0
+            }
+          ]
+        },
+        {
+          "name": "B02_jal_lazo_der",
+          "largo": 56.0,
+          "ancho": 34.0,
+          "espesor": 18.0,
+          "cantidad": 1,
+          "material": "MET-ROSA-MONO",
+          "rol_estructural": "accesorio_jaladera",
+          "justificacion": "Jaladera tipo moño (bow) 128mm — se COMPRA (JAL-MONO-BOW). No entra al cutlist ni al costeo de tablero; se modela para el 3D, el AR y el render.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": true,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 1687.0,
+              "y": -24.0,
+              "z": 820.0,
+              "sx": 56.0,
+              "sy": 18.0,
+              "sz": 34.0
+            }
+          ]
+        }
+      ],
+      "hardware": [
+        {
+          "sku": "BIS-35-REC",
+          "descripcion": "Bisagra cazoleta 35mm recta (sobreposición total)",
+          "cantidad": 2,
+          "unidad": "pza"
+        },
+        {
+          "sku": "PAT-NIV-100",
+          "descripcion": "Pata niveladora 100mm",
+          "cantidad": 4,
+          "unidad": "pza"
+        },
+        {
+          "sku": "UNI-MIN-15",
+          "descripcion": "Minifix + tarugo",
+          "cantidad": 8,
+          "unidad": "jgo"
+        },
+        {
+          "sku": "TOR-35X45",
+          "descripcion": "Tornillo 3.5x45",
+          "cantidad": 8,
+          "unidad": "pza"
+        },
+        {
+          "sku": "JAL-MONO-BOW",
+          "descripcion": "Jaladera tipo moño (bow) 128mm",
+          "cantidad": 1,
+          "unidad": "pza"
+        }
+      ],
+      "apertura": "jaladera",
+      "gola_sku": null,
+      "led": false,
+      "notas": [
+        "Apoyar los laterales SOBRE la base; atornillar desde abajo.",
+        "Escuadrar contra el fondo (diagonales iguales) ANTES de fijarlo.",
+        "Módulo de tarja: sin entrepaño; refuerzos de 80mm para librar el tazón.",
+        "Tarja de 600×450mm, tazón de 200mm de profundidad. El recorte va en la CUBIERTA (nivel 900mm); coordinar plantilla con el proveedor de la piedra antes de cortar.",
+        "1 jaladera(s) jaladera tipo moño (bow) 128mm. En puertas va a 80mm del canto superior; en cajones, centrada. Perforar el frente ANTES de lacar."
+      ],
+      "flags": {
+        "requiere_recorte_cubierta": true,
+        "tarja": {
+          "ancho": 600,
+          "fondo": 450,
+          "profundidad": 200
+        },
+        "jaladeras": {
+          "sku": "JAL-MONO-BOW",
+          "silueta": "bow",
+          "offsets": {
+            "lazo_izq": -37.0,
+            "nudo": 0.0,
+            "lazo_der": 37.0
+          },
+          "retranqueo_superior": 80.0
+        }
+      }
+    },
+    {
+      "id": "B03",
+      "tipo": "base",
+      "ancho": 600,
+      "alto": 900,
+      "prof": 600,
+      "panels": [
+        {
+          "name": "B03_base",
+          "largo": 600,
+          "ancho": 600,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "base_portante",
+          "justificacion": "Corre a todo el ancho exterior. Los laterales se apoyan encima: la carga entra en compresión, el tornillo sólo alinea.",
+          "cantos": {
+            "frontal": true,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 2400.0,
+              "y": 300.0,
+              "z": 107.5,
+              "sx": 600,
+              "sy": 600,
+              "sz": 15
+            }
+          ]
+        },
+        {
+          "name": "B03_lateral",
+          "largo": 785,
+          "ancho": 600,
+          "espesor": 15,
+          "cantidad": 2,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "lateral_apoyado",
+          "justificacion": "Alto 785 = alto_cuerpo − espesor de base. DESCANSA sobre la base, no va capturado entre ella.",
+          "cantos": {
+            "frontal": true,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "vertical",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 2107.5,
+              "y": 300.0,
+              "z": 507.5,
+              "sx": 15,
+              "sy": 600,
+              "sz": 785
+            },
+            {
+              "x": 2692.5,
+              "y": 300.0,
+              "z": 507.5,
+              "sx": 15,
+              "sy": 600,
+              "sz": 785
+            }
+          ]
+        },
+        {
+          "name": "B03_ref_sup_frente",
+          "largo": 570,
+          "ancho": 100,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "refuerzo",
+          "justificacion": "Refuerzo superior frontal entre laterales.",
+          "cantos": {
+            "frontal": true,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 2400.0,
+              "y": 50.0,
+              "z": 892.5,
+              "sx": 570,
+              "sy": 100,
+              "sz": 15
+            }
+          ]
+        },
+        {
+          "name": "B03_ref_sup_trasero",
+          "largo": 570,
+          "ancho": 100,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "refuerzo",
+          "justificacion": "Refuerzo superior trasero entre laterales.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 2400.0,
+              "y": 550.0,
+              "z": 892.5,
+              "sx": 570,
+              "sy": 100,
+              "sz": 15
+            }
+          ]
+        },
+        {
+          "name": "B03_ref_post_inferior",
+          "largo": 570,
+          "ancho": 100,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "refuerzo",
+          "justificacion": "Refuerzo posterior inferior: rigidiza contra el paralelogramo.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 2400.0,
+              "y": 592.5,
+              "z": 165.0,
+              "sx": 570,
+              "sy": 15,
+              "sz": 100
+            }
+          ]
+        },
+        {
+          "name": "B03_fondo",
+          "largo": 600,
+          "ancho": 800,
+          "espesor": 3,
+          "cantidad": 1,
+          "material": "MDF-003-FON",
+          "rol_estructural": "fondo",
+          "justificacion": "Aplicado sobre el canto trasero cubriendo los refuerzos. Escuadra el mueble: atornillar sólo después de verificar diagonales iguales.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 2400.0,
+              "y": 601.5,
+              "z": 500.0,
+              "sx": 600,
+              "sy": 3,
+              "sz": 800
+            }
+          ]
+        },
+        {
+          "name": "B03_entrepano",
+          "largo": 568,
+          "ancho": 580,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "entrepano_movil",
+          "justificacion": "Entrepaño móvil sobre soportes del sistema 32.",
+          "cantos": {
+            "frontal": true,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 2400.0,
+              "y": 310.0,
+              "z": 500.0,
+              "sx": 568,
+              "sy": 580,
+              "sz": 15
+            }
+          ]
+        },
+        {
+          "name": "B03_zoclo",
+          "largo": 600,
+          "ancho": 100,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "zoclo",
+          "justificacion": "Pieza independiente, retranqueada 60mm del frente.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": true,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 2400.0,
+              "y": 67.5,
+              "z": 50.0,
+              "sx": 600,
+              "sy": 15,
+              "sz": 100
+            }
+          ]
+        },
+        {
+          "name": "B03_puerta",
+          "largo": 797,
+          "ancho": 597,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "LAC-ROSA-PASTEL-15",
+          "rol_estructural": "frente",
+          "justificacion": "Bisagra recta. Apertura: jaladera.",
+          "cantos": {
+            "frontal": true,
+            "trasero": true,
+            "superior": true,
+            "inferior": true
+          },
+          "veta": "vertical",
+          "accesorio": false,
+          "drilling": [
+            {
+              "tipo": "cazoleta",
+              "diametro": 35,
+              "x": 21.5,
+              "y": 100.0,
+              "profundidad": 12.5,
+              "cara": "interior",
+              "nota": "centro de cazoleta a 21.5mm del canto"
+            },
+            {
+              "tipo": "cazoleta",
+              "diametro": 35,
+              "x": 21.5,
+              "y": 697.0,
+              "profundidad": 12.5,
+              "cara": "interior",
+              "nota": "centro de cazoleta a 21.5mm del canto"
+            }
+          ],
+          "colocacion": [
+            {
+              "x": 2400.0,
+              "y": -7.5,
+              "z": 501.5,
+              "sx": 597,
+              "sy": 15,
+              "sz": 797
+            }
+          ]
+        },
+        {
+          "name": "B03_jal_lazo_izq",
+          "largo": 56.0,
+          "ancho": 34.0,
+          "espesor": 18.0,
+          "cantidad": 1,
+          "material": "MET-ROSA-MONO",
+          "rol_estructural": "accesorio_jaladera",
+          "justificacion": "Jaladera tipo moño (bow) 128mm — se COMPRA (JAL-MONO-BOW). No entra al cutlist ni al costeo de tablero; se modela para el 3D, el AR y el render.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": true,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 2363.0,
+              "y": -24.0,
+              "z": 820.0,
+              "sx": 56.0,
+              "sy": 18.0,
+              "sz": 34.0
+            }
+          ]
+        },
+        {
+          "name": "B03_jal_nudo",
+          "largo": 20.0,
+          "ancho": 22.0,
+          "espesor": 24.0,
+          "cantidad": 1,
+          "material": "MET-ROSA-MONO",
+          "rol_estructural": "accesorio_jaladera",
+          "justificacion": "Jaladera tipo moño (bow) 128mm — se COMPRA (JAL-MONO-BOW). No entra al cutlist ni al costeo de tablero; se modela para el 3D, el AR y el render.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": true,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 2400.0,
+              "y": -27.0,
+              "z": 820.0,
+              "sx": 20.0,
+              "sy": 24.0,
+              "sz": 22.0
+            }
+          ]
+        },
+        {
+          "name": "B03_jal_lazo_der",
+          "largo": 56.0,
+          "ancho": 34.0,
+          "espesor": 18.0,
+          "cantidad": 1,
+          "material": "MET-ROSA-MONO",
+          "rol_estructural": "accesorio_jaladera",
+          "justificacion": "Jaladera tipo moño (bow) 128mm — se COMPRA (JAL-MONO-BOW). No entra al cutlist ni al costeo de tablero; se modela para el 3D, el AR y el render.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": true,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 2437.0,
+              "y": -24.0,
+              "z": 820.0,
+              "sx": 56.0,
+              "sy": 18.0,
+              "sz": 34.0
+            }
+          ]
+        }
+      ],
+      "hardware": [
+        {
+          "sku": "BIS-35-REC",
+          "descripcion": "Bisagra cazoleta 35mm recta (sobreposición total)",
+          "cantidad": 2,
+          "unidad": "pza"
+        },
+        {
+          "sku": "PAT-NIV-100",
+          "descripcion": "Pata niveladora 100mm",
+          "cantidad": 4,
+          "unidad": "pza"
+        },
+        {
+          "sku": "UNI-MIN-15",
+          "descripcion": "Minifix + tarugo",
+          "cantidad": 8,
+          "unidad": "jgo"
+        },
+        {
+          "sku": "TOR-35X45",
+          "descripcion": "Tornillo 3.5x45",
+          "cantidad": 8,
+          "unidad": "pza"
+        },
+        {
+          "sku": "JAL-MONO-BOW",
+          "descripcion": "Jaladera tipo moño (bow) 128mm",
+          "cantidad": 1,
+          "unidad": "pza"
+        }
+      ],
+      "apertura": "jaladera",
+      "gola_sku": null,
+      "led": false,
+      "notas": [
+        "Apoyar los laterales SOBRE la base; atornillar desde abajo.",
+        "Escuadrar contra el fondo (diagonales iguales) ANTES de fijarlo.",
+        "1 jaladera(s) jaladera tipo moño (bow) 128mm. En puertas va a 80mm del canto superior; en cajones, centrada. Perforar el frente ANTES de lacar."
+      ],
+      "flags": {
+        "jaladeras": {
+          "sku": "JAL-MONO-BOW",
+          "silueta": "bow",
+          "offsets": {
+            "lazo_izq": -37.0,
+            "nudo": 0.0,
+            "lazo_der": 37.0
+          },
+          "retranqueo_superior": 80.0
+        }
+      }
+    },
+    {
+      "id": "A01",
+      "tipo": "superior",
+      "ancho": 600,
+      "alto": 750,
+      "prof": 350,
+      "panels": [
+        {
+          "name": "A01_lateral",
+          "largo": 750,
+          "ancho": 350,
+          "espesor": 15,
+          "cantidad": 2,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "lateral_portante",
+          "justificacion": "Corre a altura COMPLETA. El mueble cuelga: el techo y el piso van capturados entre los laterales para que el tornillo trabaje a cortante y no a extracción en canto de aglomerado.",
+          "cantos": {
+            "frontal": true,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "vertical",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 607.5,
+              "y": 425.0,
+              "z": 1875.0,
+              "sx": 15,
+              "sy": 350,
+              "sz": 750
+            },
+            {
+              "x": 1192.5,
+              "y": 425.0,
+              "z": 1875.0,
+              "sx": 15,
+              "sy": 350,
+              "sz": 750
+            }
+          ]
+        },
+        {
+          "name": "A01_techo",
+          "largo": 570,
+          "ancho": 350,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "capturado",
+          "justificacion": "Capturado entre laterales (ancho − 2T).",
+          "cantos": {
+            "frontal": true,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 900.0,
+              "y": 425.0,
+              "z": 2242.5,
+              "sx": 570,
+              "sy": 350,
+              "sz": 15
+            }
+          ]
+        },
+        {
+          "name": "A01_piso",
+          "largo": 570,
+          "ancho": 350,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "capturado",
+          "justificacion": "Capturado entre laterales. Recibe la carga del contenido.",
+          "cantos": {
+            "frontal": true,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 900.0,
+              "y": 425.0,
+              "z": 1507.5,
+              "sx": 570,
+              "sy": 350,
+              "sz": 15
+            }
+          ]
+        },
+        {
+          "name": "A01_riel_colgador",
+          "largo": 570,
+          "ancho": 120,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "riel_colgador",
+          "justificacion": "Posterior superior: AQUÍ van los tornillos de fijación al muro.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 900.0,
+              "y": 592.5,
+              "z": 2175.0,
+              "sx": 570,
+              "sy": 15,
+              "sz": 120
+            }
+          ]
+        },
+        {
+          "name": "A01_fondo",
+          "largo": 600,
+          "ancho": 750,
+          "espesor": 3,
+          "cantidad": 1,
+          "material": "MDF-003-FON",
+          "rol_estructural": "fondo",
+          "justificacion": "Aplicado sobre el canto trasero cubriendo los refuerzos. Escuadra el mueble: atornillar sólo después de verificar diagonales iguales.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 900.0,
+              "y": 601.5,
+              "z": 1875.0,
+              "sx": 600,
+              "sy": 3,
+              "sz": 750
+            }
+          ]
+        },
+        {
+          "name": "A01_entrepano",
+          "largo": 568,
+          "ancho": 330,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "entrepano_movil",
+          "justificacion": "Entrepaño móvil sobre soportes del sistema 32.",
+          "cantos": {
+            "frontal": true,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 900.0,
+              "y": 435.0,
+              "z": 1875.0,
+              "sx": 568,
+              "sy": 330,
+              "sz": 15
+            }
+          ]
+        },
+        {
+          "name": "A01_puerta",
+          "largo": 747,
+          "ancho": 597,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "LAC-ROSA-PASTEL-15",
+          "rol_estructural": "frente",
+          "justificacion": "Bisagra recta.",
+          "cantos": {
+            "frontal": true,
+            "trasero": true,
+            "superior": true,
+            "inferior": true
+          },
+          "veta": "vertical",
+          "accesorio": false,
+          "drilling": [
+            {
+              "tipo": "cazoleta",
+              "diametro": 35,
+              "x": 21.5,
+              "y": 100.0,
+              "profundidad": 12.5,
+              "cara": "interior",
+              "nota": "centro de cazoleta a 21.5mm del canto"
+            },
+            {
+              "tipo": "cazoleta",
+              "diametro": 35,
+              "x": 21.5,
+              "y": 647.0,
+              "profundidad": 12.5,
+              "cara": "interior",
+              "nota": "centro de cazoleta a 21.5mm del canto"
+            }
+          ],
+          "colocacion": [
+            {
+              "x": 900.0,
+              "y": 242.5,
+              "z": 1876.5,
+              "sx": 597,
+              "sy": 15,
+              "sz": 747
+            }
+          ]
+        },
+        {
+          "name": "A01_jal_lazo_izq",
+          "largo": 56.0,
+          "ancho": 34.0,
+          "espesor": 18.0,
+          "cantidad": 1,
+          "material": "MET-ROSA-MONO",
+          "rol_estructural": "accesorio_jaladera",
+          "justificacion": "Jaladera tipo moño (bow) 128mm — se COMPRA (JAL-MONO-BOW). No entra al cutlist ni al costeo de tablero; se modela para el 3D, el AR y el render.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": true,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 863.0,
+              "y": 226.0,
+              "z": 2170.0,
+              "sx": 56.0,
+              "sy": 18.0,
+              "sz": 34.0
+            }
+          ]
+        },
+        {
+          "name": "A01_jal_nudo",
+          "largo": 20.0,
+          "ancho": 22.0,
+          "espesor": 24.0,
+          "cantidad": 1,
+          "material": "MET-ROSA-MONO",
+          "rol_estructural": "accesorio_jaladera",
+          "justificacion": "Jaladera tipo moño (bow) 128mm — se COMPRA (JAL-MONO-BOW). No entra al cutlist ni al costeo de tablero; se modela para el 3D, el AR y el render.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": true,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 900.0,
+              "y": 223.0,
+              "z": 2170.0,
+              "sx": 20.0,
+              "sy": 24.0,
+              "sz": 22.0
+            }
+          ]
+        },
+        {
+          "name": "A01_jal_lazo_der",
+          "largo": 56.0,
+          "ancho": 34.0,
+          "espesor": 18.0,
+          "cantidad": 1,
+          "material": "MET-ROSA-MONO",
+          "rol_estructural": "accesorio_jaladera",
+          "justificacion": "Jaladera tipo moño (bow) 128mm — se COMPRA (JAL-MONO-BOW). No entra al cutlist ni al costeo de tablero; se modela para el 3D, el AR y el render.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": true,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 937.0,
+              "y": 226.0,
+              "z": 2170.0,
+              "sx": 56.0,
+              "sy": 18.0,
+              "sz": 34.0
+            }
+          ]
+        }
+      ],
+      "hardware": [
+        {
+          "sku": "BIS-35-REC",
+          "descripcion": "Bisagra cazoleta 35mm recta (sobreposición total)",
+          "cantidad": 2,
+          "unidad": "pza"
+        },
+        {
+          "sku": "UNI-MIN-15",
+          "descripcion": "Minifix + tarugo",
+          "cantidad": 8,
+          "unidad": "jgo"
+        },
+        {
+          "sku": "TOR-35X45",
+          "descripcion": "Tornillo 3.5x45",
+          "cantidad": 8,
+          "unidad": "pza"
+        },
+        {
+          "sku": "JAL-MONO-BOW",
+          "descripcion": "Jaladera tipo moño (bow) 128mm",
+          "cantidad": 1,
+          "unidad": "pza"
+        }
+      ],
+      "apertura": "jaladera",
+      "gola_sku": null,
+      "led": true,
+      "notas": [
+        "Techo y piso CAPTURADOS entre laterales: el tornillo trabaja a cortante.",
+        "Fijar al muro por el riel colgador posterior superior.",
+        "1 jaladera(s) jaladera tipo moño (bow) 128mm. En puertas va a 80mm del canto superior; en cajones, centrada. Perforar el frente ANTES de lacar."
+      ],
+      "flags": {
+        "jaladeras": {
+          "sku": "JAL-MONO-BOW",
+          "silueta": "bow",
+          "offsets": {
+            "lazo_izq": -37.0,
+            "nudo": 0.0,
+            "lazo_der": 37.0
+          },
+          "retranqueo_superior": 80.0
+        }
+      }
+    },
+    {
+      "id": "A02",
+      "tipo": "superior",
+      "ancho": 900,
+      "alto": 750,
+      "prof": 350,
+      "panels": [
+        {
+          "name": "A02_lateral",
+          "largo": 750,
+          "ancho": 350,
+          "espesor": 15,
+          "cantidad": 2,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "lateral_portante",
+          "justificacion": "Corre a altura COMPLETA. El mueble cuelga: el techo y el piso van capturados entre los laterales para que el tornillo trabaje a cortante y no a extracción en canto de aglomerado.",
+          "cantos": {
+            "frontal": true,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "vertical",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 1207.5,
+              "y": 425.0,
+              "z": 1875.0,
+              "sx": 15,
+              "sy": 350,
+              "sz": 750
+            },
+            {
+              "x": 2092.5,
+              "y": 425.0,
+              "z": 1875.0,
+              "sx": 15,
+              "sy": 350,
+              "sz": 750
+            }
+          ]
+        },
+        {
+          "name": "A02_techo",
+          "largo": 870,
+          "ancho": 350,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "capturado",
+          "justificacion": "Capturado entre laterales (ancho − 2T).",
+          "cantos": {
+            "frontal": true,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 1650.0,
+              "y": 425.0,
+              "z": 2242.5,
+              "sx": 870,
+              "sy": 350,
+              "sz": 15
+            }
+          ]
+        },
+        {
+          "name": "A02_piso",
+          "largo": 870,
+          "ancho": 350,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "capturado",
+          "justificacion": "Capturado entre laterales. Recibe la carga del contenido.",
+          "cantos": {
+            "frontal": true,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 1650.0,
+              "y": 425.0,
+              "z": 1507.5,
+              "sx": 870,
+              "sy": 350,
+              "sz": 15
+            }
+          ]
+        },
+        {
+          "name": "A02_riel_colgador",
+          "largo": 870,
+          "ancho": 120,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "riel_colgador",
+          "justificacion": "Posterior superior: AQUÍ van los tornillos de fijación al muro.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 1650.0,
+              "y": 592.5,
+              "z": 2175.0,
+              "sx": 870,
+              "sy": 15,
+              "sz": 120
+            }
+          ]
+        },
+        {
+          "name": "A02_fondo",
+          "largo": 900,
+          "ancho": 750,
+          "espesor": 3,
+          "cantidad": 1,
+          "material": "MDF-003-FON",
+          "rol_estructural": "fondo",
+          "justificacion": "Aplicado sobre el canto trasero cubriendo los refuerzos. Escuadra el mueble: atornillar sólo después de verificar diagonales iguales.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 1650.0,
+              "y": 601.5,
+              "z": 1875.0,
+              "sx": 900,
+              "sy": 3,
+              "sz": 750
+            }
+          ]
+        },
+        {
+          "name": "A02_entrepano",
+          "largo": 868,
+          "ancho": 330,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "entrepano_movil",
+          "justificacion": "Entrepaño móvil sobre soportes del sistema 32.",
+          "cantos": {
+            "frontal": true,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 1650.0,
+              "y": 435.0,
+              "z": 1875.0,
+              "sx": 868,
+              "sy": 330,
+              "sz": 15
+            }
+          ]
+        },
+        {
+          "name": "A02_puerta",
+          "largo": 747,
+          "ancho": 897,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "LAC-ROSA-PASTEL-15",
+          "rol_estructural": "frente",
+          "justificacion": "Bisagra recta.",
+          "cantos": {
+            "frontal": true,
+            "trasero": true,
+            "superior": true,
+            "inferior": true
+          },
+          "veta": "vertical",
+          "accesorio": false,
+          "drilling": [
+            {
+              "tipo": "cazoleta",
+              "diametro": 35,
+              "x": 21.5,
+              "y": 100.0,
+              "profundidad": 12.5,
+              "cara": "interior",
+              "nota": "centro de cazoleta a 21.5mm del canto"
+            },
+            {
+              "tipo": "cazoleta",
+              "diametro": 35,
+              "x": 21.5,
+              "y": 647.0,
+              "profundidad": 12.5,
+              "cara": "interior",
+              "nota": "centro de cazoleta a 21.5mm del canto"
+            }
+          ],
+          "colocacion": [
+            {
+              "x": 1650.0,
+              "y": 242.5,
+              "z": 1876.5,
+              "sx": 897,
+              "sy": 15,
+              "sz": 747
+            }
+          ]
+        },
+        {
+          "name": "A02_jal_lazo_izq",
+          "largo": 56.0,
+          "ancho": 34.0,
+          "espesor": 18.0,
+          "cantidad": 1,
+          "material": "MET-ROSA-MONO",
+          "rol_estructural": "accesorio_jaladera",
+          "justificacion": "Jaladera tipo moño (bow) 128mm — se COMPRA (JAL-MONO-BOW). No entra al cutlist ni al costeo de tablero; se modela para el 3D, el AR y el render.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": true,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 1613.0,
+              "y": 226.0,
+              "z": 2170.0,
+              "sx": 56.0,
+              "sy": 18.0,
+              "sz": 34.0
+            }
+          ]
+        },
+        {
+          "name": "A02_jal_nudo",
+          "largo": 20.0,
+          "ancho": 22.0,
+          "espesor": 24.0,
+          "cantidad": 1,
+          "material": "MET-ROSA-MONO",
+          "rol_estructural": "accesorio_jaladera",
+          "justificacion": "Jaladera tipo moño (bow) 128mm — se COMPRA (JAL-MONO-BOW). No entra al cutlist ni al costeo de tablero; se modela para el 3D, el AR y el render.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": true,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 1650.0,
+              "y": 223.0,
+              "z": 2170.0,
+              "sx": 20.0,
+              "sy": 24.0,
+              "sz": 22.0
+            }
+          ]
+        },
+        {
+          "name": "A02_jal_lazo_der",
+          "largo": 56.0,
+          "ancho": 34.0,
+          "espesor": 18.0,
+          "cantidad": 1,
+          "material": "MET-ROSA-MONO",
+          "rol_estructural": "accesorio_jaladera",
+          "justificacion": "Jaladera tipo moño (bow) 128mm — se COMPRA (JAL-MONO-BOW). No entra al cutlist ni al costeo de tablero; se modela para el 3D, el AR y el render.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": true,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 1687.0,
+              "y": 226.0,
+              "z": 2170.0,
+              "sx": 56.0,
+              "sy": 18.0,
+              "sz": 34.0
+            }
+          ]
+        }
+      ],
+      "hardware": [
+        {
+          "sku": "BIS-35-REC",
+          "descripcion": "Bisagra cazoleta 35mm recta (sobreposición total)",
+          "cantidad": 2,
+          "unidad": "pza"
+        },
+        {
+          "sku": "UNI-MIN-15",
+          "descripcion": "Minifix + tarugo",
+          "cantidad": 8,
+          "unidad": "jgo"
+        },
+        {
+          "sku": "TOR-35X45",
+          "descripcion": "Tornillo 3.5x45",
+          "cantidad": 8,
+          "unidad": "pza"
+        },
+        {
+          "sku": "JAL-MONO-BOW",
+          "descripcion": "Jaladera tipo moño (bow) 128mm",
+          "cantidad": 1,
+          "unidad": "pza"
+        }
+      ],
+      "apertura": "jaladera",
+      "gola_sku": null,
+      "led": true,
+      "notas": [
+        "Techo y piso CAPTURADOS entre laterales: el tornillo trabaja a cortante.",
+        "Fijar al muro por el riel colgador posterior superior.",
+        "1 jaladera(s) jaladera tipo moño (bow) 128mm. En puertas va a 80mm del canto superior; en cajones, centrada. Perforar el frente ANTES de lacar."
+      ],
+      "flags": {
+        "jaladeras": {
+          "sku": "JAL-MONO-BOW",
+          "silueta": "bow",
+          "offsets": {
+            "lazo_izq": -37.0,
+            "nudo": 0.0,
+            "lazo_der": 37.0
+          },
+          "retranqueo_superior": 80.0
+        }
+      }
+    },
+    {
+      "id": "A03",
+      "tipo": "superior",
+      "ancho": 600,
+      "alto": 750,
+      "prof": 350,
+      "panels": [
+        {
+          "name": "A03_lateral",
+          "largo": 750,
+          "ancho": 350,
+          "espesor": 15,
+          "cantidad": 2,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "lateral_portante",
+          "justificacion": "Corre a altura COMPLETA. El mueble cuelga: el techo y el piso van capturados entre los laterales para que el tornillo trabaje a cortante y no a extracción en canto de aglomerado.",
+          "cantos": {
+            "frontal": true,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "vertical",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 2107.5,
+              "y": 425.0,
+              "z": 1875.0,
+              "sx": 15,
+              "sy": 350,
+              "sz": 750
+            },
+            {
+              "x": 2692.5,
+              "y": 425.0,
+              "z": 1875.0,
+              "sx": 15,
+              "sy": 350,
+              "sz": 750
+            }
+          ]
+        },
+        {
+          "name": "A03_techo",
+          "largo": 570,
+          "ancho": 350,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "capturado",
+          "justificacion": "Capturado entre laterales (ancho − 2T).",
+          "cantos": {
+            "frontal": true,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 2400.0,
+              "y": 425.0,
+              "z": 2242.5,
+              "sx": 570,
+              "sy": 350,
+              "sz": 15
+            }
+          ]
+        },
+        {
+          "name": "A03_piso",
+          "largo": 570,
+          "ancho": 350,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "capturado",
+          "justificacion": "Capturado entre laterales. Recibe la carga del contenido.",
+          "cantos": {
+            "frontal": true,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 2400.0,
+              "y": 425.0,
+              "z": 1507.5,
+              "sx": 570,
+              "sy": 350,
+              "sz": 15
+            }
+          ]
+        },
+        {
+          "name": "A03_riel_colgador",
+          "largo": 570,
+          "ancho": 120,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "riel_colgador",
+          "justificacion": "Posterior superior: AQUÍ van los tornillos de fijación al muro.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 2400.0,
+              "y": 592.5,
+              "z": 2175.0,
+              "sx": 570,
+              "sy": 15,
+              "sz": 120
+            }
+          ]
+        },
+        {
+          "name": "A03_fondo",
+          "largo": 600,
+          "ancho": 750,
+          "espesor": 3,
+          "cantidad": 1,
+          "material": "MDF-003-FON",
+          "rol_estructural": "fondo",
+          "justificacion": "Aplicado sobre el canto trasero cubriendo los refuerzos. Escuadra el mueble: atornillar sólo después de verificar diagonales iguales.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 2400.0,
+              "y": 601.5,
+              "z": 1875.0,
+              "sx": 600,
+              "sy": 3,
+              "sz": 750
+            }
+          ]
+        },
+        {
+          "name": "A03_entrepano",
+          "largo": 568,
+          "ancho": 330,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "entrepano_movil",
+          "justificacion": "Entrepaño móvil sobre soportes del sistema 32.",
+          "cantos": {
+            "frontal": true,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 2400.0,
+              "y": 435.0,
+              "z": 1875.0,
+              "sx": 568,
+              "sy": 330,
+              "sz": 15
+            }
+          ]
+        },
+        {
+          "name": "A03_puerta",
+          "largo": 747,
+          "ancho": 597,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "LAC-ROSA-PASTEL-15",
+          "rol_estructural": "frente",
+          "justificacion": "Bisagra recta.",
+          "cantos": {
+            "frontal": true,
+            "trasero": true,
+            "superior": true,
+            "inferior": true
+          },
+          "veta": "vertical",
+          "accesorio": false,
+          "drilling": [
+            {
+              "tipo": "cazoleta",
+              "diametro": 35,
+              "x": 21.5,
+              "y": 100.0,
+              "profundidad": 12.5,
+              "cara": "interior",
+              "nota": "centro de cazoleta a 21.5mm del canto"
+            },
+            {
+              "tipo": "cazoleta",
+              "diametro": 35,
+              "x": 21.5,
+              "y": 647.0,
+              "profundidad": 12.5,
+              "cara": "interior",
+              "nota": "centro de cazoleta a 21.5mm del canto"
+            }
+          ],
+          "colocacion": [
+            {
+              "x": 2400.0,
+              "y": 242.5,
+              "z": 1876.5,
+              "sx": 597,
+              "sy": 15,
+              "sz": 747
+            }
+          ]
+        },
+        {
+          "name": "A03_jal_lazo_izq",
+          "largo": 56.0,
+          "ancho": 34.0,
+          "espesor": 18.0,
+          "cantidad": 1,
+          "material": "MET-ROSA-MONO",
+          "rol_estructural": "accesorio_jaladera",
+          "justificacion": "Jaladera tipo moño (bow) 128mm — se COMPRA (JAL-MONO-BOW). No entra al cutlist ni al costeo de tablero; se modela para el 3D, el AR y el render.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": true,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 2363.0,
+              "y": 226.0,
+              "z": 2170.0,
+              "sx": 56.0,
+              "sy": 18.0,
+              "sz": 34.0
+            }
+          ]
+        },
+        {
+          "name": "A03_jal_nudo",
+          "largo": 20.0,
+          "ancho": 22.0,
+          "espesor": 24.0,
+          "cantidad": 1,
+          "material": "MET-ROSA-MONO",
+          "rol_estructural": "accesorio_jaladera",
+          "justificacion": "Jaladera tipo moño (bow) 128mm — se COMPRA (JAL-MONO-BOW). No entra al cutlist ni al costeo de tablero; se modela para el 3D, el AR y el render.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": true,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 2400.0,
+              "y": 223.0,
+              "z": 2170.0,
+              "sx": 20.0,
+              "sy": 24.0,
+              "sz": 22.0
+            }
+          ]
+        },
+        {
+          "name": "A03_jal_lazo_der",
+          "largo": 56.0,
+          "ancho": 34.0,
+          "espesor": 18.0,
+          "cantidad": 1,
+          "material": "MET-ROSA-MONO",
+          "rol_estructural": "accesorio_jaladera",
+          "justificacion": "Jaladera tipo moño (bow) 128mm — se COMPRA (JAL-MONO-BOW). No entra al cutlist ni al costeo de tablero; se modela para el 3D, el AR y el render.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": true,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 2437.0,
+              "y": 226.0,
+              "z": 2170.0,
+              "sx": 56.0,
+              "sy": 18.0,
+              "sz": 34.0
+            }
+          ]
+        }
+      ],
+      "hardware": [
+        {
+          "sku": "BIS-35-REC",
+          "descripcion": "Bisagra cazoleta 35mm recta (sobreposición total)",
+          "cantidad": 2,
+          "unidad": "pza"
+        },
+        {
+          "sku": "UNI-MIN-15",
+          "descripcion": "Minifix + tarugo",
+          "cantidad": 8,
+          "unidad": "jgo"
+        },
+        {
+          "sku": "TOR-35X45",
+          "descripcion": "Tornillo 3.5x45",
+          "cantidad": 8,
+          "unidad": "pza"
+        },
+        {
+          "sku": "JAL-MONO-BOW",
+          "descripcion": "Jaladera tipo moño (bow) 128mm",
+          "cantidad": 1,
+          "unidad": "pza"
+        }
+      ],
+      "apertura": "jaladera",
+      "gola_sku": null,
+      "led": true,
+      "notas": [
+        "Techo y piso CAPTURADOS entre laterales: el tornillo trabaja a cortante.",
+        "Fijar al muro por el riel colgador posterior superior.",
+        "1 jaladera(s) jaladera tipo moño (bow) 128mm. En puertas va a 80mm del canto superior; en cajones, centrada. Perforar el frente ANTES de lacar."
+      ],
+      "flags": {
+        "jaladeras": {
+          "sku": "JAL-MONO-BOW",
+          "silueta": "bow",
+          "offsets": {
+            "lazo_izq": -37.0,
+            "nudo": 0.0,
+            "lazo_der": 37.0
+          },
+          "retranqueo_superior": 80.0
+        }
+      }
+    },
+    {
+      "id": "B04",
+      "tipo": "base",
+      "ancho": 600,
+      "alto": 900,
+      "prof": 600,
+      "panels": [
+        {
+          "name": "B04_base",
+          "largo": 600,
+          "ancho": 600,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "base_portante",
+          "justificacion": "Corre a todo el ancho exterior. Los laterales se apoyan encima: la carga entra en compresión, el tornillo sólo alinea.",
+          "cantos": {
+            "frontal": true,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 2400.0,
+              "y": -350.0,
+              "z": 107.5,
+              "sx": 600,
+              "sy": 600,
+              "sz": 15,
+              "rz": -90.0
+            }
+          ]
+        },
+        {
+          "name": "B04_lateral",
+          "largo": 785,
+          "ancho": 600,
+          "espesor": 15,
+          "cantidad": 2,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "lateral_apoyado",
+          "justificacion": "Alto 785 = alto_cuerpo − espesor de base. DESCANSA sobre la base, no va capturado entre ella.",
+          "cantos": {
+            "frontal": true,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "vertical",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 2400.0,
+              "y": -57.5,
+              "z": 507.5,
+              "sx": 15,
+              "sy": 600,
+              "sz": 785,
+              "rz": -90.0
+            },
+            {
+              "x": 2400.0,
+              "y": -642.5,
+              "z": 507.5,
+              "sx": 15,
+              "sy": 600,
+              "sz": 785,
+              "rz": -90.0
+            }
+          ]
+        },
+        {
+          "name": "B04_ref_sup_frente",
+          "largo": 570,
+          "ancho": 100,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "refuerzo",
+          "justificacion": "Refuerzo superior frontal entre laterales.",
+          "cantos": {
+            "frontal": true,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 2150.0,
+              "y": -350.0,
+              "z": 892.5,
+              "sx": 570,
+              "sy": 100,
+              "sz": 15,
+              "rz": -90.0
+            }
+          ]
+        },
+        {
+          "name": "B04_ref_sup_trasero",
+          "largo": 570,
+          "ancho": 100,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "refuerzo",
+          "justificacion": "Refuerzo superior trasero entre laterales.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 2650.0,
+              "y": -350.0,
+              "z": 892.5,
+              "sx": 570,
+              "sy": 100,
+              "sz": 15,
+              "rz": -90.0
+            }
+          ]
+        },
+        {
+          "name": "B04_ref_post_inferior",
+          "largo": 570,
+          "ancho": 100,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "refuerzo",
+          "justificacion": "Refuerzo posterior inferior: rigidiza contra el paralelogramo.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 2692.5,
+              "y": -350.0,
+              "z": 165.0,
+              "sx": 570,
+              "sy": 15,
+              "sz": 100,
+              "rz": -90.0
+            }
+          ]
+        },
+        {
+          "name": "B04_fondo",
+          "largo": 600,
+          "ancho": 800,
+          "espesor": 3,
+          "cantidad": 1,
+          "material": "MDF-003-FON",
+          "rol_estructural": "fondo",
+          "justificacion": "Aplicado sobre el canto trasero cubriendo los refuerzos. Escuadra el mueble: atornillar sólo después de verificar diagonales iguales.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 2701.5,
+              "y": -350.0,
+              "z": 500.0,
+              "sx": 600,
+              "sy": 3,
+              "sz": 800,
+              "rz": -90.0
+            }
+          ]
+        },
+        {
+          "name": "B04_entrepano",
+          "largo": 568,
+          "ancho": 580,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "entrepano_movil",
+          "justificacion": "Entrepaño móvil sobre soportes del sistema 32.",
+          "cantos": {
+            "frontal": true,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 2410.0,
+              "y": -350.0,
+              "z": 500.0,
+              "sx": 568,
+              "sy": 580,
+              "sz": 15,
+              "rz": -90.0
+            }
+          ]
+        },
+        {
+          "name": "B04_zoclo",
+          "largo": 600,
+          "ancho": 100,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "zoclo",
+          "justificacion": "Pieza independiente, retranqueada 60mm del frente.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": true,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 2167.5,
+              "y": -350.0,
+              "z": 50.0,
+              "sx": 600,
+              "sy": 15,
+              "sz": 100,
+              "rz": -90.0
+            }
+          ]
+        },
+        {
+          "name": "B04_puerta",
+          "largo": 797,
+          "ancho": 597,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "LAC-ROSA-PASTEL-15",
+          "rol_estructural": "frente",
+          "justificacion": "Bisagra recta. Apertura: jaladera.",
+          "cantos": {
+            "frontal": true,
+            "trasero": true,
+            "superior": true,
+            "inferior": true
+          },
+          "veta": "vertical",
+          "accesorio": false,
+          "drilling": [
+            {
+              "tipo": "cazoleta",
+              "diametro": 35,
+              "x": 21.5,
+              "y": 100.0,
+              "profundidad": 12.5,
+              "cara": "interior",
+              "nota": "centro de cazoleta a 21.5mm del canto"
+            },
+            {
+              "tipo": "cazoleta",
+              "diametro": 35,
+              "x": 21.5,
+              "y": 697.0,
+              "profundidad": 12.5,
+              "cara": "interior",
+              "nota": "centro de cazoleta a 21.5mm del canto"
+            }
+          ],
+          "colocacion": [
+            {
+              "x": 2092.5,
+              "y": -350.0,
+              "z": 501.5,
+              "sx": 597,
+              "sy": 15,
+              "sz": 797,
+              "rz": -90.0
+            }
+          ]
+        },
+        {
+          "name": "B04_jal_lazo_izq",
+          "largo": 56.0,
+          "ancho": 34.0,
+          "espesor": 18.0,
+          "cantidad": 1,
+          "material": "MET-ROSA-MONO",
+          "rol_estructural": "accesorio_jaladera",
+          "justificacion": "Jaladera tipo moño (bow) 128mm — se COMPRA (JAL-MONO-BOW). No entra al cutlist ni al costeo de tablero; se modela para el 3D, el AR y el render.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": true,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 2076.0,
+              "y": -313.0,
+              "z": 820.0,
+              "sx": 56.0,
+              "sy": 18.0,
+              "sz": 34.0,
+              "rz": -90.0
+            }
+          ]
+        },
+        {
+          "name": "B04_jal_nudo",
+          "largo": 20.0,
+          "ancho": 22.0,
+          "espesor": 24.0,
+          "cantidad": 1,
+          "material": "MET-ROSA-MONO",
+          "rol_estructural": "accesorio_jaladera",
+          "justificacion": "Jaladera tipo moño (bow) 128mm — se COMPRA (JAL-MONO-BOW). No entra al cutlist ni al costeo de tablero; se modela para el 3D, el AR y el render.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": true,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 2073.0,
+              "y": -350.0,
+              "z": 820.0,
+              "sx": 20.0,
+              "sy": 24.0,
+              "sz": 22.0,
+              "rz": -90.0
+            }
+          ]
+        },
+        {
+          "name": "B04_jal_lazo_der",
+          "largo": 56.0,
+          "ancho": 34.0,
+          "espesor": 18.0,
+          "cantidad": 1,
+          "material": "MET-ROSA-MONO",
+          "rol_estructural": "accesorio_jaladera",
+          "justificacion": "Jaladera tipo moño (bow) 128mm — se COMPRA (JAL-MONO-BOW). No entra al cutlist ni al costeo de tablero; se modela para el 3D, el AR y el render.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": true,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 2076.0,
+              "y": -387.0,
+              "z": 820.0,
+              "sx": 56.0,
+              "sy": 18.0,
+              "sz": 34.0,
+              "rz": -90.0
+            }
+          ]
+        }
+      ],
+      "hardware": [
+        {
+          "sku": "BIS-35-REC",
+          "descripcion": "Bisagra cazoleta 35mm recta (sobreposición total)",
+          "cantidad": 2,
+          "unidad": "pza"
+        },
+        {
+          "sku": "PAT-NIV-100",
+          "descripcion": "Pata niveladora 100mm",
+          "cantidad": 4,
+          "unidad": "pza"
+        },
+        {
+          "sku": "UNI-MIN-15",
+          "descripcion": "Minifix + tarugo",
+          "cantidad": 8,
+          "unidad": "jgo"
+        },
+        {
+          "sku": "TOR-35X45",
+          "descripcion": "Tornillo 3.5x45",
+          "cantidad": 8,
+          "unidad": "pza"
+        },
+        {
+          "sku": "JAL-MONO-BOW",
+          "descripcion": "Jaladera tipo moño (bow) 128mm",
+          "cantidad": 1,
+          "unidad": "pza"
+        }
+      ],
+      "apertura": "jaladera",
+      "gola_sku": null,
+      "led": false,
+      "notas": [
+        "Apoyar los laterales SOBRE la base; atornillar desde abajo.",
+        "Escuadrar contra el fondo (diagonales iguales) ANTES de fijarlo.",
+        "1 jaladera(s) jaladera tipo moño (bow) 128mm. En puertas va a 80mm del canto superior; en cajones, centrada. Perforar el frente ANTES de lacar."
+      ],
+      "flags": {
+        "jaladeras": {
+          "sku": "JAL-MONO-BOW",
+          "silueta": "bow",
+          "offsets": {
+            "lazo_izq": -37.0,
+            "nudo": 0.0,
+            "lazo_der": 37.0
+          },
+          "retranqueo_superior": 80.0
+        }
+      }
+    },
+    {
+      "id": "B05",
+      "tipo": "cajonera",
+      "ancho": 600,
+      "alto": 900,
+      "prof": 600,
+      "panels": [
+        {
+          "name": "B05_base",
+          "largo": 600,
+          "ancho": 600,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "base_portante",
+          "justificacion": "Corre a todo el ancho exterior. Los laterales se apoyan encima: la carga entra en compresión, el tornillo sólo alinea.",
+          "cantos": {
+            "frontal": true,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 2400.0,
+              "y": -950.0,
+              "z": 107.5,
+              "sx": 600,
+              "sy": 600,
+              "sz": 15,
+              "rz": -90.0
+            }
+          ]
+        },
+        {
+          "name": "B05_lateral",
+          "largo": 785,
+          "ancho": 600,
+          "espesor": 15,
+          "cantidad": 2,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "lateral_apoyado",
+          "justificacion": "Alto 785 = alto_cuerpo − espesor de base. DESCANSA sobre la base, no va capturado entre ella.",
+          "cantos": {
+            "frontal": true,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "vertical",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 2400.0,
+              "y": -657.5,
+              "z": 507.5,
+              "sx": 15,
+              "sy": 600,
+              "sz": 785,
+              "rz": -90.0
+            },
+            {
+              "x": 2400.0,
+              "y": -1242.5,
+              "z": 507.5,
+              "sx": 15,
+              "sy": 600,
+              "sz": 785,
+              "rz": -90.0
+            }
+          ]
+        },
+        {
+          "name": "B05_ref_sup_frente",
+          "largo": 570,
+          "ancho": 100,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "refuerzo",
+          "justificacion": "Refuerzo superior frontal entre laterales.",
+          "cantos": {
+            "frontal": true,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 2150.0,
+              "y": -950.0,
+              "z": 892.5,
+              "sx": 570,
+              "sy": 100,
+              "sz": 15,
+              "rz": -90.0
+            }
+          ]
+        },
+        {
+          "name": "B05_ref_sup_trasero",
+          "largo": 570,
+          "ancho": 100,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "refuerzo",
+          "justificacion": "Refuerzo superior trasero entre laterales.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 2650.0,
+              "y": -950.0,
+              "z": 892.5,
+              "sx": 570,
+              "sy": 100,
+              "sz": 15,
+              "rz": -90.0
+            }
+          ]
+        },
+        {
+          "name": "B05_ref_post_inferior",
+          "largo": 570,
+          "ancho": 100,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "refuerzo",
+          "justificacion": "Refuerzo posterior inferior: rigidiza contra el paralelogramo.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 2692.5,
+              "y": -950.0,
+              "z": 165.0,
+              "sx": 570,
+              "sy": 15,
+              "sz": 100,
+              "rz": -90.0
+            }
+          ]
+        },
+        {
+          "name": "B05_fondo",
+          "largo": 600,
+          "ancho": 800,
+          "espesor": 3,
+          "cantidad": 1,
+          "material": "MDF-003-FON",
+          "rol_estructural": "fondo",
+          "justificacion": "Aplicado sobre el canto trasero cubriendo los refuerzos. Escuadra el mueble: atornillar sólo después de verificar diagonales iguales.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 2701.5,
+              "y": -950.0,
+              "z": 500.0,
+              "sx": 600,
+              "sy": 3,
+              "sz": 800,
+              "rz": -90.0
+            }
+          ]
+        },
+        {
+          "name": "B05_zoclo",
+          "largo": 600,
+          "ancho": 100,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "zoclo",
+          "justificacion": "Pieza independiente, retranqueada 60mm del frente.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": true,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 2167.5,
+              "y": -950.0,
+              "z": 50.0,
+              "sx": 600,
+              "sy": 15,
+              "sz": 100,
+              "rz": -90.0
+            }
+          ]
+        },
+        {
+          "name": "B05_c1_lateral_caja",
+          "largo": 500,
+          "ancho": 196,
+          "espesor": 15,
+          "cantidad": 2,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "lateral_caja",
+          "justificacion": "Corre COMPLETO: la corredera se atornilla a él en toda su longitud. Captura al frente de caja y a la trasera.",
+          "cantos": {
+            "frontal": true,
+            "trasero": false,
+            "superior": true,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 2350.0,
+              "y": -685.5,
+              "z": 233.0,
+              "sx": 15,
+              "sy": 500,
+              "sz": 196,
+              "rz": -90.0
+            },
+            {
+              "x": 2350.0,
+              "y": -1214.5,
+              "z": 233.0,
+              "sx": 15,
+              "sy": 500,
+              "sz": 196,
+              "rz": -90.0
+            }
+          ]
+        },
+        {
+          "name": "B05_c1_frente_caja",
+          "largo": 514,
+          "ancho": 196,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "capturado",
+          "justificacion": "Capturado entre los laterales (ancho_caja − 2T).",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": true,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 2107.5,
+              "y": -950.0,
+              "z": 233.0,
+              "sx": 514,
+              "sy": 15,
+              "sz": 196,
+              "rz": -90.0
+            }
+          ]
+        },
+        {
+          "name": "B05_c1_trasera_caja",
+          "largo": 514,
+          "ancho": 196,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "capturado",
+          "justificacion": "Capturada entre los laterales.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": true,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 2592.5,
+              "y": -950.0,
+              "z": 233.0,
+              "sx": 514,
+              "sy": 15,
+              "sz": 196,
+              "rz": -90.0
+            }
+          ]
+        },
+        {
+          "name": "B05_c1_fondo_caja",
+          "largo": 514,
+          "ancho": 470,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "fondo_caja",
+          "justificacion": "Tablero de 15mm ATRAPADO entre los cuatro lados de la caja: ni descansa debajo ni sobresale. Carga el contenido — un fondo de 3mm se pandea con peso.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 2350.0,
+              "y": -950.0,
+              "z": 142.5,
+              "sx": 514,
+              "sy": 470,
+              "sz": 15,
+              "rz": -90.0
+            }
+          ]
+        },
+        {
+          "name": "B05_c1_frente",
+          "largo": 263,
+          "ancho": 597,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "LAC-ROSA-PASTEL-15",
+          "rol_estructural": "frente",
+          "justificacion": "Frente visible del cajón 1 (de abajo hacia arriba).",
+          "cantos": {
+            "frontal": true,
+            "trasero": true,
+            "superior": true,
+            "inferior": true
+          },
+          "veta": "vertical",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 2092.5,
+              "y": -950.0,
+              "z": 231.5,
+              "sx": 597,
+              "sy": 15,
+              "sz": 263,
+              "rz": -90.0
+            }
+          ]
+        },
+        {
+          "name": "B05_c2_lateral_caja",
+          "largo": 500,
+          "ancho": 196,
+          "espesor": 15,
+          "cantidad": 2,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "lateral_caja",
+          "justificacion": "Corre COMPLETO: la corredera se atornilla a él en toda su longitud. Captura al frente de caja y a la trasera.",
+          "cantos": {
+            "frontal": true,
+            "trasero": false,
+            "superior": true,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 2350.0,
+              "y": -685.5,
+              "z": 499.0,
+              "sx": 15,
+              "sy": 500,
+              "sz": 196,
+              "rz": -90.0
+            },
+            {
+              "x": 2350.0,
+              "y": -1214.5,
+              "z": 499.0,
+              "sx": 15,
+              "sy": 500,
+              "sz": 196,
+              "rz": -90.0
+            }
+          ]
+        },
+        {
+          "name": "B05_c2_frente_caja",
+          "largo": 514,
+          "ancho": 196,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "capturado",
+          "justificacion": "Capturado entre los laterales (ancho_caja − 2T).",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": true,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 2107.5,
+              "y": -950.0,
+              "z": 499.0,
+              "sx": 514,
+              "sy": 15,
+              "sz": 196,
+              "rz": -90.0
+            }
+          ]
+        },
+        {
+          "name": "B05_c2_trasera_caja",
+          "largo": 514,
+          "ancho": 196,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "capturado",
+          "justificacion": "Capturada entre los laterales.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": true,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 2592.5,
+              "y": -950.0,
+              "z": 499.0,
+              "sx": 514,
+              "sy": 15,
+              "sz": 196,
+              "rz": -90.0
+            }
+          ]
+        },
+        {
+          "name": "B05_c2_fondo_caja",
+          "largo": 514,
+          "ancho": 470,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "fondo_caja",
+          "justificacion": "Tablero de 15mm ATRAPADO entre los cuatro lados de la caja: ni descansa debajo ni sobresale. Carga el contenido — un fondo de 3mm se pandea con peso.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 2350.0,
+              "y": -950.0,
+              "z": 408.5,
+              "sx": 514,
+              "sy": 470,
+              "sz": 15,
+              "rz": -90.0
+            }
+          ]
+        },
+        {
+          "name": "B05_c2_frente",
+          "largo": 263,
+          "ancho": 597,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "LAC-ROSA-PASTEL-15",
+          "rol_estructural": "frente",
+          "justificacion": "Frente visible del cajón 2 (de abajo hacia arriba).",
+          "cantos": {
+            "frontal": true,
+            "trasero": true,
+            "superior": true,
+            "inferior": true
+          },
+          "veta": "vertical",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 2092.5,
+              "y": -950.0,
+              "z": 497.5,
+              "sx": 597,
+              "sy": 15,
+              "sz": 263,
+              "rz": -90.0
+            }
+          ]
+        },
+        {
+          "name": "B05_c3_lateral_caja",
+          "largo": 500,
+          "ancho": 198,
+          "espesor": 15,
+          "cantidad": 2,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "lateral_caja",
+          "justificacion": "Corre COMPLETO: la corredera se atornilla a él en toda su longitud. Captura al frente de caja y a la trasera.",
+          "cantos": {
+            "frontal": true,
+            "trasero": false,
+            "superior": true,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 2350.0,
+              "y": -685.5,
+              "z": 766.0,
+              "sx": 15,
+              "sy": 500,
+              "sz": 198,
+              "rz": -90.0
+            },
+            {
+              "x": 2350.0,
+              "y": -1214.5,
+              "z": 766.0,
+              "sx": 15,
+              "sy": 500,
+              "sz": 198,
+              "rz": -90.0
+            }
+          ]
+        },
+        {
+          "name": "B05_c3_frente_caja",
+          "largo": 514,
+          "ancho": 198,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "capturado",
+          "justificacion": "Capturado entre los laterales (ancho_caja − 2T).",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": true,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 2107.5,
+              "y": -950.0,
+              "z": 766.0,
+              "sx": 514,
+              "sy": 15,
+              "sz": 198,
+              "rz": -90.0
+            }
+          ]
+        },
+        {
+          "name": "B05_c3_trasera_caja",
+          "largo": 514,
+          "ancho": 198,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "capturado",
+          "justificacion": "Capturada entre los laterales.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": true,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 2592.5,
+              "y": -950.0,
+              "z": 766.0,
+              "sx": 514,
+              "sy": 15,
+              "sz": 198,
+              "rz": -90.0
+            }
+          ]
+        },
+        {
+          "name": "B05_c3_fondo_caja",
+          "largo": 514,
+          "ancho": 470,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "fondo_caja",
+          "justificacion": "Tablero de 15mm ATRAPADO entre los cuatro lados de la caja: ni descansa debajo ni sobresale. Carga el contenido — un fondo de 3mm se pandea con peso.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 2350.0,
+              "y": -950.0,
+              "z": 674.5,
+              "sx": 514,
+              "sy": 470,
+              "sz": 15,
+              "rz": -90.0
+            }
+          ]
+        },
+        {
+          "name": "B05_c3_frente",
+          "largo": 265,
+          "ancho": 597,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "LAC-ROSA-PASTEL-15",
+          "rol_estructural": "frente",
+          "justificacion": "Frente visible del cajón 3 (de abajo hacia arriba).",
+          "cantos": {
+            "frontal": true,
+            "trasero": true,
+            "superior": true,
+            "inferior": true
+          },
+          "veta": "vertical",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 2092.5,
+              "y": -950.0,
+              "z": 764.5,
+              "sx": 597,
+              "sy": 15,
+              "sz": 265,
+              "rz": -90.0
+            }
+          ]
+        },
+        {
+          "name": "B05_jal_lazo_izq",
+          "largo": 56.0,
+          "ancho": 34.0,
+          "espesor": 18.0,
+          "cantidad": 3,
+          "material": "MET-ROSA-MONO",
+          "rol_estructural": "accesorio_jaladera",
+          "justificacion": "Jaladera tipo moño (bow) 128mm — se COMPRA (JAL-MONO-BOW). No entra al cutlist ni al costeo de tablero; se modela para el 3D, el AR y el render.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": true,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 2076.0,
+              "y": -913.0,
+              "z": 231.5,
+              "sx": 56.0,
+              "sy": 18.0,
+              "sz": 34.0,
+              "rz": -90.0
+            },
+            {
+              "x": 2076.0,
+              "y": -913.0,
+              "z": 497.5,
+              "sx": 56.0,
+              "sy": 18.0,
+              "sz": 34.0,
+              "rz": -90.0
+            },
+            {
+              "x": 2076.0,
+              "y": -913.0,
+              "z": 764.5,
+              "sx": 56.0,
+              "sy": 18.0,
+              "sz": 34.0,
+              "rz": -90.0
+            }
+          ]
+        },
+        {
+          "name": "B05_jal_nudo",
+          "largo": 20.0,
+          "ancho": 22.0,
+          "espesor": 24.0,
+          "cantidad": 3,
+          "material": "MET-ROSA-MONO",
+          "rol_estructural": "accesorio_jaladera",
+          "justificacion": "Jaladera tipo moño (bow) 128mm — se COMPRA (JAL-MONO-BOW). No entra al cutlist ni al costeo de tablero; se modela para el 3D, el AR y el render.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": true,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 2073.0,
+              "y": -950.0,
+              "z": 231.5,
+              "sx": 20.0,
+              "sy": 24.0,
+              "sz": 22.0,
+              "rz": -90.0
+            },
+            {
+              "x": 2073.0,
+              "y": -950.0,
+              "z": 497.5,
+              "sx": 20.0,
+              "sy": 24.0,
+              "sz": 22.0,
+              "rz": -90.0
+            },
+            {
+              "x": 2073.0,
+              "y": -950.0,
+              "z": 764.5,
+              "sx": 20.0,
+              "sy": 24.0,
+              "sz": 22.0,
+              "rz": -90.0
+            }
+          ]
+        },
+        {
+          "name": "B05_jal_lazo_der",
+          "largo": 56.0,
+          "ancho": 34.0,
+          "espesor": 18.0,
+          "cantidad": 3,
+          "material": "MET-ROSA-MONO",
+          "rol_estructural": "accesorio_jaladera",
+          "justificacion": "Jaladera tipo moño (bow) 128mm — se COMPRA (JAL-MONO-BOW). No entra al cutlist ni al costeo de tablero; se modela para el 3D, el AR y el render.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": true,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 2076.0,
+              "y": -987.0,
+              "z": 231.5,
+              "sx": 56.0,
+              "sy": 18.0,
+              "sz": 34.0,
+              "rz": -90.0
+            },
+            {
+              "x": 2076.0,
+              "y": -987.0,
+              "z": 497.5,
+              "sx": 56.0,
+              "sy": 18.0,
+              "sz": 34.0,
+              "rz": -90.0
+            },
+            {
+              "x": 2076.0,
+              "y": -987.0,
+              "z": 764.5,
+              "sx": 56.0,
+              "sy": 18.0,
+              "sz": 34.0,
+              "rz": -90.0
+            }
+          ]
+        }
+      ],
+      "hardware": [
+        {
+          "sku": "COR-LAT-500",
+          "descripcion": "Corredera lateral extensión 500mm",
+          "cantidad": 1,
+          "unidad": "par"
+        },
+        {
+          "sku": "TOR-35X16",
+          "descripcion": "Tornillo 3.5x16 para corredera",
+          "cantidad": 12,
+          "unidad": "pza"
+        },
+        {
+          "sku": "COR-LAT-500",
+          "descripcion": "Corredera lateral extensión 500mm",
+          "cantidad": 1,
+          "unidad": "par"
+        },
+        {
+          "sku": "TOR-35X16",
+          "descripcion": "Tornillo 3.5x16 para corredera",
+          "cantidad": 12,
+          "unidad": "pza"
+        },
+        {
+          "sku": "COR-LAT-500",
+          "descripcion": "Corredera lateral extensión 500mm",
+          "cantidad": 1,
+          "unidad": "par"
+        },
+        {
+          "sku": "TOR-35X16",
+          "descripcion": "Tornillo 3.5x16 para corredera",
+          "cantidad": 12,
+          "unidad": "pza"
+        },
+        {
+          "sku": "PAT-NIV-100",
+          "descripcion": "Pata niveladora 100mm",
+          "cantidad": 4,
+          "unidad": "pza"
+        },
+        {
+          "sku": "UNI-MIN-15",
+          "descripcion": "Minifix + tarugo",
+          "cantidad": 8,
+          "unidad": "jgo"
+        },
+        {
+          "sku": "TOR-35X45",
+          "descripcion": "Tornillo 3.5x45",
+          "cantidad": 8,
+          "unidad": "pza"
+        },
+        {
+          "sku": "JAL-MONO-BOW",
+          "descripcion": "Jaladera tipo moño (bow) 128mm",
+          "cantidad": 3,
+          "unidad": "pza"
+        }
+      ],
+      "apertura": "jaladera",
+      "gola_sku": null,
+      "led": false,
+      "notas": [
+        "Apoyar los laterales SOBRE la base; atornillar desde abajo.",
+        "3 cajones con corredera 500mm (lateral), holgura 13mm por lado. Caja: 544mm de ancho.",
+        "Fondo de caja en tablero de 15mm ATRAPADO entre los cuatro lados, NO en MDF de 3mm: carga el contenido del cajón.",
+        "Encintar canto FRONTAL y SUPERIOR de los laterales; el trasero NO.",
+        "3 jaladera(s) jaladera tipo moño (bow) 128mm. En puertas va a 80mm del canto superior; en cajones, centrada. Perforar el frente ANTES de lacar."
+      ],
+      "flags": {
+        "cajones": [
+          {
+            "i": 1,
+            "z_frente": 100,
+            "alto_frente": 266,
+            "z_caja": 135.0,
+            "alto_caja": 196,
+            "ancho_caja": 544,
+            "corredera": 500
+          },
+          {
+            "i": 2,
+            "z_frente": 366,
+            "alto_frente": 266,
+            "z_caja": 401.0,
+            "alto_caja": 196,
+            "ancho_caja": 544,
+            "corredera": 500
+          },
+          {
+            "i": 3,
+            "z_frente": 632,
+            "alto_frente": 268,
+            "z_caja": 667.0,
+            "alto_caja": 198,
+            "ancho_caja": 544,
+            "corredera": 500
+          }
+        ],
+        "jaladeras": {
+          "sku": "JAL-MONO-BOW",
+          "silueta": "bow",
+          "offsets": {
+            "lazo_izq": -37.0,
+            "nudo": 0.0,
+            "lazo_der": 37.0
+          },
+          "retranqueo_superior": 80.0
+        }
+      }
+    },
+    {
+      "id": "A04",
+      "tipo": "superior",
+      "ancho": 600,
+      "alto": 750,
+      "prof": 350,
+      "panels": [
+        {
+          "name": "A04_lateral",
+          "largo": 750,
+          "ancho": 350,
+          "espesor": 15,
+          "cantidad": 2,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "lateral_portante",
+          "justificacion": "Corre a altura COMPLETA. El mueble cuelga: el techo y el piso van capturados entre los laterales para que el tornillo trabaje a cortante y no a extracción en canto de aglomerado.",
+          "cantos": {
+            "frontal": true,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "vertical",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 2525.0,
+              "y": -57.5,
+              "z": 1875.0,
+              "sx": 15,
+              "sy": 350,
+              "sz": 750,
+              "rz": -90.0
+            },
+            {
+              "x": 2525.0,
+              "y": -642.5,
+              "z": 1875.0,
+              "sx": 15,
+              "sy": 350,
+              "sz": 750,
+              "rz": -90.0
+            }
+          ]
+        },
+        {
+          "name": "A04_techo",
+          "largo": 570,
+          "ancho": 350,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "capturado",
+          "justificacion": "Capturado entre laterales (ancho − 2T).",
+          "cantos": {
+            "frontal": true,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 2525.0,
+              "y": -350.0,
+              "z": 2242.5,
+              "sx": 570,
+              "sy": 350,
+              "sz": 15,
+              "rz": -90.0
+            }
+          ]
+        },
+        {
+          "name": "A04_piso",
+          "largo": 570,
+          "ancho": 350,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "capturado",
+          "justificacion": "Capturado entre laterales. Recibe la carga del contenido.",
+          "cantos": {
+            "frontal": true,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 2525.0,
+              "y": -350.0,
+              "z": 1507.5,
+              "sx": 570,
+              "sy": 350,
+              "sz": 15,
+              "rz": -90.0
+            }
+          ]
+        },
+        {
+          "name": "A04_riel_colgador",
+          "largo": 570,
+          "ancho": 120,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "riel_colgador",
+          "justificacion": "Posterior superior: AQUÍ van los tornillos de fijación al muro.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 2692.5,
+              "y": -350.0,
+              "z": 2175.0,
+              "sx": 570,
+              "sy": 15,
+              "sz": 120,
+              "rz": -90.0
+            }
+          ]
+        },
+        {
+          "name": "A04_fondo",
+          "largo": 600,
+          "ancho": 750,
+          "espesor": 3,
+          "cantidad": 1,
+          "material": "MDF-003-FON",
+          "rol_estructural": "fondo",
+          "justificacion": "Aplicado sobre el canto trasero cubriendo los refuerzos. Escuadra el mueble: atornillar sólo después de verificar diagonales iguales.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 2701.5,
+              "y": -350.0,
+              "z": 1875.0,
+              "sx": 600,
+              "sy": 3,
+              "sz": 750,
+              "rz": -90.0
+            }
+          ]
+        },
+        {
+          "name": "A04_entrepano",
+          "largo": 568,
+          "ancho": 330,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "entrepano_movil",
+          "justificacion": "Entrepaño móvil sobre soportes del sistema 32.",
+          "cantos": {
+            "frontal": true,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 2535.0,
+              "y": -350.0,
+              "z": 1875.0,
+              "sx": 568,
+              "sy": 330,
+              "sz": 15,
+              "rz": -90.0
+            }
+          ]
+        },
+        {
+          "name": "A04_puerta",
+          "largo": 747,
+          "ancho": 597,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "LAC-ROSA-PASTEL-15",
+          "rol_estructural": "frente",
+          "justificacion": "Bisagra recta.",
+          "cantos": {
+            "frontal": true,
+            "trasero": true,
+            "superior": true,
+            "inferior": true
+          },
+          "veta": "vertical",
+          "accesorio": false,
+          "drilling": [
+            {
+              "tipo": "cazoleta",
+              "diametro": 35,
+              "x": 21.5,
+              "y": 100.0,
+              "profundidad": 12.5,
+              "cara": "interior",
+              "nota": "centro de cazoleta a 21.5mm del canto"
+            },
+            {
+              "tipo": "cazoleta",
+              "diametro": 35,
+              "x": 21.5,
+              "y": 647.0,
+              "profundidad": 12.5,
+              "cara": "interior",
+              "nota": "centro de cazoleta a 21.5mm del canto"
+            }
+          ],
+          "colocacion": [
+            {
+              "x": 2342.5,
+              "y": -350.0,
+              "z": 1876.5,
+              "sx": 597,
+              "sy": 15,
+              "sz": 747,
+              "rz": -90.0
+            }
+          ]
+        },
+        {
+          "name": "A04_jal_lazo_izq",
+          "largo": 56.0,
+          "ancho": 34.0,
+          "espesor": 18.0,
+          "cantidad": 1,
+          "material": "MET-ROSA-MONO",
+          "rol_estructural": "accesorio_jaladera",
+          "justificacion": "Jaladera tipo moño (bow) 128mm — se COMPRA (JAL-MONO-BOW). No entra al cutlist ni al costeo de tablero; se modela para el 3D, el AR y el render.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": true,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 2326.0,
+              "y": -313.0,
+              "z": 2170.0,
+              "sx": 56.0,
+              "sy": 18.0,
+              "sz": 34.0,
+              "rz": -90.0
+            }
+          ]
+        },
+        {
+          "name": "A04_jal_nudo",
+          "largo": 20.0,
+          "ancho": 22.0,
+          "espesor": 24.0,
+          "cantidad": 1,
+          "material": "MET-ROSA-MONO",
+          "rol_estructural": "accesorio_jaladera",
+          "justificacion": "Jaladera tipo moño (bow) 128mm — se COMPRA (JAL-MONO-BOW). No entra al cutlist ni al costeo de tablero; se modela para el 3D, el AR y el render.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": true,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 2323.0,
+              "y": -350.0,
+              "z": 2170.0,
+              "sx": 20.0,
+              "sy": 24.0,
+              "sz": 22.0,
+              "rz": -90.0
+            }
+          ]
+        },
+        {
+          "name": "A04_jal_lazo_der",
+          "largo": 56.0,
+          "ancho": 34.0,
+          "espesor": 18.0,
+          "cantidad": 1,
+          "material": "MET-ROSA-MONO",
+          "rol_estructural": "accesorio_jaladera",
+          "justificacion": "Jaladera tipo moño (bow) 128mm — se COMPRA (JAL-MONO-BOW). No entra al cutlist ni al costeo de tablero; se modela para el 3D, el AR y el render.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": true,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 2326.0,
+              "y": -387.0,
+              "z": 2170.0,
+              "sx": 56.0,
+              "sy": 18.0,
+              "sz": 34.0,
+              "rz": -90.0
+            }
+          ]
+        }
+      ],
+      "hardware": [
+        {
+          "sku": "BIS-35-REC",
+          "descripcion": "Bisagra cazoleta 35mm recta (sobreposición total)",
+          "cantidad": 2,
+          "unidad": "pza"
+        },
+        {
+          "sku": "UNI-MIN-15",
+          "descripcion": "Minifix + tarugo",
+          "cantidad": 8,
+          "unidad": "jgo"
+        },
+        {
+          "sku": "TOR-35X45",
+          "descripcion": "Tornillo 3.5x45",
+          "cantidad": 8,
+          "unidad": "pza"
+        },
+        {
+          "sku": "JAL-MONO-BOW",
+          "descripcion": "Jaladera tipo moño (bow) 128mm",
+          "cantidad": 1,
+          "unidad": "pza"
+        }
+      ],
+      "apertura": "jaladera",
+      "gola_sku": null,
+      "led": true,
+      "notas": [
+        "Techo y piso CAPTURADOS entre laterales: el tornillo trabaja a cortante.",
+        "Fijar al muro por el riel colgador posterior superior.",
+        "1 jaladera(s) jaladera tipo moño (bow) 128mm. En puertas va a 80mm del canto superior; en cajones, centrada. Perforar el frente ANTES de lacar."
+      ],
+      "flags": {
+        "jaladeras": {
+          "sku": "JAL-MONO-BOW",
+          "silueta": "bow",
+          "offsets": {
+            "lazo_izq": -37.0,
+            "nudo": 0.0,
+            "lazo_der": 37.0
+          },
+          "retranqueo_superior": 80.0
+        }
+      }
+    },
+    {
+      "id": "A05",
+      "tipo": "superior",
+      "ancho": 600,
+      "alto": 750,
+      "prof": 350,
+      "panels": [
+        {
+          "name": "A05_lateral",
+          "largo": 750,
+          "ancho": 350,
+          "espesor": 15,
+          "cantidad": 2,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "lateral_portante",
+          "justificacion": "Corre a altura COMPLETA. El mueble cuelga: el techo y el piso van capturados entre los laterales para que el tornillo trabaje a cortante y no a extracción en canto de aglomerado.",
+          "cantos": {
+            "frontal": true,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "vertical",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 2525.0,
+              "y": -657.5,
+              "z": 1875.0,
+              "sx": 15,
+              "sy": 350,
+              "sz": 750,
+              "rz": -90.0
+            },
+            {
+              "x": 2525.0,
+              "y": -1242.5,
+              "z": 1875.0,
+              "sx": 15,
+              "sy": 350,
+              "sz": 750,
+              "rz": -90.0
+            }
+          ]
+        },
+        {
+          "name": "A05_techo",
+          "largo": 570,
+          "ancho": 350,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "capturado",
+          "justificacion": "Capturado entre laterales (ancho − 2T).",
+          "cantos": {
+            "frontal": true,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 2525.0,
+              "y": -950.0,
+              "z": 2242.5,
+              "sx": 570,
+              "sy": 350,
+              "sz": 15,
+              "rz": -90.0
+            }
+          ]
+        },
+        {
+          "name": "A05_piso",
+          "largo": 570,
+          "ancho": 350,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "capturado",
+          "justificacion": "Capturado entre laterales. Recibe la carga del contenido.",
+          "cantos": {
+            "frontal": true,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 2525.0,
+              "y": -950.0,
+              "z": 1507.5,
+              "sx": 570,
+              "sy": 350,
+              "sz": 15,
+              "rz": -90.0
+            }
+          ]
+        },
+        {
+          "name": "A05_riel_colgador",
+          "largo": 570,
+          "ancho": 120,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "riel_colgador",
+          "justificacion": "Posterior superior: AQUÍ van los tornillos de fijación al muro.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 2692.5,
+              "y": -950.0,
+              "z": 2175.0,
+              "sx": 570,
+              "sy": 15,
+              "sz": 120,
+              "rz": -90.0
+            }
+          ]
+        },
+        {
+          "name": "A05_fondo",
+          "largo": 600,
+          "ancho": 750,
+          "espesor": 3,
+          "cantidad": 1,
+          "material": "MDF-003-FON",
+          "rol_estructural": "fondo",
+          "justificacion": "Aplicado sobre el canto trasero cubriendo los refuerzos. Escuadra el mueble: atornillar sólo después de verificar diagonales iguales.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 2701.5,
+              "y": -950.0,
+              "z": 1875.0,
+              "sx": 600,
+              "sy": 3,
+              "sz": 750,
+              "rz": -90.0
+            }
+          ]
+        },
+        {
+          "name": "A05_entrepano",
+          "largo": 568,
+          "ancho": 330,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-ROSA-PASTEL-15",
+          "rol_estructural": "entrepano_movil",
+          "justificacion": "Entrepaño móvil sobre soportes del sistema 32.",
+          "cantos": {
+            "frontal": true,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 2535.0,
+              "y": -950.0,
+              "z": 1875.0,
+              "sx": 568,
+              "sy": 330,
+              "sz": 15,
+              "rz": -90.0
+            }
+          ]
+        },
+        {
+          "name": "A05_puerta",
+          "largo": 747,
+          "ancho": 597,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "LAC-ROSA-PASTEL-15",
+          "rol_estructural": "frente",
+          "justificacion": "Bisagra recta.",
+          "cantos": {
+            "frontal": true,
+            "trasero": true,
+            "superior": true,
+            "inferior": true
+          },
+          "veta": "vertical",
+          "accesorio": false,
+          "drilling": [
+            {
+              "tipo": "cazoleta",
+              "diametro": 35,
+              "x": 21.5,
+              "y": 100.0,
+              "profundidad": 12.5,
+              "cara": "interior",
+              "nota": "centro de cazoleta a 21.5mm del canto"
+            },
+            {
+              "tipo": "cazoleta",
+              "diametro": 35,
+              "x": 21.5,
+              "y": 647.0,
+              "profundidad": 12.5,
+              "cara": "interior",
+              "nota": "centro de cazoleta a 21.5mm del canto"
+            }
+          ],
+          "colocacion": [
+            {
+              "x": 2342.5,
+              "y": -950.0,
+              "z": 1876.5,
+              "sx": 597,
+              "sy": 15,
+              "sz": 747,
+              "rz": -90.0
+            }
+          ]
+        },
+        {
+          "name": "A05_jal_lazo_izq",
+          "largo": 56.0,
+          "ancho": 34.0,
+          "espesor": 18.0,
+          "cantidad": 1,
+          "material": "MET-ROSA-MONO",
+          "rol_estructural": "accesorio_jaladera",
+          "justificacion": "Jaladera tipo moño (bow) 128mm — se COMPRA (JAL-MONO-BOW). No entra al cutlist ni al costeo de tablero; se modela para el 3D, el AR y el render.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": true,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 2326.0,
+              "y": -913.0,
+              "z": 2170.0,
+              "sx": 56.0,
+              "sy": 18.0,
+              "sz": 34.0,
+              "rz": -90.0
+            }
+          ]
+        },
+        {
+          "name": "A05_jal_nudo",
+          "largo": 20.0,
+          "ancho": 22.0,
+          "espesor": 24.0,
+          "cantidad": 1,
+          "material": "MET-ROSA-MONO",
+          "rol_estructural": "accesorio_jaladera",
+          "justificacion": "Jaladera tipo moño (bow) 128mm — se COMPRA (JAL-MONO-BOW). No entra al cutlist ni al costeo de tablero; se modela para el 3D, el AR y el render.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": true,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 2323.0,
+              "y": -950.0,
+              "z": 2170.0,
+              "sx": 20.0,
+              "sy": 24.0,
+              "sz": 22.0,
+              "rz": -90.0
+            }
+          ]
+        },
+        {
+          "name": "A05_jal_lazo_der",
+          "largo": 56.0,
+          "ancho": 34.0,
+          "espesor": 18.0,
+          "cantidad": 1,
+          "material": "MET-ROSA-MONO",
+          "rol_estructural": "accesorio_jaladera",
+          "justificacion": "Jaladera tipo moño (bow) 128mm — se COMPRA (JAL-MONO-BOW). No entra al cutlist ni al costeo de tablero; se modela para el 3D, el AR y el render.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "libre",
+          "accesorio": true,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 2326.0,
+              "y": -987.0,
+              "z": 2170.0,
+              "sx": 56.0,
+              "sy": 18.0,
+              "sz": 34.0,
+              "rz": -90.0
+            }
+          ]
+        }
+      ],
+      "hardware": [
+        {
+          "sku": "BIS-35-REC",
+          "descripcion": "Bisagra cazoleta 35mm recta (sobreposición total)",
+          "cantidad": 2,
+          "unidad": "pza"
+        },
+        {
+          "sku": "UNI-MIN-15",
+          "descripcion": "Minifix + tarugo",
+          "cantidad": 8,
+          "unidad": "jgo"
+        },
+        {
+          "sku": "TOR-35X45",
+          "descripcion": "Tornillo 3.5x45",
+          "cantidad": 8,
+          "unidad": "pza"
+        },
+        {
+          "sku": "JAL-MONO-BOW",
+          "descripcion": "Jaladera tipo moño (bow) 128mm",
+          "cantidad": 1,
+          "unidad": "pza"
+        }
+      ],
+      "apertura": "jaladera",
+      "gola_sku": null,
+      "led": true,
+      "notas": [
+        "Techo y piso CAPTURADOS entre laterales: el tornillo trabaja a cortante.",
+        "Fijar al muro por el riel colgador posterior superior.",
+        "1 jaladera(s) jaladera tipo moño (bow) 128mm. En puertas va a 80mm del canto superior; en cajones, centrada. Perforar el frente ANTES de lacar."
+      ],
+      "flags": {
+        "jaladeras": {
+          "sku": "JAL-MONO-BOW",
+          "silueta": "bow",
+          "offsets": {
+            "lazo_izq": -37.0,
+            "nudo": 0.0,
+            "lazo_der": 37.0
+          },
+          "retranqueo_superior": 80.0
+        }
+      }
+    }
+  ],
+  "tramos": [
+    {
+      "id": "TA0",
+      "muro": "A",
+      "modulos": [
+        "T01"
+      ],
+      "lleva_cubierta": false,
+      "panels": [],
+      "hardware": [
+        {
+          "sku": "LED-TIRA",
+          "descripcion": "Tira LED 14.4W/m 3000K",
+          "cantidad": 3.1,
+          "unidad": "ml"
+        },
+        {
+          "sku": "LED-PERFIL",
+          "descripcion": "Perfil de aluminio + difusor",
+          "cantidad": 3.1,
+          "unidad": "ml"
+        },
+        {
+          "sku": "LED-FUENTE",
+          "descripcion": "Fuente 60W",
+          "cantidad": 1,
+          "unidad": "pza"
+        },
+        {
+          "sku": "LED-CTRL",
+          "descripcion": "Control: dimmer",
+          "cantidad": 1,
+          "unidad": "pza"
+        },
+        {
+          "sku": "LED-CONECT",
+          "descripcion": "Conectores y cable",
+          "cantidad": 6,
+          "unidad": "jgo"
+        }
+      ],
+      "notas": [],
+      "rotacion": 0.0,
+      "origen": [
+        0.0,
+        0.0
+      ],
+      "desplazamiento": 0.0
+    },
+    {
+      "id": "TA1",
+      "muro": "A",
+      "modulos": [
+        "B01",
+        "B02",
+        "B03"
+      ],
+      "lleva_cubierta": true,
+      "panels": [
+        {
+          "name": "TA1_cubierta",
+          "largo": 2100.0,
+          "ancho": 620,
+          "espesor": 19,
+          "cantidad": 1,
+          "material": "CUA-ROSA-PASTEL-19",
+          "rol_estructural": "cubierta",
+          "justificacion": "Cubierta de fabricación propia. Vuelo frontal 20mm.",
+          "cantos": {
+            "frontal": true,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "horizontal",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 1650.0,
+              "y": 290.0,
+              "z": 909.5,
+              "sx": 2100.0,
+              "sy": 620,
+              "sz": 19
+            }
+          ]
+        }
+      ],
+      "hardware": [],
+      "notas": [
+        "Cubierta de 620mm de fondo: sobran 596mm de hoja (considerando kerf de 4mm).",
+        "AVISO DE AHORRO: reduciendo el vuelo 4mm (a 16mm) el sobrante alcanza para un lateral de 600mm en la misma hoja.",
+        "Recorte de tarja en cubierta: cotas en el plano de cubierta."
+      ],
+      "rotacion": 0.0,
+      "origen": [
+        0.0,
+        0.0
+      ],
+      "desplazamiento": 600
+    },
+    {
+      "id": "TA2",
+      "muro": "A",
+      "modulos": [
+        "A01",
+        "A02",
+        "A03"
+      ],
+      "lleva_cubierta": false,
+      "panels": [],
+      "hardware": [],
+      "notas": [],
+      "rotacion": 0.0,
+      "origen": [
+        0.0,
+        0.0
+      ],
+      "desplazamiento": 600
+    },
+    {
+      "id": "TB1",
+      "muro": "B",
+      "modulos": [
+        "B04",
+        "B05"
+      ],
+      "lleva_cubierta": true,
+      "panels": [
+        {
+          "name": "TB1_cubierta",
+          "largo": 1200.0,
+          "ancho": 620,
+          "espesor": 19,
+          "cantidad": 1,
+          "material": "CUA-ROSA-PASTEL-19",
+          "rol_estructural": "cubierta",
+          "justificacion": "Cubierta de fabricación propia. Vuelo frontal 20mm.",
+          "cantos": {
+            "frontal": true,
+            "trasero": false,
+            "superior": false,
+            "inferior": false
+          },
+          "veta": "horizontal",
+          "accesorio": false,
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 2390.0,
+              "y": -650.0,
+              "z": 909.5,
+              "sx": 1200.0,
+              "sy": 620,
+              "sz": 19,
+              "rz": -90.0
+            }
+          ]
+        }
+      ],
+      "hardware": [],
+      "notas": [
+        "Muro B: retorno sobre A por la derecha (giro -90°), con filler de esquina de 50mm para que las puertas de los dos muros no choquen.",
+        "Cubierta de 620mm de fondo: sobran 596mm de hoja (considerando kerf de 4mm).",
+        "AVISO DE AHORRO: reduciendo el vuelo 4mm (a 16mm) el sobrante alcanza para un lateral de 600mm en la misma hoja."
+      ],
+      "rotacion": -90.0,
+      "origen": [
+        2100,
+        -50
+      ],
+      "desplazamiento": 0.0
+    },
+    {
+      "id": "TB2",
+      "muro": "B",
+      "modulos": [
+        "A04",
+        "A05"
+      ],
+      "lleva_cubierta": false,
+      "panels": [],
+      "hardware": [],
+      "notas": [
+        "Muro B: retorno sobre A por la derecha (giro -90°), con filler de esquina de 50mm para que las puertas de los dos muros no choquen."
+      ],
+      "rotacion": -90.0,
+      "origen": [
+        2100,
+        -50
+      ],
+      "desplazamiento": 0.0
+    }
+  ],
+  "notas": [
+    "LED: 3.10 ml, 44.6W → fuente de 60W.",
+    "RUTEO: perforar paso de cable Ø10mm en los refuerzos posteriores de los módulos con LED ANTES de armar. Marcar en el plano del casco.",
+    "Cocina en L: el muro B apoya contra el extremo del muro A con filler de esquina de 50mm. Montar SIEMPRE el muro A completo primero y arrancar el retorno desde el filler, nunca al revés.",
+    "Jaladera de moño: es pieza comprada. Perforar los frentes ANTES de lacar; una perforación después del lacado se cuartea."
+  ]
+}

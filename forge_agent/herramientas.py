@@ -10,21 +10,22 @@ from __future__ import annotations
 from anthropic import beta_tool
 
 from mono_forge.constants import (
-    ALTO_SUPERIOR_DEFAULT, ALTO_TORRE_DEFAULT, PROF_BASE, PROF_SUPERIOR,
-    PROF_TORRE, T_FRENTE_BRILLO, T_FRENTE_STD,
+    ALTO_SUPERIOR_DEFAULT, ALTO_TORRE_DEFAULT, HOLGURA_ESQUINA, PROF_BASE,
+    PROF_SUPERIOR, PROF_TORRE, T_FRENTE_BRILLO, T_FRENTE_STD,
 )
 from mono_forge.costing import catalogo_herrajes, catalogo_materiales
 from mono_forge.cutlist import resumen
 from mono_forge.generators.base import gabinete_base
 from mono_forge.generators.cajonera import cajonera
 from mono_forge.generators.cubierta import cubierta
+from mono_forge.generators.jaladera import jaladeras
 from mono_forge.generators.superior import alacena
 from mono_forge.generators.tarja import TARJA_ANCHO, TARJA_FONDO, TARJA_PROFUNDIDAD, tarja
 from mono_forge.generators.torre import torre
 from mono_forge.models import Project, Tramo
 from mono_forge.rules import led as regla_led
 from mono_forge.rules.apertura import cargar_golas, gola_de_tramo, gola_por_sku
-from mono_forge.rules.posicion import colocar
+from mono_forge.rules.posicion import colocar, esquina_en_l
 
 
 class Estado:
@@ -36,6 +37,7 @@ class Estado:
         self.material_frente_default: str | None = None
         self.apertura_default = "jaladera"
         self.gola_sku_default: str | None = None
+        self.material_cubierta_default: str | None = None
         self.bitacora: list[str] = []
 
     def log(self, msg: str) -> None:
@@ -100,7 +102,8 @@ def definir_proyecto(cliente: str, nombre: str,
                      material: str = "MEL-BLA-15-IMP",
                      material_frente: str = "",
                      apertura: str = "jaladera",
-                     gola_sku: str = "") -> str:
+                     gola_sku: str = "",
+                     material_cubierta: str = "") -> str:
     """Define los datos generales del proyecto y los valores por defecto que
     heredarán los módulos. Llámala PRIMERO, antes de agregar módulos.
 
@@ -111,6 +114,7 @@ def definir_proyecto(cliente: str, nombre: str,
         material_frente: SKU de los frentes. Vacío = igual que la estructura.
         apertura: jaladera | gola_aluminio | gola_tablero | push.
         gola_sku: SKU del perfil de gola si la apertura es de gola.
+        material_cubierta: SKU del tablero de cubierta. Vacío = el del catálogo.
     """
     ESTADO.project.cliente = cliente
     ESTADO.project.nombre = nombre
@@ -118,10 +122,13 @@ def definir_proyecto(cliente: str, nombre: str,
     ESTADO.material_frente_default = material_frente or None
     ESTADO.apertura_default = apertura
     ESTADO.gola_sku_default = gola_sku or None
+    ESTADO.material_cubierta_default = material_cubierta or None
     if material_frente and "BRI" in material_frente:
         ESTADO.log("Frente alto brillo: cintilla PVC a MANO (tarifa de canto manual).")
     return (f"Proyecto «{nombre}» para {cliente}. Estructura {material}, "
-            f"frentes {material_frente or material}, apertura {apertura}"
+            f"frentes {material_frente or material}"
+            + (f", cubierta {material_cubierta}" if material_cubierta else "")
+            + f", apertura {apertura}"
             + (f" con perfil {gola_sku} (hueco {_gola_hueco(gola_sku):.0f}mm)."
                if gola_sku else "."))
 
@@ -350,6 +357,39 @@ def agregar_tarja(modulo_id: str, ancho: float = TARJA_ANCHO,
 
 
 @beta_tool
+def agregar_jaladeras(modulo_id: str, silueta: str = "bow",
+                      sku: str = "JAL-MONO-BOW",
+                      material: str = "MET-ROSA-MONO") -> str:
+    """Pone una jaladera por hoja de frente del módulo.
+
+    La jaladera se COMPRA: entra a la lista de herrajes, no al cutlist. Su
+    volumen se modela para que se vea en el 3D, el AR y el render. Llámala
+    después de crear el módulo (necesita saber cuántos frentes tiene).
+
+    Args:
+        modulo_id: id del módulo (debe existir ya).
+        silueta: "bow" (moño) o "barra".
+        sku: SKU de herraje que se cotiza.
+        material: acabado para el 3D y el render.
+    """
+    m = ESTADO.modulo(modulo_id)
+    if not m:
+        return f"ERROR: no existe el módulo {modulo_id}."
+    if m.flags.get("jaladeras"):
+        return f"ERROR: {modulo_id} ya tiene jaladeras."
+    try:
+        piezas = jaladeras(m, sku=sku, silueta=silueta, material=material)
+    except ValueError as e:
+        return f"ERROR: {e}"
+    if not piezas:
+        return (f"AVISO: {modulo_id} no tiene frentes, así que no lleva "
+                f"jaladera. No se agregó nada.")
+    n = int(piezas[0].cantidad)
+    return (f"{n} jaladera(s) '{silueta}' ({sku}) en {modulo_id}. "
+            f"Se COMPRAN: van a herrajes.xlsx, no al cutlist.")
+
+
+@beta_tool
 def eliminar_modulo(id: str) -> str:
     """Elimina un módulo del proyecto por su id. Úsalo al iterar cuando el
     cliente pide quitar o rehacer una parte del diseño."""
@@ -368,10 +408,18 @@ def eliminar_modulo(id: str) -> str:
 @beta_tool
 def agregar_tramo(id: str, muro: str, modulos: list[str],
                   lleva_cubierta: bool = True,
-                  recortes: list[str] | None = None) -> str:
+                  recortes: list[str] | None = None,
+                  retorno_de: str | None = None,
+                  sentido: str = "derecha",
+                  desplazamiento: float = 0.0,
+                  material_cubierta: str = "") -> str:
     """Agrupa módulos contiguos de un mismo muro en un TRAMO y le calcula la
     cubierta y la gola. La cubierta y la gola SIEMPRE se calculan por tramo,
     nunca por módulo. Llámala después de agregar todos los módulos del muro.
+
+    El TRAMO es también el muro: para una cocina en L o en U, crea un tramo por
+    muro y pásale `retorno_de` con el id del tramo anterior. El motor calcula el
+    giro, el origen y el filler de esquina — nunca los pongas tú a mano.
 
     Args:
         id: identificador del tramo (ej. "T1").
@@ -379,17 +427,68 @@ def agregar_tramo(id: str, muro: str, modulos: list[str],
         modulos: ids de los módulos de piso contiguos, en orden.
         lleva_cubierta: False para un tramo de alacenas.
         recortes: ["tarja", "parrilla"] — se acotan en el plano de cubierta.
+        retorno_de: id del tramo contra cuyo extremo apoya este muro (cocina
+            en L / U). Omítelo en el primer muro.
+        sentido: "derecha" (el retorno sale del extremo derecho del muro
+            anterior) o "izquierda".
+        desplazamiento: mm desde el inicio del muro donde arranca ESTA corrida.
+            Sirve para poner varias corridas sobre el mismo muro (una torre, la
+            corrida de piso, la corrida de alacenas) sin que todas empiecen
+            pegadas a la esquina. Un tramo de alacenas que va sobre el segundo
+            y el tercer mueble lleva el desplazamiento de esos dos anchos.
+        material_cubierta: SKU del tablero de cubierta. Vacío = el default del
+            proyecto (o el del catálogo si no se definió ninguno).
     """
     faltantes = [mid for mid in modulos if not ESTADO.modulo(mid)]
     if faltantes:
         return f"ERROR: no existen los módulos {', '.join(faltantes)}."
-    t = Tramo(id=id, muro=muro, modulos=list(modulos), lleva_cubierta=lleva_cubierta)
+    t = Tramo(id=id, muro=muro, modulos=list(modulos),
+              lleva_cubierta=lleva_cubierta, desplazamiento=desplazamiento)
     largo = sum(ESTADO.modulo(mid).ancho for mid in modulos)
     notas = []
 
+    if retorno_de:
+        previo = next((x for x in ESTADO.project.tramos if x.id == retorno_de), None)
+        if previo is None:
+            return f"ERROR: no existe el tramo {retorno_de}."
+        # el muro previo puede tener VARIAS corridas (torre, piso, alacenas):
+        # el largo del muro es hasta dónde llega la más lejana.
+        largo_previo = 0.0
+        for x in ESTADO.project.tramos:
+            if x.muro != previo.muro:
+                continue
+            largo_previo = max(largo_previo, x.desplazamiento + sum(
+                ESTADO.modulo(mid).ancho for mid in x.modulos
+                if ESTADO.modulo(mid) and ESTADO.modulo(mid).tipo != "superior"))
+        # la esquina se mide contra la profundidad del MURO (el mueble de
+        # piso), no contra la de esta corrida: si no, las alacenas del retorno
+        # quedarían despegadas del muro.
+        prof_muro = max([m.prof for m in ESTADO.project.modules
+                         if m.tipo != "superior"] or [PROF_BASE])
+        try:
+            esquina = esquina_en_l(largo_previo, prof=prof_muro, sentido=sentido,
+                                   largo_retorno=largo)
+        except ValueError as e:
+            return f"ERROR: {e}"
+        t.rotacion, t.origen = esquina["rotacion"], esquina["origen"]
+        nota_esq = (f"Muro {muro}: retorno sobre {previo.muro} por la "
+                    f"{sentido} (giro {t.rotacion:.0f}°), con filler de esquina "
+                    f"de {HOLGURA_ESQUINA:.0f}mm para que las puertas de los "
+                    f"dos muros no choquen.")
+        t.notas.append(nota_esq)
+        notas.append(nota_esq)
+    else:
+        # otra corrida sobre un muro que ya existe: hereda su marco
+        hermano = next((x for x in ESTADO.project.tramos if x.muro == muro), None)
+        if hermano is not None:
+            t.rotacion, t.origen = hermano.rotacion, list(hermano.origen)
+
     if lleva_cubierta:
         prof = max(ESTADO.modulo(mid).prof for mid in modulos)
-        panels, notas_cub = cubierta(id, largo, prof_modulo=prof, recortes=recortes or [])
+        sku_cub = material_cubierta or ESTADO.material_cubierta_default
+        panels, notas_cub = cubierta(
+            id, largo, prof_modulo=prof, recortes=recortes or [],
+            **({"material": sku_cub} if sku_cub else {}))
         t.panels += panels
         t.notas += notas_cub
         notas += notas_cub
@@ -442,7 +541,7 @@ def agregar_nota(nota: str) -> str:
 HERRAMIENTAS = [
     ver_catalogo, definir_proyecto, estado_actual,
     agregar_gabinete_base, agregar_alacena, agregar_cajonera, agregar_torre,
-    agregar_tarja,
+    agregar_tarja, agregar_jaladeras,
     eliminar_modulo, agregar_tramo, calcular_led, agregar_nota,
 ]
 

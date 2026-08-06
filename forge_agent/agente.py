@@ -40,14 +40,34 @@ CÓMO MODULAR
   del tramo principal. Marca tarja=True: no lleva entrepaño y usa refuerzos de 80mm.
 - Un frente de 3 metros son ~4–5 módulos, no uno solo.
 
+COCINA EN L O EN U
+- Un TRAMO es un muro. Haz un tramo por muro y pásale retorno_de con el id del
+  tramo del muro anterior: el motor calcula el giro, el origen y el filler de
+  esquina. NUNCA intentes colocar el segundo muro moviendo anchos a mano.
+- Si sobre un mismo muro hay varias corridas (una torre aparte, la corrida de
+  piso, la corrida de alacenas), haz un tramo por corrida con el MISMO `muro` y
+  usa `desplazamiento` para decir a cuántos mm del inicio del muro arranca cada
+  una. Las alacenas que van sobre el segundo y tercer mueble llevan como
+  desplazamiento la suma de los anchos anteriores.
+- Sólo la corrida de piso lleva cubierta; las de torre y alacenas van con
+  lleva_cubierta=False.
+
+JALADERAS
+- Llama agregar_jaladeras por módulo, DESPUÉS de crearlo (necesita saber
+  cuántos frentes tiene). Siluetas: "bow" (moño) o "barra".
+- Se compran: van a la lista de herrajes, no al cutlist. Un módulo con gola o
+  push no lleva jaladera y la herramienta te lo va a decir.
+
 FLUJO
 1. Si el prompt menciona un material, color, acabado o gola, llama ver_catalogo
    antes de elegir el SKU. Nunca inventes SKUs.
 2. definir_proyecto con cliente, nombre, materiales y apertura.
 3. Agrega los módulos de piso de izquierda a derecha, luego las alacenas.
-4. agregar_tramo por cada muro con módulos de piso contiguos (calcula cubierta y gola).
-5. calcular_led si algún módulo lleva LED.
-6. estado_actual para verificar, y agregar_nota para lo que el taller deba saber.
+4. agregar_jaladeras en los módulos que abran con jaladera.
+5. agregar_tramo por cada corrida (calcula cubierta y gola). En una L, el
+   segundo muro va con retorno_de.
+6. calcular_led si algún módulo lleva LED.
+7. estado_actual para verificar, y agregar_nota para lo que el taller deba saber.
 
 CUANDO EL PROMPT ES VAGO
 Toma decisiones razonables de taller y anótalas con agregar_nota en vez de

@@ -14,6 +14,7 @@ Salidas en projects/x/deliverables/:
 """
 
 import json
+import math
 import os
 import sys
 
@@ -48,12 +49,19 @@ def preparar_escena():
     s.unit_settings.length_unit = "MILLIMETERS"
 
 
-def crear_caja(nombre, sx, sy, sz, x, y, z, material_sku):
-    """Caja alineada a ejes: centro (x,y,z) y extensión (sx,sy,sz), en mm."""
+def crear_caja(nombre, sx, sy, sz, x, y, z, material_sku, rz=0.0):
+    """Caja con centro (x,y,z) y extensión LOCAL (sx,sy,sz), en mm.
+
+    `rz` es el giro del muro en grados (tramos girados: cocinas en L / U). La
+    extensión sigue siendo local, así que la caja se gira sobre su centro y las
+    medidas del cutlist y las del 3D siguen siendo el mismo número.
+    """
     bpy.ops.mesh.primitive_cube_add(size=1, location=(x * MM, y * MM, z * MM))
     ob = bpy.context.active_object
     ob.name = nombre
     ob.scale = (sx * MM, sy * MM, sz * MM)
+    if rz:
+        ob.rotation_euler = (0.0, 0.0, math.radians(rz))
     mat = materials.obtener(material_sku)
     if mat is not None:
         ob.data.materials.append(mat)
@@ -84,7 +92,8 @@ def construir(data):
                 if i < len(colocacion):
                     c = colocacion[i]
                     ob = crear_caja(nombre, c["sx"], c["sy"], c["sz"],
-                                    c["x"], c["y"], c["z"], p.get("material", ""))
+                                    c["x"], c["y"], c["z"], p.get("material", ""),
+                                    rz=float(c.get("rz", 0.0)))
                 else:
                     # fallback: apilado provisional para JSON sin colocación
                     ob = crear_caja(nombre, p["largo"], p["espesor"], p["ancho"],

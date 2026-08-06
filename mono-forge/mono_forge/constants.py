@@ -30,6 +30,10 @@ ALTO_CUERPO_BASE = ALTO_TOTAL_BASE - ALTO_ZOCLO       # = 800
 ALTO_LATERAL_BASE = ALTO_CUERPO_BASE - T              # = 785  ← DERIVADO
 PROF_BASE = 600
 
+#: filler de esquina interior (cocinas en L / U). Sin este claro, la puerta del
+#: último mueble de un muro golpea la del primero del muro de retorno.
+HOLGURA_ESQUINA = 50
+
 # ── Mueble superior ──────────────────────────────────────────────────────
 PROF_SUPERIOR = 350         # rango válido 350–400
 PROF_SUPERIOR_RANGO = (350, 400)
