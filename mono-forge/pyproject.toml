@@ -6,8 +6,10 @@ requires-python = ">=3.11"
 dependencies = []
 
 [project.optional-dependencies]
-docs = ["openpyxl>=3.1", "weasyprint>=62", "jinja2>=3.1"]
-dev  = ["pytest>=8.0"]
+# reportlab en vez de weasyprint: instala con wheel en Windows, sin GTK ni
+# dependencias del sistema. openpyxl para los xlsx del taller.
+docs = ["openpyxl>=3.1", "reportlab>=4.0"]
+dev  = ["pytest>=8.0", "openpyxl>=3.1", "reportlab>=4.0"]
 
 [build-system]
 requires = ["hatchling"]
