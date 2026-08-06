@@ -271,6 +271,9 @@ def agregar_cajonera(id: str, ancho: float, altos_frentes: list[float],
             apertura=_apertura(apertura),
             gola_hueco=_gola_hueco(ESTADO.gola_sku_default))
         m.gola_sku = ESTADO.gola_sku_default
+        # los cajones de una misma torre comparten hueco: se apilan, no se alinean
+        m.flags["columna"] = id
+        m.flags["orden"] = i
         ESTADO.project.modules.append(m)
         creados.append(f"{cid} ({alto_f:.0f}mm)")
     total = sum(altos_frentes)

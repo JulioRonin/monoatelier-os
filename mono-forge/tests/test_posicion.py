@@ -3,6 +3,7 @@ verifican que la geometría colocada respeta la aritmética del taller."""
 
 from mono_forge.constants import (
     T, ALTO_ZOCLO, ALTO_TOTAL_BASE, ALTO_LATERAL_BASE, ZOCLO_RETRANQUEO,
+    GAP_FRENTES,
 )
 from mono_forge.generators.base import gabinete_base
 from mono_forge.generators.cajonera import cajon
@@ -87,3 +88,31 @@ def test_roundtrip_json_conserva_colocacion(tmp_path):
     p2 = Project.from_json(ruta)
     assert [q.colocacion for q in p2.all_panels()] == \
            [q.colocacion for q in p.all_panels()]
+
+
+def test_columna_de_cajones_se_apila_no_se_alinea():
+    """Una cajonera de 3 cajones ocupa UN hueco de muro, no tres."""
+    from mono_forge.generators.cajonera import cajon
+
+    p = Project(cliente="TEST", nombre="cajonera")
+    p.modules.append(gabinete_base("B01", ancho=600))
+    for i, alto in enumerate([200, 250, 350], start=1):
+        m = cajon(f"C01_{i}", ancho_interior=570, alto_frente=alto, prof_modulo=600,
+                  ancho_modulo=600)
+        m.flags["columna"] = "C01"
+        m.flags["orden"] = i
+        p.modules.append(m)
+    colocar(p)
+
+    frentes = [next(q for q in m.panels if q.rol_estructural == "frente")
+               for m in p.modules if m.tipo == "cajonera"]
+    xs = {round(f.colocacion[0]["x"], 1) for f in frentes}
+    assert len(xs) == 1, "los cajones deben compartir la misma X (un solo hueco)"
+
+    # y apilarse sin traslape: cada frente empieza donde termina el anterior
+    zs = sorted((f.colocacion[0]["z"] - f.colocacion[0]["sz"] / 2,
+                 f.colocacion[0]["z"] + f.colocacion[0]["sz"] / 2) for f in frentes)
+    assert zs[0][0] >= ALTO_ZOCLO - 0.01           # arrancan sobre el zoclo
+    for (_, fin), (ini, _) in zip(zs, zs[1:]):
+        assert abs(ini - fin) <= GAP_FRENTES + 0.01
+    assert zs[-1][1] <= ALTO_TOTAL_BASE + 0.01     # y no rebasan los 900

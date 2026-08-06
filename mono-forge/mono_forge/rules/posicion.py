@@ -220,12 +220,24 @@ def colocar(project: Project, alto_colgado: float = ALTO_COLGADO_DEFAULT) -> dic
     origen: dict[str, tuple[float, float]] = {}   # id módulo → (x0, z0)
     x_piso = 0.0
     x_aire = 0.0
+    # columnas de cajones: varios módulos comparten un mismo hueco y se APILAN.
+    # Sin esto una cajonera de 3 cajones ocuparía 3 anchos de muro.
+    col_x: dict[str, float] = {}
+    col_z: dict[str, float] = {}
 
     for m in project.modules:
         colgado = m.tipo == "superior"
+        columna = m.flags.get("columna")
         if colgado:
             x0, z0 = x_aire, alto_colgado
             x_aire += m.ancho + GAP_MODULOS
+        elif columna:
+            if columna not in col_x:
+                col_x[columna] = x_piso
+                col_z[columna] = ALTO_ZOCLO      # los frentes arrancan sobre el zoclo
+                x_piso += m.ancho + GAP_MODULOS
+            x0, z0 = col_x[columna], col_z[columna]
+            col_z[columna] += m.alto
         else:
             x0, z0 = x_piso, 0.0
             x_piso += m.ancho + GAP_MODULOS
