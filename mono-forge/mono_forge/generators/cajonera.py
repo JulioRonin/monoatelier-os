@@ -14,7 +14,7 @@ canto del frente de caja — ambos encintados, sin núcleo a la vista.
 from __future__ import annotations
 
 from ..constants import (
-    T, T_FRENTE_STD, T_FONDO, GAP_FRENTES, CAJA_MENOS_FRENTE,
+    T, T_FRENTE_STD, T_FONDO_CAJON, GAP_FRENTES, CAJA_MENOS_FRENTE,
     seleccionar_corredera,
 )
 from ..models import Module, Panel, HardwareItem, cantos
@@ -43,27 +43,40 @@ def cajon(
     corredera = seleccionar_corredera(prof_modulo, esp_frente)
     alto_caja = alto_frente - CAJA_MENOS_FRENTE
     largo_cap = ancho_caja - 2 * T
+    # El fondo de 15mm corre a todo el ancho y los laterales DESCANSAN sobre él
+    # — la misma regla del casco: el tablero carga, el tornillo alinea.
+    alto_sobre_fondo = alto_caja - T_FONDO_CAJON
 
     m = Module(id=id, tipo="cajonera", ancho=ancho_modulo,
                alto=alto_frente, prof=prof_modulo, apertura=apertura)
+    # Medidas de la caja DECLARADAS, no deducidas midiendo piezas: si mañana
+    # cambia el espesor o el ancho de una pieza, la colocación 3D sigue bien.
+    m.flags["ancho_caja"] = ancho_caja
+    m.flags["alto_caja"] = alto_caja
+    m.flags["corredera"] = corredera
 
     m.panels += [
-        Panel(name=f"{id}_lateral_caja", largo=corredera, ancho=alto_caja, cantidad=2,
-              material=material, rol_estructural="lateral_caja",
-              justificacion=("Corre COMPLETO: la corredera se atornilla a él en toda su "
-                             "longitud. Captura al frente de caja y a la trasera."),
-              cantos=cantos(frontal=True, superior=True)),
-        Panel(name=f"{id}_frente_caja", largo=largo_cap, ancho=alto_caja,
-              material=material, rol_estructural="capturado",
-              justificacion="Capturado entre los laterales (ancho_caja − 2T).",
-              cantos=cantos(superior=True)),
-        Panel(name=f"{id}_trasera_caja", largo=largo_cap, ancho=alto_caja,
-              material=material, rol_estructural="capturado",
-              justificacion="Capturada entre los laterales.",
-              cantos=cantos(superior=True)),
         Panel(name=f"{id}_fondo_caja", largo=ancho_caja, ancho=corredera,
-              espesor=T_FONDO, material="MDF-003-FON", rol_estructural="fondo",
-              justificacion="Fondo de la caja.", cantos=cantos()),
+              espesor=T_FONDO_CAJON, material=material, rol_estructural="fondo_portante",
+              justificacion=("Tablero de 15mm a TODO el ancho de la caja. Carga el "
+                             "contenido y los laterales descansan sobre él: el "
+                             "tablero carga, el tornillo alinea. Un fondo de 3mm "
+                             "se pandea con peso."),
+              cantos=cantos()),
+        Panel(name=f"{id}_lateral_caja", largo=corredera, ancho=alto_sobre_fondo,
+              cantidad=2, material=material, rol_estructural="lateral_caja",
+              justificacion=("Corre COMPLETO a lo largo: la corredera se atornilla a "
+                             "él en toda su longitud. DESCANSA sobre el fondo y "
+                             "captura al frente de caja y a la trasera."),
+              cantos=cantos(frontal=True, superior=True)),
+        Panel(name=f"{id}_frente_caja", largo=largo_cap, ancho=alto_sobre_fondo,
+              material=material, rol_estructural="capturado",
+              justificacion="Capturado entre los laterales (ancho_caja − 2T), sobre el fondo.",
+              cantos=cantos(superior=True)),
+        Panel(name=f"{id}_trasera_caja", largo=largo_cap, ancho=alto_sobre_fondo,
+              material=material, rol_estructural="capturado",
+              justificacion="Capturada entre los laterales, sobre el fondo.",
+              cantos=cantos(superior=True)),
     ]
 
     alto_f = ajustar_frentes(alto_frente - GAP_FRENTES, apertura, gola_hueco)
@@ -80,4 +93,8 @@ def cajon(
         f"Corredera {corredera}mm ({tipo_corredera}), holgura {holgura}mm por lado. "
         f"Caja: {ancho_caja:.0f} x {corredera} x {alto_caja:.0f}mm.")
     m.notas.append("Encintar canto FRONTAL y SUPERIOR de los laterales; el trasero NO.")
+    m.notas.append(
+        f"Fondo de caja en tablero de {T_FONDO_CAJON}mm a todo el ancho "
+        f"({ancho_caja:.0f}mm), NO en MDF de 3mm: carga el contenido. Armar "
+        f"apoyando los laterales SOBRE el fondo y atornillando desde abajo.")
     return m

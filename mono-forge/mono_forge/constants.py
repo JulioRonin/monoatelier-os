@@ -11,7 +11,8 @@ Todas las medidas en MILÍMETROS.
 T = 15                      # estructura (laterales, base, techo, refuerzos, divisores)
 T_FRENTE_STD = 15           # frentes estándar
 T_FRENTE_BRILLO = 19        # alto brillo — cintilla PVC pegada a MANO
-T_FONDO = 3                 # fondos
+T_FONDO = 3                 # fondos APLICADOS del casco (los que escuadran el mueble)
+T_FONDO_CAJON = 15          # fondo de la caja del cajón: carga el contenido, va en tablero
 
 # ── Corte ────────────────────────────────────────────────────────────────
 HOJA_LARGO = 2440

@@ -123,26 +123,38 @@ def _colocar_panel_cajonera(m: Module, p: Panel) -> bool:
     a, alto = m.ancho, m.alto
     rol = p.rol_estructural
 
-    # dimensiones de la caja, derivadas de los propios paneles
+    # Medidas declaradas por el generador. El fallback mide el lateral sólo
+    # para JSON viejos: deducir el ancho de la caja midiendo el fondo hacía que
+    # cambiar el fondo desplazara los laterales y las piezas se atravesaran.
     lat = next((q for q in m.panels if q.rol_estructural == "lateral_caja"), None)
     if lat is None:
         return False
-    corredera, alto_caja = lat.largo, lat.ancho
-    fondo_caja = next((q for q in m.panels if q.name.endswith("_fondo_caja")), None)
-    ancho_caja = fondo_caja.largo if fondo_caja else a - 2 * T
+    corredera = m.flags.get("corredera", lat.largo)
+    alto_caja = m.flags.get("alto_caja", lat.ancho)
+    ancho_caja = m.flags.get("ancho_caja")
+    if ancho_caja is None:
+        capturado = next((q for q in m.panels
+                          if q.name.endswith("_frente_caja")), None)
+        ancho_caja = capturado.largo + 2 * T if capturado else a - 2 * T
     x0 = (a - ancho_caja) / 2            # caja centrada en el módulo
     z0 = (alto - alto_caja) / 2          # caja centrada en el alto del frente
+    # El fondo ocupa la franja inferior y TODO lo demás descansa sobre él
+    t_fondo = next((q.espesor for q in m.panels
+                    if q.rol_estructural == "fondo_portante"), 0.0)
+    z_sobre = z0 + t_fondo
 
-    if rol == "lateral_caja":
-        zc = z0 + alto_caja / 2
-        p.colocacion = [_c(x0 + T / 2, corredera / 2, zc, T, corredera, alto_caja),
+    if rol == "fondo_portante":
+        p.colocacion = [_c(a / 2, corredera / 2, z0 + p.espesor / 2,
+                           p.largo, p.ancho, p.espesor)]
+    elif rol == "lateral_caja":
+        zc = z_sobre + p.ancho / 2
+        p.colocacion = [_c(x0 + T / 2, corredera / 2, zc, T, corredera, p.ancho),
                         _c(x0 + ancho_caja - T / 2, corredera / 2, zc,
-                           T, corredera, alto_caja)][:p.cantidad]
+                           T, corredera, p.ancho)][:p.cantidad]
     elif rol == "capturado":
-        zc = z0 + alto_caja / 2
         y = T / 2 if p.name.endswith("_frente_caja") else corredera - T / 2
-        p.colocacion = [_c(a / 2, y, zc, p.largo, T, p.ancho)]
-    elif rol == "fondo":
+        p.colocacion = [_c(a / 2, y, z_sobre + p.ancho / 2, p.largo, T, p.ancho)]
+    elif rol == "fondo":            # JSON viejo: fondo de 3mm bajo la caja
         p.colocacion = [_c(a / 2, corredera / 2, z0 + p.espesor / 2,
                            p.largo, p.ancho, p.espesor)]
     elif rol == "frente":

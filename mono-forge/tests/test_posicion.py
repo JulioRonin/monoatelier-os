@@ -1,6 +1,8 @@
 """La colocación 3D se DERIVA de las reglas estructurales — estos tests
 verifican que la geometría colocada respeta la aritmética del taller."""
 
+import pytest
+
 from mono_forge.constants import (
     T, ALTO_ZOCLO, ALTO_TOTAL_BASE, ALTO_LATERAL_BASE, ZOCLO_RETRANQUEO,
     GAP_FRENTES,
@@ -116,3 +118,62 @@ def test_columna_de_cajones_se_apila_no_se_alinea():
     for (_, fin), (ini, _) in zip(zs, zs[1:]):
         assert abs(ini - fin) <= GAP_FRENTES + 0.01
     assert zs[-1][1] <= ALTO_TOTAL_BASE + 0.01     # y no rebasan los 900
+
+
+def _volumen_traslape(a, b):
+    """Volumen de la intersección de dos cajas (0 si sólo se tocan)."""
+    def solape(c1, c2, eje, tam):
+        lo = max(c1[eje] - c1[tam] / 2, c2[eje] - c2[tam] / 2)
+        hi = min(c1[eje] + c1[tam] / 2, c2[eje] + c2[tam] / 2)
+        return max(0.0, hi - lo)
+    return (solape(a, b, "x", "sx") * solape(a, b, "y", "sy")
+            * solape(a, b, "z", "sz"))
+
+
+def test_las_piezas_del_cajon_no_se_atraviesan():
+    """Dos piezas de tablero no pueden ocupar el mismo espacio.
+
+    El fondo de la caja corría a TODO el ancho mientras los laterales ocupan
+    los 15mm de cada extremo: se atravesaban, y la pieza salía 30mm más ancha
+    de lo que realmente cabe.
+    """
+    p = Project(cliente="TEST", nombre="traslape")
+    p.modules.append(cajon("C01", ancho_interior=570, alto_frente=266,
+                           prof_modulo=600, ancho_modulo=600))
+    colocar(p)
+
+    cajas = [(panel.name, c)
+             for panel in p.modules[0].panels for c in panel.colocacion]
+    for i, (n1, c1) in enumerate(cajas):
+        for n2, c2 in cajas[i + 1:]:
+            v = _volumen_traslape(c1, c2)
+            assert v < 1.0, f"{n1} y {n2} se atraviesan ({v:.0f} mm³)"
+
+
+def test_el_fondo_del_cajon_es_de_tablero_de_15_y_carga_los_laterales():
+    """El fondo carga el contenido: un MDF de 3mm se pandea.
+
+    Y como carga, aplica la regla del casco: corre a TODO el ancho y los
+    laterales descansan sobre él, en vez de ir capturado entre ellos.
+    """
+    from mono_forge.constants import T_FONDO_CAJON
+
+    m = cajon("C01", ancho_interior=570, alto_frente=266, prof_modulo=600,
+              ancho_modulo=600)
+    fondo = next(q for q in m.panels if q.name.endswith("_fondo_caja"))
+    lateral = next(q for q in m.panels if q.rol_estructural == "lateral_caja")
+    frente_caja = next(q for q in m.panels if q.name.endswith("_frente_caja"))
+
+    assert T_FONDO_CAJON == 15
+    assert fondo.espesor == T_FONDO_CAJON
+    assert fondo.material == lateral.material            # tablero, no MDF de fondo
+    assert fondo.largo == frente_caja.largo + 2 * T      # a todo el ancho de la caja
+    assert lateral.ancho == frente_caja.ancho            # ambos sobre el fondo
+
+    p = Project(cliente="TEST", nombre="fondo")
+    p.modules.append(m)
+    colocar(p)
+    cf = fondo.colocacion[0]
+    cl = lateral.colocacion[0]
+    assert cl["z"] - cl["sz"] / 2 == pytest.approx(cf["z"] + cf["sz"] / 2), \
+        "el lateral debe arrancar justo donde termina el fondo"

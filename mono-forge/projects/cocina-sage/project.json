@@ -13,106 +13,14 @@
       "prof": 600,
       "panels": [
         {
-          "name": "B01_1_lateral_caja",
-          "largo": 500,
-          "ancho": 196,
-          "espesor": 15,
-          "cantidad": 2,
-          "material": "MEL-BLA-15-IMP",
-          "rol_estructural": "lateral_caja",
-          "justificacion": "Corre COMPLETO: la corredera se atornilla a él en toda su longitud. Captura al frente de caja y a la trasera.",
-          "cantos": {
-            "frontal": true,
-            "trasero": false,
-            "superior": true,
-            "inferior": false
-          },
-          "veta": "libre",
-          "drilling": [],
-          "colocacion": [
-            {
-              "x": 35.5,
-              "y": 250.0,
-              "z": 233.0,
-              "sx": 15,
-              "sy": 500,
-              "sz": 196
-            },
-            {
-              "x": 414.5,
-              "y": 250.0,
-              "z": 233.0,
-              "sx": 15,
-              "sy": 500,
-              "sz": 196
-            }
-          ]
-        },
-        {
-          "name": "B01_1_frente_caja",
-          "largo": 364,
-          "ancho": 196,
-          "espesor": 15,
-          "cantidad": 1,
-          "material": "MEL-BLA-15-IMP",
-          "rol_estructural": "capturado",
-          "justificacion": "Capturado entre los laterales (ancho_caja − 2T).",
-          "cantos": {
-            "frontal": false,
-            "trasero": false,
-            "superior": true,
-            "inferior": false
-          },
-          "veta": "libre",
-          "drilling": [],
-          "colocacion": [
-            {
-              "x": 225.0,
-              "y": 7.5,
-              "z": 233.0,
-              "sx": 364,
-              "sy": 15,
-              "sz": 196
-            }
-          ]
-        },
-        {
-          "name": "B01_1_trasera_caja",
-          "largo": 364,
-          "ancho": 196,
-          "espesor": 15,
-          "cantidad": 1,
-          "material": "MEL-BLA-15-IMP",
-          "rol_estructural": "capturado",
-          "justificacion": "Capturada entre los laterales.",
-          "cantos": {
-            "frontal": false,
-            "trasero": false,
-            "superior": true,
-            "inferior": false
-          },
-          "veta": "libre",
-          "drilling": [],
-          "colocacion": [
-            {
-              "x": 225.0,
-              "y": 492.5,
-              "z": 233.0,
-              "sx": 364,
-              "sy": 15,
-              "sz": 196
-            }
-          ]
-        },
-        {
           "name": "B01_1_fondo_caja",
           "largo": 394,
           "ancho": 500,
-          "espesor": 3,
+          "espesor": 15,
           "cantidad": 1,
-          "material": "MDF-003-FON",
-          "rol_estructural": "fondo",
-          "justificacion": "Fondo de la caja.",
+          "material": "MEL-BLA-15-IMP",
+          "rol_estructural": "fondo_portante",
+          "justificacion": "Tablero de 15mm a TODO el ancho de la caja. Carga el contenido y los laterales descansan sobre él: el tablero carga, el tornillo alinea. Un fondo de 3mm se pandea con peso.",
           "cantos": {
             "frontal": false,
             "trasero": false,
@@ -125,10 +33,102 @@
             {
               "x": 225.0,
               "y": 250.0,
-              "z": 136.5,
+              "z": 142.5,
               "sx": 394,
               "sy": 500,
-              "sz": 3
+              "sz": 15
+            }
+          ]
+        },
+        {
+          "name": "B01_1_lateral_caja",
+          "largo": 500,
+          "ancho": 181,
+          "espesor": 15,
+          "cantidad": 2,
+          "material": "MEL-BLA-15-IMP",
+          "rol_estructural": "lateral_caja",
+          "justificacion": "Corre COMPLETO a lo largo: la corredera se atornilla a él en toda su longitud. DESCANSA sobre el fondo y captura al frente de caja y a la trasera.",
+          "cantos": {
+            "frontal": true,
+            "trasero": false,
+            "superior": true,
+            "inferior": false
+          },
+          "veta": "libre",
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 35.5,
+              "y": 250.0,
+              "z": 240.5,
+              "sx": 15,
+              "sy": 500,
+              "sz": 181
+            },
+            {
+              "x": 414.5,
+              "y": 250.0,
+              "z": 240.5,
+              "sx": 15,
+              "sy": 500,
+              "sz": 181
+            }
+          ]
+        },
+        {
+          "name": "B01_1_frente_caja",
+          "largo": 364,
+          "ancho": 181,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-BLA-15-IMP",
+          "rol_estructural": "capturado",
+          "justificacion": "Capturado entre los laterales (ancho_caja − 2T), sobre el fondo.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": true,
+            "inferior": false
+          },
+          "veta": "libre",
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 225.0,
+              "y": 7.5,
+              "z": 240.5,
+              "sx": 364,
+              "sy": 15,
+              "sz": 181
+            }
+          ]
+        },
+        {
+          "name": "B01_1_trasera_caja",
+          "largo": 364,
+          "ancho": 181,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-BLA-15-IMP",
+          "rol_estructural": "capturado",
+          "justificacion": "Capturada entre los laterales, sobre el fondo.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": true,
+            "inferior": false
+          },
+          "veta": "libre",
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 225.0,
+              "y": 492.5,
+              "z": 240.5,
+              "sx": 364,
+              "sy": 15,
+              "sz": 181
             }
           ]
         },
@@ -180,9 +180,13 @@
       "led": false,
       "notas": [
         "Corredera 500mm (lateral), holgura 13mm por lado. Caja: 394 x 500 x 196mm.",
-        "Encintar canto FRONTAL y SUPERIOR de los laterales; el trasero NO."
+        "Encintar canto FRONTAL y SUPERIOR de los laterales; el trasero NO.",
+        "Fondo de caja en tablero de 15mm a todo el ancho (394mm), NO en MDF de 3mm: carga el contenido. Armar apoyando los laterales SOBRE el fondo y atornillando desde abajo."
       ],
       "flags": {
+        "ancho_caja": 394,
+        "alto_caja": 196,
+        "corredera": 500,
         "columna": "B01",
         "orden": 1
       }
@@ -195,106 +199,14 @@
       "prof": 600,
       "panels": [
         {
-          "name": "B01_2_lateral_caja",
-          "largo": 500,
-          "ancho": 196,
-          "espesor": 15,
-          "cantidad": 2,
-          "material": "MEL-BLA-15-IMP",
-          "rol_estructural": "lateral_caja",
-          "justificacion": "Corre COMPLETO: la corredera se atornilla a él en toda su longitud. Captura al frente de caja y a la trasera.",
-          "cantos": {
-            "frontal": true,
-            "trasero": false,
-            "superior": true,
-            "inferior": false
-          },
-          "veta": "libre",
-          "drilling": [],
-          "colocacion": [
-            {
-              "x": 35.5,
-              "y": 250.0,
-              "z": 499.0,
-              "sx": 15,
-              "sy": 500,
-              "sz": 196
-            },
-            {
-              "x": 414.5,
-              "y": 250.0,
-              "z": 499.0,
-              "sx": 15,
-              "sy": 500,
-              "sz": 196
-            }
-          ]
-        },
-        {
-          "name": "B01_2_frente_caja",
-          "largo": 364,
-          "ancho": 196,
-          "espesor": 15,
-          "cantidad": 1,
-          "material": "MEL-BLA-15-IMP",
-          "rol_estructural": "capturado",
-          "justificacion": "Capturado entre los laterales (ancho_caja − 2T).",
-          "cantos": {
-            "frontal": false,
-            "trasero": false,
-            "superior": true,
-            "inferior": false
-          },
-          "veta": "libre",
-          "drilling": [],
-          "colocacion": [
-            {
-              "x": 225.0,
-              "y": 7.5,
-              "z": 499.0,
-              "sx": 364,
-              "sy": 15,
-              "sz": 196
-            }
-          ]
-        },
-        {
-          "name": "B01_2_trasera_caja",
-          "largo": 364,
-          "ancho": 196,
-          "espesor": 15,
-          "cantidad": 1,
-          "material": "MEL-BLA-15-IMP",
-          "rol_estructural": "capturado",
-          "justificacion": "Capturada entre los laterales.",
-          "cantos": {
-            "frontal": false,
-            "trasero": false,
-            "superior": true,
-            "inferior": false
-          },
-          "veta": "libre",
-          "drilling": [],
-          "colocacion": [
-            {
-              "x": 225.0,
-              "y": 492.5,
-              "z": 499.0,
-              "sx": 364,
-              "sy": 15,
-              "sz": 196
-            }
-          ]
-        },
-        {
           "name": "B01_2_fondo_caja",
           "largo": 394,
           "ancho": 500,
-          "espesor": 3,
+          "espesor": 15,
           "cantidad": 1,
-          "material": "MDF-003-FON",
-          "rol_estructural": "fondo",
-          "justificacion": "Fondo de la caja.",
+          "material": "MEL-BLA-15-IMP",
+          "rol_estructural": "fondo_portante",
+          "justificacion": "Tablero de 15mm a TODO el ancho de la caja. Carga el contenido y los laterales descansan sobre él: el tablero carga, el tornillo alinea. Un fondo de 3mm se pandea con peso.",
           "cantos": {
             "frontal": false,
             "trasero": false,
@@ -307,10 +219,102 @@
             {
               "x": 225.0,
               "y": 250.0,
-              "z": 402.5,
+              "z": 408.5,
               "sx": 394,
               "sy": 500,
-              "sz": 3
+              "sz": 15
+            }
+          ]
+        },
+        {
+          "name": "B01_2_lateral_caja",
+          "largo": 500,
+          "ancho": 181,
+          "espesor": 15,
+          "cantidad": 2,
+          "material": "MEL-BLA-15-IMP",
+          "rol_estructural": "lateral_caja",
+          "justificacion": "Corre COMPLETO a lo largo: la corredera se atornilla a él en toda su longitud. DESCANSA sobre el fondo y captura al frente de caja y a la trasera.",
+          "cantos": {
+            "frontal": true,
+            "trasero": false,
+            "superior": true,
+            "inferior": false
+          },
+          "veta": "libre",
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 35.5,
+              "y": 250.0,
+              "z": 506.5,
+              "sx": 15,
+              "sy": 500,
+              "sz": 181
+            },
+            {
+              "x": 414.5,
+              "y": 250.0,
+              "z": 506.5,
+              "sx": 15,
+              "sy": 500,
+              "sz": 181
+            }
+          ]
+        },
+        {
+          "name": "B01_2_frente_caja",
+          "largo": 364,
+          "ancho": 181,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-BLA-15-IMP",
+          "rol_estructural": "capturado",
+          "justificacion": "Capturado entre los laterales (ancho_caja − 2T), sobre el fondo.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": true,
+            "inferior": false
+          },
+          "veta": "libre",
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 225.0,
+              "y": 7.5,
+              "z": 506.5,
+              "sx": 364,
+              "sy": 15,
+              "sz": 181
+            }
+          ]
+        },
+        {
+          "name": "B01_2_trasera_caja",
+          "largo": 364,
+          "ancho": 181,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-BLA-15-IMP",
+          "rol_estructural": "capturado",
+          "justificacion": "Capturada entre los laterales, sobre el fondo.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": true,
+            "inferior": false
+          },
+          "veta": "libre",
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 225.0,
+              "y": 492.5,
+              "z": 506.5,
+              "sx": 364,
+              "sy": 15,
+              "sz": 181
             }
           ]
         },
@@ -362,9 +366,13 @@
       "led": false,
       "notas": [
         "Corredera 500mm (lateral), holgura 13mm por lado. Caja: 394 x 500 x 196mm.",
-        "Encintar canto FRONTAL y SUPERIOR de los laterales; el trasero NO."
+        "Encintar canto FRONTAL y SUPERIOR de los laterales; el trasero NO.",
+        "Fondo de caja en tablero de 15mm a todo el ancho (394mm), NO en MDF de 3mm: carga el contenido. Armar apoyando los laterales SOBRE el fondo y atornillando desde abajo."
       ],
       "flags": {
+        "ancho_caja": 394,
+        "alto_caja": 196,
+        "corredera": 500,
         "columna": "B01",
         "orden": 2
       }
@@ -377,106 +385,14 @@
       "prof": 600,
       "panels": [
         {
-          "name": "B01_3_lateral_caja",
-          "largo": 500,
-          "ancho": 198,
-          "espesor": 15,
-          "cantidad": 2,
-          "material": "MEL-BLA-15-IMP",
-          "rol_estructural": "lateral_caja",
-          "justificacion": "Corre COMPLETO: la corredera se atornilla a él en toda su longitud. Captura al frente de caja y a la trasera.",
-          "cantos": {
-            "frontal": true,
-            "trasero": false,
-            "superior": true,
-            "inferior": false
-          },
-          "veta": "libre",
-          "drilling": [],
-          "colocacion": [
-            {
-              "x": 35.5,
-              "y": 250.0,
-              "z": 766.0,
-              "sx": 15,
-              "sy": 500,
-              "sz": 198
-            },
-            {
-              "x": 414.5,
-              "y": 250.0,
-              "z": 766.0,
-              "sx": 15,
-              "sy": 500,
-              "sz": 198
-            }
-          ]
-        },
-        {
-          "name": "B01_3_frente_caja",
-          "largo": 364,
-          "ancho": 198,
-          "espesor": 15,
-          "cantidad": 1,
-          "material": "MEL-BLA-15-IMP",
-          "rol_estructural": "capturado",
-          "justificacion": "Capturado entre los laterales (ancho_caja − 2T).",
-          "cantos": {
-            "frontal": false,
-            "trasero": false,
-            "superior": true,
-            "inferior": false
-          },
-          "veta": "libre",
-          "drilling": [],
-          "colocacion": [
-            {
-              "x": 225.0,
-              "y": 7.5,
-              "z": 766.0,
-              "sx": 364,
-              "sy": 15,
-              "sz": 198
-            }
-          ]
-        },
-        {
-          "name": "B01_3_trasera_caja",
-          "largo": 364,
-          "ancho": 198,
-          "espesor": 15,
-          "cantidad": 1,
-          "material": "MEL-BLA-15-IMP",
-          "rol_estructural": "capturado",
-          "justificacion": "Capturada entre los laterales.",
-          "cantos": {
-            "frontal": false,
-            "trasero": false,
-            "superior": true,
-            "inferior": false
-          },
-          "veta": "libre",
-          "drilling": [],
-          "colocacion": [
-            {
-              "x": 225.0,
-              "y": 492.5,
-              "z": 766.0,
-              "sx": 364,
-              "sy": 15,
-              "sz": 198
-            }
-          ]
-        },
-        {
           "name": "B01_3_fondo_caja",
           "largo": 394,
           "ancho": 500,
-          "espesor": 3,
+          "espesor": 15,
           "cantidad": 1,
-          "material": "MDF-003-FON",
-          "rol_estructural": "fondo",
-          "justificacion": "Fondo de la caja.",
+          "material": "MEL-BLA-15-IMP",
+          "rol_estructural": "fondo_portante",
+          "justificacion": "Tablero de 15mm a TODO el ancho de la caja. Carga el contenido y los laterales descansan sobre él: el tablero carga, el tornillo alinea. Un fondo de 3mm se pandea con peso.",
           "cantos": {
             "frontal": false,
             "trasero": false,
@@ -489,10 +405,102 @@
             {
               "x": 225.0,
               "y": 250.0,
-              "z": 668.5,
+              "z": 674.5,
               "sx": 394,
               "sy": 500,
-              "sz": 3
+              "sz": 15
+            }
+          ]
+        },
+        {
+          "name": "B01_3_lateral_caja",
+          "largo": 500,
+          "ancho": 183,
+          "espesor": 15,
+          "cantidad": 2,
+          "material": "MEL-BLA-15-IMP",
+          "rol_estructural": "lateral_caja",
+          "justificacion": "Corre COMPLETO a lo largo: la corredera se atornilla a él en toda su longitud. DESCANSA sobre el fondo y captura al frente de caja y a la trasera.",
+          "cantos": {
+            "frontal": true,
+            "trasero": false,
+            "superior": true,
+            "inferior": false
+          },
+          "veta": "libre",
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 35.5,
+              "y": 250.0,
+              "z": 773.5,
+              "sx": 15,
+              "sy": 500,
+              "sz": 183
+            },
+            {
+              "x": 414.5,
+              "y": 250.0,
+              "z": 773.5,
+              "sx": 15,
+              "sy": 500,
+              "sz": 183
+            }
+          ]
+        },
+        {
+          "name": "B01_3_frente_caja",
+          "largo": 364,
+          "ancho": 183,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-BLA-15-IMP",
+          "rol_estructural": "capturado",
+          "justificacion": "Capturado entre los laterales (ancho_caja − 2T), sobre el fondo.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": true,
+            "inferior": false
+          },
+          "veta": "libre",
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 225.0,
+              "y": 7.5,
+              "z": 773.5,
+              "sx": 364,
+              "sy": 15,
+              "sz": 183
+            }
+          ]
+        },
+        {
+          "name": "B01_3_trasera_caja",
+          "largo": 364,
+          "ancho": 183,
+          "espesor": 15,
+          "cantidad": 1,
+          "material": "MEL-BLA-15-IMP",
+          "rol_estructural": "capturado",
+          "justificacion": "Capturada entre los laterales, sobre el fondo.",
+          "cantos": {
+            "frontal": false,
+            "trasero": false,
+            "superior": true,
+            "inferior": false
+          },
+          "veta": "libre",
+          "drilling": [],
+          "colocacion": [
+            {
+              "x": 225.0,
+              "y": 492.5,
+              "z": 773.5,
+              "sx": 364,
+              "sy": 15,
+              "sz": 183
             }
           ]
         },
@@ -544,9 +552,13 @@
       "led": false,
       "notas": [
         "Corredera 500mm (lateral), holgura 13mm por lado. Caja: 394 x 500 x 198mm.",
-        "Encintar canto FRONTAL y SUPERIOR de los laterales; el trasero NO."
+        "Encintar canto FRONTAL y SUPERIOR de los laterales; el trasero NO.",
+        "Fondo de caja en tablero de 15mm a todo el ancho (394mm), NO en MDF de 3mm: carga el contenido. Armar apoyando los laterales SOBRE el fondo y atornillando desde abajo."
       ],
       "flags": {
+        "ancho_caja": 394,
+        "alto_caja": 198,
+        "corredera": 500,
         "columna": "B01",
         "orden": 3
       }
@@ -2048,8 +2060,8 @@
     }
   ],
   "notas": [
-    "Cubierta de granito oscuro con vetas blancas: piedra natural, NO la fabrica el taller. Cotizar con marmolero y coordinar plantilla después de instalar los muebles.",
-    "Gabinetes superiores con frente curvo (referencia del cliente): el motor actual sólo produce piezas planas. Se modelan con frente recto en verde sage mientras se desarrolla un generador de frentes curvos/termoformados.",
-    "Cajonera B01: \"3 medias\" interpretado como 3 cajones de altura similar (~266mm de frente cada uno). Confirmar con el cliente."
+    "Cubierta de granito oscuro con vetas blancas: piedra natural, NO la fabrica el taller.",
+    "Superiores con frente curvo en la referencia: el motor produce piezas planas; van rectos en sage.",
+    "Cajonera B01: \"3 medias\" = 3 cajones de altura similar (~266mm). Confirmar."
   ]
 }
