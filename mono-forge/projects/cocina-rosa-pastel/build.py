@@ -53,8 +53,10 @@ def construir() -> dict:
         material=CASCO, material_frente=FRENTE))
     print(h.agregar_cajonera("B01", ancho=600, altos_frentes=[266, 266, 268],
                              material=CASCO, material_frente=FRENTE))
-    print(h.agregar_gabinete_base("B02", ancho=900, tarja=True, entrepanos=0,
-                                  material=CASCO, material_frente=FRENTE))
+    # dos puertas: una hoja sola de 897mm se descuelga y barre medio pasillo
+    print(h.agregar_gabinete_base("B02", ancho=900, puertas=2, tarja=True,
+                                  entrepanos=0, material=CASCO,
+                                  material_frente=FRENTE))
     print(h.agregar_tarja("B02", ancho=600, fondo=450, profundidad=200))
     print(h.agregar_gabinete_base("B03", ancho=600, entrepanos=1,
                                   material=CASCO, material_frente=FRENTE))

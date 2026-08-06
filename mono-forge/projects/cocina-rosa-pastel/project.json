@@ -1629,9 +1629,9 @@
         {
           "name": "B02_puerta",
           "largo": 797,
-          "ancho": 897,
+          "ancho": 448.5,
           "espesor": 15,
-          "cantidad": 1,
+          "cantidad": 2,
           "material": "LAC-ROSA-PASTEL-15",
           "rol_estructural": "frente",
           "justificacion": "Bisagra recta. Apertura: jaladera.",
@@ -1665,10 +1665,18 @@
           ],
           "colocacion": [
             {
-              "x": 1650.0,
+              "x": 1425.0,
               "y": -7.5,
               "z": 501.5,
-              "sx": 897,
+              "sx": 448.5,
+              "sy": 15,
+              "sz": 797
+            },
+            {
+              "x": 1875.0,
+              "y": -7.5,
+              "z": 501.5,
+              "sx": 448.5,
               "sy": 15,
               "sz": 797
             }
@@ -1708,7 +1716,7 @@
           "largo": 56.0,
           "ancho": 34.0,
           "espesor": 18.0,
-          "cantidad": 1,
+          "cantidad": 2,
           "material": "MET-ROSA-MONO",
           "rol_estructural": "accesorio_jaladera",
           "justificacion": "Jaladera tipo moño (bow) 128mm — se COMPRA (JAL-MONO-BOW). No entra al cutlist ni al costeo de tablero; se modela para el 3D, el AR y el render.",
@@ -1723,7 +1731,15 @@
           "drilling": [],
           "colocacion": [
             {
-              "x": 1613.0,
+              "x": 1388.0,
+              "y": -24.0,
+              "z": 820.0,
+              "sx": 56.0,
+              "sy": 18.0,
+              "sz": 34.0
+            },
+            {
+              "x": 1838.0,
               "y": -24.0,
               "z": 820.0,
               "sx": 56.0,
@@ -1737,7 +1753,7 @@
           "largo": 20.0,
           "ancho": 22.0,
           "espesor": 24.0,
-          "cantidad": 1,
+          "cantidad": 2,
           "material": "MET-ROSA-MONO",
           "rol_estructural": "accesorio_jaladera",
           "justificacion": "Jaladera tipo moño (bow) 128mm — se COMPRA (JAL-MONO-BOW). No entra al cutlist ni al costeo de tablero; se modela para el 3D, el AR y el render.",
@@ -1752,7 +1768,15 @@
           "drilling": [],
           "colocacion": [
             {
-              "x": 1650.0,
+              "x": 1425.0,
+              "y": -27.0,
+              "z": 820.0,
+              "sx": 20.0,
+              "sy": 24.0,
+              "sz": 22.0
+            },
+            {
+              "x": 1875.0,
               "y": -27.0,
               "z": 820.0,
               "sx": 20.0,
@@ -1766,7 +1790,7 @@
           "largo": 56.0,
           "ancho": 34.0,
           "espesor": 18.0,
-          "cantidad": 1,
+          "cantidad": 2,
           "material": "MET-ROSA-MONO",
           "rol_estructural": "accesorio_jaladera",
           "justificacion": "Jaladera tipo moño (bow) 128mm — se COMPRA (JAL-MONO-BOW). No entra al cutlist ni al costeo de tablero; se modela para el 3D, el AR y el render.",
@@ -1781,7 +1805,15 @@
           "drilling": [],
           "colocacion": [
             {
-              "x": 1687.0,
+              "x": 1462.0,
+              "y": -24.0,
+              "z": 820.0,
+              "sx": 56.0,
+              "sy": 18.0,
+              "sz": 34.0
+            },
+            {
+              "x": 1912.0,
               "y": -24.0,
               "z": 820.0,
               "sx": 56.0,
@@ -1795,7 +1827,7 @@
         {
           "sku": "BIS-35-REC",
           "descripcion": "Bisagra cazoleta 35mm recta (sobreposición total)",
-          "cantidad": 2,
+          "cantidad": 4,
           "unidad": "pza"
         },
         {
@@ -1819,7 +1851,7 @@
         {
           "sku": "JAL-MONO-BOW",
           "descripcion": "Jaladera tipo moño (bow) 128mm",
-          "cantidad": 1,
+          "cantidad": 2,
           "unidad": "pza"
         }
       ],
@@ -1831,7 +1863,7 @@
         "Escuadrar contra el fondo (diagonales iguales) ANTES de fijarlo.",
         "Módulo de tarja: sin entrepaño; refuerzos de 80mm para librar el tazón.",
         "Tarja de 600×450mm, tazón de 200mm de profundidad. El recorte va en la CUBIERTA (nivel 900mm); coordinar plantilla con el proveedor de la piedra antes de cortar.",
-        "1 jaladera(s) jaladera tipo moño (bow) 128mm. En puertas va a 80mm del canto superior; en cajones, centrada. Perforar el frente ANTES de lacar."
+        "2 jaladera(s) jaladera tipo moño (bow) 128mm. En puertas va a 80mm del canto superior; en cajones, centrada. Perforar el frente ANTES de lacar."
       ],
       "flags": {
         "requiere_recorte_cubierta": true,
