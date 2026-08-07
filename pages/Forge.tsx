@@ -10,7 +10,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
     Hammer, Upload, Smartphone, Trash2, Loader2, Box, QrCode,
     CheckCircle2, RefreshCw, FlaskConical, X, Sparkles, SendHorizonal,
-    AlertTriangle, Clock, FileSpreadsheet, FileText, Download, Lock
+    AlertTriangle, Clock, FileSpreadsheet, FileText, Download, Lock, ImagePlus
 } from 'lucide-react';
 import QRCode from 'qrcode';
 import { api } from '../lib/api';
@@ -32,6 +32,42 @@ const ENTREGABLES: { archivo: string; titulo: string; para: string; icono: 'hoja
     { archivo: 'preview.glb', titulo: 'Modelo 3D (GLB)', para: 'Visor y AR', icono: 'dato' },
 ];
 
+/**
+ * Traduce el fallo real en algo accionable.
+ *
+ * Antes cualquier error decía "¿corriste la migración?", incluso cuando el
+ * navegador nunca llegó a Supabase. Eso manda a revisar la base de datos
+ * cuando el problema es la red — media hora perdida en el lugar equivocado.
+ */
+const explicarFallo = (e: any, migracion: string): string => {
+    const msg = String(e?.message || e || '');
+    const codigo = e?.code || '';
+
+    // PostgREST: la tabla no existe
+    if (codigo === '42P01' || /does not exist|schema cache/i.test(msg)) {
+        return `La tabla no existe todavía. Corre la migración ${migracion} en tu proyecto de Supabase.`;
+    }
+    if (codigo === '42703') {
+        return `A la tabla le faltan columnas nuevas. Corre la migración ${migracion}.`;
+    }
+    // el fetch ni siquiera salió: proxy, VPN, extensión, DNS o Supabase caído
+    if (/failed to fetch|networkerror|load failed|ERR_/i.test(msg)) {
+        return 'El navegador no pudo conectarse a Supabase (la petición ni siquiera salió). '
+             + 'Suele ser un proxy corporativo, una VPN o una extensión bloqueando el dominio; '
+             + 'revisa la consola: si dice ERR_PROXY_CONNECTION_FAILED, el problema es la red, no la base de datos.';
+    }
+    if (/JWT|apikey|Invalid API key/i.test(msg)) {
+        return 'Supabase rechazó la llave. Revisa VITE_SUPABASE_ANON_KEY en las variables de tu deploy.';
+    }
+    return msg || 'Error desconocido al hablar con Supabase.';
+};
+
+/** Un trabajo en cola más de 2 minutos casi siempre significa que el worker
+ *  no está corriendo: la cola no tiene forma de saberlo, así que lo decimos. */
+const esperandoDemasiado = (j: ForgeJob): boolean =>
+    j.status === 'pending' && !!j.createdAt &&
+    Date.now() - new Date(j.createdAt).getTime() > 120_000;
+
 const Forge: React.FC = () => {
     const [models, setModels] = useState<ForgeModel[]>([]);
     const [loading, setLoading] = useState(true);
@@ -46,6 +82,10 @@ const Forge: React.FC = () => {
     const [prompt, setPrompt] = useState('');
     const [sending, setSending] = useState(false);
     const [abriendoCostos, setAbriendoCostos] = useState(false);
+    const [refs, setRefs] = useState<{ url: string; nombre: string }[]>([]);
+    const [subiendoRef, setSubiendoRef] = useState(false);
+    const refInput = useRef<HTMLInputElement>(null);
+    const taRef = useRef<HTMLTextAreaElement>(null);
     const fileRef = useRef<HTMLInputElement>(null);
     const darkMode = typeof document !== 'undefined' &&
         document.documentElement.classList.contains('dark');
@@ -57,7 +97,7 @@ const Forge: React.FC = () => {
             setModels(data);
         } catch (e: any) {
             console.error(e);
-            setError('No se pudieron cargar los diseños. ¿Corriste la migración 20260806_forge_models.sql?');
+            setError('No se pudieron cargar los diseños. ' + explicarFallo(e, '20260806_forge_models.sql'));
         } finally {
             setLoading(false);
         }
@@ -81,6 +121,42 @@ const Forge: React.FC = () => {
         return () => clearInterval(t);
     }, [hayEnCurso, loadJobs, load]);
 
+    // El textarea crece con el texto: con rows fijos, un prompt de tres
+    // renglones esconde el primero y sólo se ve la mitad de lo que escribiste.
+    useEffect(() => {
+        const el = taRef.current;
+        if (!el) return;
+        el.style.height = 'auto';
+        el.style.height = `${Math.min(el.scrollHeight, 260)}px`;
+    }, [prompt]);
+
+    const agregarReferencias = async (files: FileList | null) => {
+        if (!files?.length) return;
+        setSubiendoRef(true);
+        setError(null);
+        try {
+            const nuevas = await Promise.all(
+                Array.from(files).slice(0, 6).map(async f => ({
+                    url: await api.subirImagenReferencia(f), nombre: f.name,
+                })));
+            setRefs(prev => [...prev, ...nuevas].slice(0, 6));
+        } catch (e: any) {
+            setError('No se pudo subir la imagen. ' + explicarFallo(e, '20260806_forge_models.sql'));
+        } finally {
+            setSubiendoRef(false);
+            if (refInput.current) refInput.current.value = '';
+        }
+    };
+
+    const cancelarTrabajo = async (j: ForgeJob) => {
+        try {
+            await api.deleteForgeJob(j.id);
+            await loadJobs();
+        } catch (e: any) {
+            setError('No se pudo cancelar. ' + explicarFallo(e, '20260806_forge_jobs.sql'));
+        }
+    };
+
     const enviarPrompt = async () => {
         const texto = prompt.trim();
         if (!texto) return;
@@ -91,12 +167,12 @@ const Forge: React.FC = () => {
             const base = selected
                 ? { modelId: selected.id, projectJson: selected.projectJson }
                 : undefined;
-            await api.createForgeJob(texto, base);
+            await api.createForgeJob(texto, base, refs.map(r => r.url));
             setPrompt('');
+            setRefs([]);
             await loadJobs();
         } catch (e: any) {
-            setError(`No se pudo encolar el diseño: ${e.message}. `
-                + '¿Corriste la migración 20260806_forge_jobs.sql?');
+            setError('No se pudo encolar el diseño. ' + explicarFallo(e, '20260806_forge_jobs.sql'));
         } finally {
             setSending(false);
         }
@@ -279,27 +355,64 @@ const Forge: React.FC = () => {
                         </span>
                     )}
                 </div>
-                <div className="flex gap-3">
-                    <textarea
-                        value={prompt}
-                        onChange={e => setPrompt(e.target.value)}
-                        onKeyDown={e => {
-                            if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) enviarPrompt();
-                        }}
-                        rows={2}
-                        placeholder={selected && !importData
-                            ? 'Ej: súbeme la alacena 10cm y cambia los frentes a alto brillo blanco'
-                            : 'Ej: cocina en L de 3.2m, frentes alto brillo blanco, gola de aluminio, tarja al centro y torre de horno a la derecha'}
-                        className="flex-1 border border-gray-200 dark:border-gray-600 bg-transparent p-3 text-sm dark:text-white focus:border-primary outline-none resize-none"
+                {/* El textarea ocupa el ancho completo y los controles van debajo:
+                    así el botón nunca queda fuera de la pantalla por falta de ancho. */}
+                <textarea
+                    ref={taRef}
+                    value={prompt}
+                    onChange={e => setPrompt(e.target.value)}
+                    onKeyDown={e => {
+                        if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) enviarPrompt();
+                    }}
+                    rows={2}
+                    placeholder={selected && !importData
+                        ? 'Ej: súbeme la alacena 10cm y cambia los frentes a alto brillo blanco'
+                        : 'Ej: cocina en L de 3.2m, frentes alto brillo blanco, gola de aluminio, tarja al centro y torre de horno a la derecha'}
+                    className="w-full border border-gray-200 dark:border-gray-600 bg-transparent p-3 text-sm dark:text-white focus:border-primary outline-none resize-none overflow-y-auto"
+                />
+
+                {refs.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                        {refs.map(r => (
+                            <div key={r.url} className="relative group">
+                                <img src={r.url} alt={r.nombre}
+                                     className="w-20 h-20 object-cover border border-gray-200 dark:border-gray-600" />
+                                <button
+                                    onClick={() => setRefs(prev => prev.filter(x => x.url !== r.url))}
+                                    title="Quitar"
+                                    className="absolute -top-2 -right-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-full p-1 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+                                >
+                                    <X size={11} />
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                <div className="flex flex-wrap items-center gap-3">
+                    <input
+                        ref={refInput} type="file" accept="image/*" multiple hidden
+                        onChange={e => agregarReferencias(e.target.files)}
                     />
+                    <button
+                        onClick={() => refInput.current?.click()}
+                        disabled={subiendoRef || refs.length >= 6}
+                        className="border border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-300 px-4 py-3 flex items-center gap-2 text-xs uppercase tracking-widest hover:border-primary hover:text-primary transition-colors disabled:opacity-40"
+                    >
+                        {subiendoRef ? <Loader2 size={16} className="animate-spin" /> : <ImagePlus size={16} />}
+                        Referencias{refs.length ? ` (${refs.length})` : ''}
+                    </button>
                     <button
                         onClick={enviarPrompt}
                         disabled={sending || !prompt.trim()}
-                        className="bg-primary text-white px-6 flex items-center gap-2 text-xs uppercase tracking-widest disabled:opacity-40 shrink-0"
+                        className="bg-primary text-white px-6 py-3 flex items-center gap-2 text-xs uppercase tracking-widest disabled:opacity-40"
                     >
                         {sending ? <Loader2 size={16} className="animate-spin" /> : <SendHorizonal size={16} />}
                         Diseñar
                     </button>
+                    <span className="text-[10px] font-mono uppercase tracking-widest text-gray-400">
+                        Ctrl + Enter
+                    </span>
                 </div>
                 <p className="text-[11px] text-gray-400">
                     Requiere el <b>Forge Agent</b> corriendo en tu computadora
@@ -323,6 +436,12 @@ const Forge: React.FC = () => {
                                     {j.status === 'pending' && (
                                         <p className="text-[11px] text-gray-400">
                                             En cola — esperando al Forge Agent.
+                                            {esperandoDemasiado(j) && (
+                                                <span className="text-danger">
+                                                    {' '}Lleva más de 2 minutos: casi seguro el worker
+                                                    no está corriendo en tu computadora.
+                                                </span>
+                                            )}
                                         </p>
                                     )}
                                     {j.status === 'running' && (
@@ -337,6 +456,15 @@ const Forge: React.FC = () => {
                                         </p>
                                     )}
                                 </div>
+                                {(j.status === 'pending' || j.status === 'error') && (
+                                    <button
+                                        onClick={() => cancelarTrabajo(j)}
+                                        title={j.status === 'pending' ? 'Cancelar y quitar de la cola' : 'Quitar del historial'}
+                                        className="shrink-0 text-gray-300 hover:text-danger transition-colors p-1"
+                                    >
+                                        <X size={14} />
+                                    </button>
+                                )}
                                 {j.status === 'done' && j.resultModelId && (
                                     <button
                                         onClick={() => {

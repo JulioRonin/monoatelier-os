@@ -55,6 +55,7 @@ const mapForgeJob = (data: any): ForgeJob => ({
     id: data.id,
     prompt: data.prompt,
     baseModelId: data.base_model_id,
+    imagenes: data.imagenes || [],
     status: data.status,
     resultModelId: data.result_model_id,
     log: data.log,
@@ -794,7 +795,8 @@ export const api = {
         return (data || []).map(mapForgeJob);
     },
 
-    async createForgeJob(prompt: string, base?: { modelId: string; projectJson: any }) {
+    async createForgeJob(prompt: string, base?: { modelId: string; projectJson: any },
+                         imagenes: string[] = []) {
         if (!supabase) throw new Error("Supabase not configured");
         const { data, error } = await supabase
             .from('forge_jobs')
@@ -802,6 +804,7 @@ export const api = {
                 prompt,
                 base_model_id: base?.modelId || null,
                 base_project_json: base?.projectJson || null,
+                imagenes,
                 status: 'pending'
             }])
             .select()
@@ -814,6 +817,18 @@ export const api = {
         if (!supabase) throw new Error("Supabase not configured");
         const { error } = await supabase.from('forge_jobs').delete().eq('id', id);
         if (error) throw error;
+    },
+
+    /** Sube una imagen de referencia del prompt y devuelve su URL pública. */
+    async subirImagenReferencia(file: File) {
+        if (!supabase) throw new Error("Supabase not configured");
+        const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+        const path = `refs/${crypto.randomUUID()}.${ext}`;
+        const { error } = await supabase.storage
+            .from('forge')
+            .upload(path, file, { upsert: false, contentType: file.type || 'image/jpeg' });
+        if (error) throw error;
+        return supabase.storage.from('forge').getPublicUrl(path).data.publicUrl;
     },
 
     /** Sube un asset (GLB/USDZ/JSON) al bucket público 'forge' y devuelve su URL pública. */

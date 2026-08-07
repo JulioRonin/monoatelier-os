@@ -1,0 +1,12 @@
+/* Estilos base de Mono Atelier OS.
+   index.html enlaza este archivo; hasta ahora no existía y el navegador
+   registraba un 404 en cada carga. Todo lo demás son utilidades de Tailwind. */
+
+:root { color-scheme: light dark; }
+
+/* Ninguna página debe desplazarse en horizontal: el contenido ancho
+   (tablas, visores, planos) hace su propio scroll dentro de su caja. */
+html, body { max-width: 100%; overflow-x: hidden; }
+
+/* Un <pre>/<code> largo dentro de una tarjeta no debe empujar el layout */
+pre, code { overflow-wrap: anywhere; }
