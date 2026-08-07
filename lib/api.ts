@@ -798,17 +798,29 @@ export const api = {
     async createForgeJob(prompt: string, base?: { modelId: string; projectJson: any },
                          imagenes: string[] = []) {
         if (!supabase) throw new Error("Supabase not configured");
-        const { data, error } = await supabase
-            .from('forge_jobs')
-            .insert([{
-                prompt,
-                base_model_id: base?.modelId || null,
-                base_project_json: base?.projectJson || null,
-                imagenes,
-                status: 'pending'
-            }])
-            .select()
-            .single();
+        const fila: Record<string, any> = {
+            prompt,
+            base_model_id: base?.modelId || null,
+            base_project_json: base?.projectJson || null,
+            status: 'pending'
+        };
+        if (imagenes.length) fila.imagenes = imagenes;
+
+        let { data, error } = await supabase
+            .from('forge_jobs').insert([fila]).select().single();
+
+        // Si falta la migración de imágenes, PostgREST devuelve 42703. Encolar
+        // sin referencias es infinitamente mejor que no encolar: el diseño se
+        // hace igual y el aviso dice qué migración corrió falta.
+        if (error && (error.code === '42703' || /imagenes/i.test(error.message))) {
+            delete fila.imagenes;
+            ({ data, error } = await supabase
+                .from('forge_jobs').insert([fila]).select().single());
+            if (!error) {
+                console.warn('forge_jobs.imagenes no existe: se encoló sin las '
+                    + 'referencias. Corre supabase/migrations/20260807_forge_job_imagenes.sql');
+            }
+        }
         if (error) throw error;
         return mapForgeJob(data);
     },
