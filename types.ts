@@ -230,6 +230,42 @@ export interface MonthlyFinancial {
   projectedRevenue: number;
 }
 
+/**
+ * Cómo se comporta una variante frente al precio base del servicio.
+ * Antes todo se trataba como sustitución: elegir un adicional BAJABA el precio.
+ */
+export type TipoVariante = 'sustitucion' | 'adicional' | 'opcion';
+
+export interface Service {
+  id: string;
+  sku?: string | null;
+  name: string;
+  category?: string;
+  description?: string;
+  basePrice: number;
+  /** costo directo — sin esto no hay margen */
+  cost?: number | null;
+  units?: string;
+  active: boolean;
+  /** cuándo se revisó el precio; un precio viejo se ve igual que uno nuevo */
+  priceUpdatedAt?: string | null;
+  notes?: string | null;
+}
+
+export interface ServiceVariable {
+  id: string;
+  serviceId: string;
+  name: string;
+  kind: TipoVariante;
+  price: number | null;
+  cost?: number | null;
+  /** unidad propia cuando difiere del servicio (una cascada es por pieza,
+   *  aunque la cocina se cotice por metro lineal) */
+  units?: string | null;
+  active: boolean;
+  sortOrder: number;
+}
+
 export interface QuoteItem {
   description: string;
   quantity: number;

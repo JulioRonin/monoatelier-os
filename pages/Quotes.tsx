@@ -29,8 +29,21 @@ const Quotes: React.FC<QuotesProps> = ({ user, initialQuoteId }) => {
     const [variables, setVariables] = useState<any[]>([]);
     const [calcCategory, setCalcCategory] = useState<string>('');
     const [calcService, setCalcService] = useState<any>(null);
-    const [calcVariable, setCalcVariable] = useState<any>(null);
+    const [calcVariable, setCalcVariable] = useState<any>(null);     // la sustitución (una sola)
+    const [calcAdicionales, setCalcAdicionales] = useState<string[]>([]);
+    const [iva, setIva] = useState(0.08);   // franja fronteriza; lo real viene de ajustes
     const [calcQuantity, setCalcQuantity] = useState<number>(1);
+
+    useEffect(() => { setCalcAdicionales([]); setCalcVariable(null); }, [calcService?.id]);
+
+    // El IVA vivía escrito en el código como 0.08. Es correcto para la franja
+    // fronteriza norte, pero un número fiscal no debe estar escondido en un
+    // .tsx: ahora sale de ajustes y se ve en pantalla.
+    useEffect(() => {
+        api.getAjustes()
+            .then(a => { if (typeof a.iva === 'number') setIva(a.iva); })
+            .catch(() => { /* sin la migración se queda el 0.08 de siempre */ });
+    }, []);
 
     useEffect(() => {
         api.getClients().then(setClients).catch(console.error);
@@ -84,7 +97,8 @@ const Quotes: React.FC<QuotesProps> = ({ user, initialQuoteId }) => {
             const pages = pdfDoc.getPages();
             // User requested page 2. Index 1.
             const pageIndex = pages.length > 1 ? 1 : 0;
-            const targetPage = pages[pageIndex];
+            let targetPage = pages[pageIndex];
+            const plantillaPartidas = targetPage;
             const { height } = targetPage.getSize();
 
             const fontSize = 10;
@@ -114,7 +128,25 @@ const Quotes: React.FC<QuotesProps> = ({ user, initialQuoteId }) => {
             const priceRight = 415; // Kept (Good)
             const totalRight = 495; // Kept (Good)
 
-            quote.items.forEach(item => {
+            // La tabla arranca en 300 y los totales viven en 450: caben 7 partidas.
+            // Antes no había límite y a partir de la octava el texto se dibujaba
+            // ENCIMA de los totales, sin avisar. Ahora se abre otra hoja.
+            const Y_TOPE = 435;
+            const partidasPorHoja = () => Math.floor((Y_TOPE - 300) / 20) + 1;
+
+            quote.items.forEach((item, i) => {
+                if (currentY > Y_TOPE) {
+                    targetPage = pdfDoc.addPage(
+                        [plantillaPartidas.getWidth(), plantillaPartidas.getHeight()]);
+                    currentY = 300;
+                    drawText(`${quote.projectName} — continuación`, 65, 250,
+                             helveticaBold, 10);
+                    drawText('CONCEPTO', 65, 280, helveticaBold, 9);
+                    drawText('CANT', 265, 280, helveticaBold, 9);
+                    drawText('P. UNIT', 380, 280, helveticaBold, 9);
+                    drawText('IMPORTE', 455, 280, helveticaBold, 9);
+                }
+
                 const qty = Number(item.quantity) || 0;
                 const price = Number(item.unitPrice) || 0;
                 const total = qty * price;
@@ -140,10 +172,13 @@ const Quotes: React.FC<QuotesProps> = ({ user, initialQuoteId }) => {
                 currentY += 20;
             });
 
-            // Financials
+            // Financials — siempre en la hoja de la plantilla, donde el diseño
+            // los espera, aunque las partidas hayan seguido en hojas nuevas.
+            targetPage = plantillaPartidas;
+
             const subTotal = quote.totalAmount || 0;
-            const iva = subTotal * 0.08;
-            const grandTotal = subTotal + iva;
+            const montoIva = subTotal * iva;
+            const grandTotal = subTotal + montoIva;
 
             const financialsRight = 495; // Match Total Right Column
             const startY = 450; // Moved UP slightly (Refined V8)
@@ -153,8 +188,8 @@ const Quotes: React.FC<QuotesProps> = ({ user, initialQuoteId }) => {
             const subTotalWidth = helveticaBold.widthOfTextAtSize(subTotalText, 10);
             drawText(subTotalText, financialsRight - subTotalWidth, startY, helveticaBold, 10);
 
-            // IVA (8%)
-            const ivaText = `$${iva.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            // IVA — la tasa sale de ajustes, no del código
+            const ivaText = `$${montoIva.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
             const ivaWidth = helveticaBold.widthOfTextAtSize(ivaText, 10);
             drawText(ivaText, financialsRight - ivaWidth, startY + 15, helveticaBold, 10);
 
@@ -271,30 +306,60 @@ const Quotes: React.FC<QuotesProps> = ({ user, initialQuoteId }) => {
     // Calculator Logic
     const categories = Array.from(new Set(services.map(s => s.category))).filter(Boolean);
     const filteredServices = calcCategory ? services.filter(s => s.category === calcCategory) : services;
-    const currentServiceVariables = calcService ? variables.filter(v => v.service_id === calcService.id) : [];
+    // Una variante NO es siempre una sustitución. Antes todas reemplazaban el
+    // precio base: elegir "Cascada 1 lado $2,000" en una cocina de $2,850/ml
+    // BAJABA el precio a $2,000. Ahora cada tipo hace lo suyo.
+    const variantesDelServicio = calcService
+        ? variables.filter(v => v.serviceId === calcService.id) : [];
+    const sustituciones = variantesDelServicio.filter(v => v.kind === 'sustitucion');
+    const adicionales = variantesDelServicio.filter(v => v.kind === 'adicional');
+    const opciones = variantesDelServicio.filter(v => v.kind === 'opcion');
+    const currentServiceVariables = sustituciones;
+
+    /** Precio unitario de la partida base: la sustitución lo reemplaza. */
+    const precioBase = calcService
+        ? (calcVariable && Number(calcVariable.price) > 0
+            ? Number(calcVariable.price) : Number(calcService.basePrice) || 0)
+        : 0;
+
+    /** Un adicional con la MISMA unidad que el servicio va por la misma
+     *  cantidad; con unidad distinta (o sin unidad) va como pieza. Multiplicar
+     *  una cascada por los metros de la cocina sería cobrarla cinco veces. */
+    const cantidadDe = (ad: any) =>
+        (ad.units && calcService?.units &&
+         ad.units.toLowerCase() === String(calcService.units).toLowerCase())
+            ? calcQuantity : 1;
+
+    const adicionalesElegidos = adicionales.filter(a => calcAdicionales.includes(a.id));
+    const totalCalculado = precioBase * calcQuantity +
+        adicionalesElegidos.reduce((t, a) => t + (Number(a.price) || 0) * cantidadDe(a), 0);
 
     // Helper to add from stats
     const handleAddFromCalculator = () => {
         if (!calcService) return;
 
-        const price = (calcVariable && Number(calcVariable.price) > 0)
-            ? Number(calcVariable.price)
-            : Number(calcService.base_price);
+        // La partida base, con la sustitución aplicada si la hay
+        const nuevos: QuoteItem[] = [{
+            description: calcVariable
+                ? `${calcService.name} - ${calcVariable.name}`
+                : calcService.name,
+            quantity: calcQuantity,
+            unitPrice: precioBase,
+        }];
 
-        const description = calcVariable
-            ? `${calcService.name} - ${calcVariable.name}`
-            : calcService.name;
+        // Cada adicional va como SU PROPIA partida: el cliente lo ve desglosado
+        // en la cotización y cada uno lleva la cantidad que le toca.
+        for (const a of adicionalesElegidos) {
+            nuevos.push({
+                description: `${a.name}`,
+                quantity: cantidadDe(a),
+                unitPrice: Number(a.price) || 0,
+            });
+        }
 
-        // Add item
-        setFormData(prev => ({
-            ...prev,
-            items: [
-                ...(prev.items || []),
-                { description, quantity: calcQuantity, unitPrice: price }
-            ]
-        }));
-
+        setFormData(prev => ({ ...prev, items: [...(prev.items || []), ...nuevos] }));
         setCalcQuantity(1);
+        setCalcAdicionales([]);
     };
 
     // Helper functions
@@ -629,15 +694,18 @@ const Quotes: React.FC<QuotesProps> = ({ user, initialQuoteId }) => {
 
                                             {/* Variable / Option */}
                                             <div>
-                                                <label className="block text-[10px] uppercase tracking-widest text-gray-400 mb-2">Option / Variant</label>
+                                                <label className="block text-[10px] uppercase tracking-widest text-gray-400 mb-2">
+                                                    Material / Variante
+                                                    <span className="normal-case tracking-normal text-gray-300"> · reemplaza el precio</span>
+                                                </label>
                                                 <select
                                                     className="w-full p-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-sm rounded focus:outline-none focus:border-primary disabled:opacity-50"
                                                     value={calcVariable?.id || ''}
-                                                    onChange={e => setCalcVariable(currentServiceVariables.find(v => v.id === e.target.value) || null)}
-                                                    disabled={!calcService || currentServiceVariables.length === 0}
+                                                    onChange={e => setCalcVariable(sustituciones.find(v => v.id === e.target.value) || null)}
+                                                    disabled={!calcService || sustituciones.length === 0}
                                                 >
-                                                    <option value="">{currentServiceVariables.length > 0 ? 'Select Option...' : 'Standard / None'}</option>
-                                                    {currentServiceVariables.map(v => (
+                                                    <option value="">{sustituciones.length > 0 ? 'Estándar' : 'Estándar / Ninguna'}</option>
+                                                    {sustituciones.map(v => (
                                                         <option key={v.id} value={v.id}>
                                                             {v.name} {Number(v.price) > 0 ? `($${v.price})` : ''}
                                                         </option>
@@ -668,6 +736,55 @@ const Quotes: React.FC<QuotesProps> = ({ user, initialQuoteId }) => {
                                         </div>
 
                                         {/* Preview Info */}
+                                        {calcService && adicionales.length > 0 && (
+                                            <div className="mb-4 border-t border-gray-100 dark:border-gray-700 pt-4">
+                                                <p className="text-[10px] uppercase tracking-widest text-gray-400 mb-3">
+                                                    Adicionales
+                                                    <span className="normal-case tracking-normal text-gray-300"> · se SUMAN al precio</span>
+                                                </p>
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                                                    {adicionales.map(a => {
+                                                        const puesto = calcAdicionales.includes(a.id);
+                                                        const cant = cantidadDe(a);
+                                                        return (
+                                                            <label key={a.id}
+                                                                className={`flex items-start gap-2 p-2 border cursor-pointer transition-colors ${puesto
+                                                                    ? 'border-primary bg-primary/5'
+                                                                    : 'border-gray-200 dark:border-gray-700 hover:border-gray-400'}`}>
+                                                                <input type="checkbox" className="mt-1 accent-current"
+                                                                    checked={puesto}
+                                                                    onChange={() => setCalcAdicionales(prev => puesto
+                                                                        ? prev.filter(x => x !== a.id) : [...prev, a.id])} />
+                                                                <span className="flex-1 min-w-0">
+                                                                    <span className="block text-sm dark:text-white">{a.name}</span>
+                                                                    <span className="block text-[11px] text-gray-400 tabular-nums">
+                                                                        ${Number(a.price || 0).toLocaleString()} × {cant}
+                                                                        {a.units ? ` ${a.units}` : ''}
+                                                                    </span>
+                                                                </span>
+                                                            </label>
+                                                        );
+                                                    })}
+                                                </div>
+                                                {opciones.length > 0 && (
+                                                    <p className="text-[11px] text-gray-400 mt-3">
+                                                        Sin costo: {opciones.map(o => o.name).join(' · ')}
+                                                    </p>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        {calcService && (
+                                            <div className="mb-4 flex flex-wrap items-baseline justify-between gap-3 border-t border-gray-100 dark:border-gray-700 pt-4">
+                                                <span className="text-[10px] uppercase tracking-widest text-gray-400">
+                                                    Se agregará{adicionalesElegidos.length ? ` en ${adicionalesElegidos.length + 1} partidas` : ' como 1 partida'}
+                                                </span>
+                                                <span className="font-serif text-2xl dark:text-white tabular-nums">
+                                                    ${totalCalculado.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                                                </span>
+                                            </div>
+                                        )}
+
                                         {calcService && (
                                             <div className="text-xs text-gray-500 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 p-3 rounded flex justify-between items-center">
                                                 <span>{calcService.description}</span>

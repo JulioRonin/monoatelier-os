@@ -1,6 +1,6 @@
 
 import { supabase } from './supabaseClient';
-import { Project, Client, Quote, ProjectStatus, PriorityLevel, PhaseEnum, User, ForgeModel, ForgeJob } from '../types';
+import { Project, Client, Quote, ProjectStatus, PriorityLevel, PhaseEnum, User, ForgeModel, ForgeJob, Service, ServiceVariable, TipoVariante } from '../types';
 
 // --- MAPPING HELPERS ---
 
@@ -36,6 +36,34 @@ const mapProject = (data: any): Project => {
         responsibleId: data.responsible_id
     };
 };
+
+const mapService = (d: any): Service => ({
+    id: d.id,
+    sku: d.sku ?? null,
+    name: d.name,
+    category: d.category || '',
+    description: d.description || '',
+    basePrice: Number(d.base_price) || 0,
+    cost: d.cost == null ? null : Number(d.cost),
+    units: d.units || '',
+    active: d.active !== false,
+    priceUpdatedAt: d.price_updated_at ?? null,
+    notes: d.notes ?? null,
+});
+
+const mapServiceVariable = (d: any): ServiceVariable => ({
+    id: d.id,
+    serviceId: d.service_id,
+    name: d.name,
+    // sin la migración la columna no existe: el default conserva el
+    // comportamiento anterior en vez de romper la página
+    kind: (d.kind as TipoVariante) || 'sustitucion',
+    price: d.price == null ? null : Number(d.price),
+    cost: d.cost == null ? null : Number(d.cost),
+    units: d.units ?? null,
+    active: d.active !== false,
+    sortOrder: Number(d.sort_order) || 0,
+});
 
 const mapForgeModel = (data: any): ForgeModel => ({
     id: data.id,
@@ -467,32 +495,69 @@ export const api = {
         if (error) throw error;
     },
 
-    // MATERIALS
-    async getServices() {
+    // MASTER LIST — servicios, componentes y precios
+    async getServices(incluirInactivos = false): Promise<Service[]> {
         if (!supabase) return [];
-        const { data, error } = await supabase
-            .from('services')
-            .select('*')
-            .order('name');
-
+        let q = supabase.from('services').select('*').order('name');
+        if (!incluirInactivos) q = q.or('active.is.null,active.eq.true');
+        const { data, error } = await q;
         if (error) {
             console.error('Error fetching services:', error);
             return [];
         }
-        return data || [];
+        return (data || []).map(mapService);
     },
 
-    async getServiceVariables() {
+    async getServiceVariables(incluirInactivos = false): Promise<ServiceVariable[]> {
         if (!supabase) return [];
-        const { data, error } = await supabase
-            .from('service_variables')
-            .select('*');
-
+        let q = supabase.from('service_variables').select('*').order('sort_order');
+        if (!incluirInactivos) q = q.or('active.is.null,active.eq.true');
+        const { data, error } = await q;
         if (error) {
             console.error('Error fetching variables:', error);
             return [];
         }
-        return data || [];
+        return (data || []).map(mapServiceVariable);
+    },
+
+    async upsertService(s: Partial<Service> & { id?: string }) {
+        if (!supabase) throw new Error("Supabase not configured");
+        const fila: Record<string, any> = {
+            name: s.name, category: s.category ?? null, description: s.description ?? null,
+            base_price: s.basePrice ?? null, cost: s.cost ?? null, units: s.units ?? null,
+            sku: s.sku || null, active: s.active ?? true, notes: s.notes ?? null,
+            price_updated_at: new Date().toISOString().slice(0, 10),
+        };
+        if (s.id) fila.id = s.id;
+        const { data, error } = await supabase.from('services')
+            .upsert([fila]).select().single();
+        if (error) throw error;
+        return mapService(data);
+    },
+
+    async upsertServiceVariable(v: Partial<ServiceVariable> & { serviceId: string }) {
+        if (!supabase) throw new Error("Supabase not configured");
+        const fila: Record<string, any> = {
+            service_id: v.serviceId, name: v.name, kind: v.kind || 'sustitucion',
+            price: v.price ?? null, cost: v.cost ?? null, units: v.units ?? null,
+            active: v.active ?? true, sort_order: v.sortOrder ?? 0,
+        };
+        if (v.id) fila.id = v.id;
+        const { data, error } = await supabase.from('service_variables')
+            .upsert([fila]).select().single();
+        if (error) throw error;
+        return mapServiceVariable(data);
+    },
+
+    /** Ajustes del negocio (IVA, moneda). Con default si falta la migración. */
+    async getAjustes(): Promise<Record<string, any>> {
+        if (!supabase) return {};
+        const { data, error } = await supabase.from('ajustes').select('clave,valor');
+        if (error) {
+            console.warn('tabla ajustes no disponible, usando defaults:', error.message);
+            return {};
+        }
+        return Object.fromEntries((data || []).map((r: any) => [r.clave, r.valor]));
     },
 
     // AUTH
