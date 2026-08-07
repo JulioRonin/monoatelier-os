@@ -281,6 +281,8 @@ export interface ForgeJob {
   id: string;
   prompt: string;
   baseModelId?: string | null;
+  /** URLs de imágenes de referencia adjuntas al prompt */
+  imagenes?: string[];
   status: 'pending' | 'running' | 'done' | 'error';
   resultModelId?: string | null;
   log?: string | null;

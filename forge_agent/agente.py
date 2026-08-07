@@ -32,6 +32,20 @@ el tornillo nunca carga el peso, el tablero sí. Mueble apoyado (inferior, torre
 la base corre a todo el ancho y los laterales descansan sobre ella. Mueble colgado
 (alacena): los laterales corren completos y el techo y el piso van capturados.
 
+UNIDADES — el motor SÓLO entiende MILÍMETROS
+Los clientes hablan en pies y pulgadas. Convierte ANTES de llamar cualquier
+herramienta y anota la conversión con agregar_nota:
+  1 pie = 304.8mm  ·  1 pulgada = 25.4mm
+Ejemplos: 3ft = 914mm | 9ft = 2743mm | 3/4" = 19mm | 1½" = 38mm.
+Nunca pases un 3 crudo cuando el cliente dijo "3 pies": serían 3 milímetros y
+el motor lo aceptaría sin chistar.
+
+LO QUE EL MOTOR NO SABE HACER (dilo, no lo simules)
+Cubierta en cascada, frentes curvos o termoformados, esquinas en ángulo que no
+sea recto, y encimeras de piedra comprada. Si el cliente lo pide: diseña todo
+lo demás, y en tu respuesta final di CLARO qué parte no quedó y por qué. No la
+sustituyas en silencio por algo parecido.
+
 CÓMO MODULAR
 - Muebles inferiores: 900mm de alto total (zoclo 100 + base 15 + lateral 785),
   600mm de fondo. Anchos típicos 450, 600, 800, 900. Arriba de 900mm el motor
@@ -119,7 +133,8 @@ def _con_anthropic(contexto: str, modelo: str, api_key: str | None) -> dict:
 
 
 def disenar(prompt: str, base: dict | None = None,
-            api_key: str | None = None, proveedor: str | None = None) -> dict:
+            api_key: str | None = None, proveedor: str | None = None,
+            imagenes: list[str] | None = None) -> dict:
     """Ejecuta el agente sobre un prompt y devuelve el project.json + el resumen.
 
     Args:
@@ -127,6 +142,7 @@ def disenar(prompt: str, base: dict | None = None,
         base: project.json existente para iterar sobre él (opcional).
         api_key: llave explícita. Vacío = la del entorno (lo normal).
         proveedor: anthropic | nvidia | openai_compat. Vacío = FORGE_PROVEEDOR.
+        imagenes: URLs de referencias. Se ignoran si el modelo no ve imágenes.
     """
     reiniciar(base)
     cfg = proveedores.configurar(proveedor)
@@ -138,7 +154,11 @@ def disenar(prompt: str, base: dict | None = None,
     else:
         r = proveedores.correr_openai_compat(
             SISTEMA, contexto, modelo=cfg["modelo"],
-            base_url=cfg["base_url"], api_key=llave)
+            base_url=cfg["base_url"], api_key=llave, imagenes=imagenes)
+        if imagenes and not r.get("vio_imagenes"):
+            herramientas.ESTADO.log(
+                f"AVISO: {cfg['modelo']} no acepta imágenes; se diseñó sólo con "
+                f"el texto. Las {len(imagenes)} referencias quedaron guardadas.")
 
     project = finalizar()
     if not project.get("modules"):

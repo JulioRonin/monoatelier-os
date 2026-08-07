@@ -86,6 +86,12 @@ def ejecutar(nombre: str, argumentos) -> str:
 
 # ── backend OpenAI-compatible (NVIDIA NIM, vLLM, Ollama…) ────────────────
 
+def _rechaza_imagenes(e: Exception) -> bool:
+    """¿El error dice que este modelo no acepta imágenes?"""
+    t = str(e).lower()
+    return any(x in t for x in ("image", "vision", "multimodal", "content type"))
+
+
 def _mensaje_asistente(msg) -> dict:
     """Serializa el turno del asistente para mandarlo de vuelta en el historial."""
     salida: dict = {"role": "assistant", "content": msg.content or ""}
@@ -100,12 +106,27 @@ def _mensaje_asistente(msg) -> dict:
     return salida
 
 
+def _turno_usuario(contexto: str, imagenes: list[str] | None) -> dict:
+    """El primer turno, con imágenes de referencia si las hay.
+
+    Si el modelo NO ve imágenes, el servidor rechaza el bloque image_url. Por
+    eso quien llama debe estar listo para reintentar sin ellas — el agente lo
+    hace y avisa, en vez de fallar el trabajo entero.
+    """
+    if not imagenes:
+        return {"role": "user", "content": contexto}
+    return {"role": "user", "content":
+            [{"type": "text", "text": contexto}] +
+            [{"type": "image_url", "image_url": {"url": u}} for u in imagenes]}
+
+
 def correr_openai_compat(sistema: str, contexto: str, *, modelo: str,
-                         base_url: str, api_key: str) -> dict:
+                         base_url: str, api_key: str,
+                         imagenes: list[str] | None = None) -> dict:
     """Bucle de herramientas contra cualquier endpoint OpenAI-compatible.
 
-    Devuelve {"resumen", "vueltas", "uso"}. El project.json lo cierra quien
-    llama, con finalizar(), igual que en el backend de Anthropic.
+    Devuelve {"resumen", "vueltas", "uso", "vio_imagenes"}. El project.json lo
+    cierra quien llama, con finalizar(), igual que en el backend de Anthropic.
     """
     try:
         from openai import OpenAI          # perezoso: no es dependencia del core
@@ -116,16 +137,27 @@ def correr_openai_compat(sistema: str, contexto: str, *, modelo: str,
 
     cliente = OpenAI(base_url=base_url, api_key=api_key)
     herramientas = esquema_openai()
+    vio_imagenes = bool(imagenes)
     mensajes: list[dict] = [{"role": "system", "content": sistema},
-                            {"role": "user", "content": contexto}]
+                            _turno_usuario(contexto, imagenes)]
 
     entrada = salida_tok = 0
-    textos: list[str] = []
 
     for vuelta in range(1, MAX_VUELTAS + 1):
-        r = cliente.chat.completions.create(
-            model=modelo, messages=mensajes,
-            tools=herramientas, tool_choice="auto")
+        try:
+            r = cliente.chat.completions.create(
+                model=modelo, messages=mensajes,
+                tools=herramientas, tool_choice="auto")
+        except Exception as e:                      # noqa: BLE001
+            # el modelo no ve imágenes: mejor diseñar sin ellas que no diseñar
+            if vio_imagenes and vuelta == 1 and _rechaza_imagenes(e):
+                vio_imagenes = False
+                mensajes[1] = _turno_usuario(contexto, None)
+                r = cliente.chat.completions.create(
+                    model=modelo, messages=mensajes,
+                    tools=herramientas, tool_choice="auto")
+            else:
+                raise
 
         uso = getattr(r, "usage", None)
         if uso:
@@ -134,13 +166,11 @@ def correr_openai_compat(sistema: str, contexto: str, *, modelo: str,
 
         msg = r.choices[0].message
         mensajes.append(_mensaje_asistente(msg))
-        if msg.content:
-            textos.append(msg.content)
 
         llamadas = getattr(msg, "tool_calls", None)
         if not llamadas:
             return {"resumen": (msg.content or "").strip(),
-                    "vueltas": vuelta,
+                    "vueltas": vuelta, "vio_imagenes": vio_imagenes,
                     "uso": {"input_tokens": entrada, "output_tokens": salida_tok}}
 
         for c in llamadas:

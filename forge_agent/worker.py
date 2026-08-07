@@ -158,10 +158,13 @@ def _tarifas() -> Tarifas:
 
 
 def procesar(prompt: str, base: dict | None = None,
-             subir: bool = True, nombre_dir: str | None = None) -> dict:
+             subir: bool = True, nombre_dir: str | None = None,
+             imagenes: list[str] | None = None) -> dict:
     """Diseña → 3D → entregables → publica. Devuelve el resultado del trabajo."""
     print(f"\n▸ Diseñando: {prompt[:90]}")
-    r = disenar(prompt, base)
+    if imagenes:
+        print(f"  · {len(imagenes)} imagen(es) de referencia")
+    r = disenar(prompt, base, imagenes=imagenes)
     project_dict = r["project"]
     print(f"  · {len(project_dict['modules'])} módulos "
           f"({r['uso']['output_tokens']} tokens de salida)")
@@ -222,19 +225,23 @@ def procesar(prompt: str, base: dict | None = None,
     return {
         "model_id": model_id,
         "resumen": r["resumen"],
+        "bitacora": r["bitacora"],
         "carpeta": carpeta,
         "urls": urls,
         "costos_path": costos_path,
         "verificacion": v,
-        "bitacora": r["bitacora"],
     }
 
 
 def atender(job: dict) -> None:
     print(f"\n═ Trabajo {job['id']}")
     try:
-        res = procesar(job["prompt"], job.get("base_project_json"))
+        res = procesar(job["prompt"], job.get("base_project_json"),
+                       imagenes=job.get("imagenes") or [])
         log = res["resumen"]
+        for aviso in res["bitacora"]:
+            if aviso.startswith("AVISO"):
+                log += f"\n\n{aviso}"
         if res["verificacion"]["problemas"]:
             log += "\n\nAvisos de verificación:\n" + \
                 "\n".join(f"— {p}" for p in res["verificacion"]["problemas"])

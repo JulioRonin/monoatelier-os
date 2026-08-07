@@ -6,6 +6,24 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Mono Atelier OS</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    /* La app toma Tailwind de un CDN en tiempo de ejecución. Si la red lo
+       bloquea (proxy corporativo, VPN, extensión), la página se dibuja SIN
+       estilos: los botones se salen, el texto se corta y parece un bug de
+       layout. Es un problema de red. Que lo diga en lugar de disimularlo. */
+    window.addEventListener('DOMContentLoaded', function () {
+      if (window.tailwind) return;
+      var b = document.createElement('div');
+      b.setAttribute('role', 'alert');
+      b.style.cssText = 'position:fixed;inset:0 0 auto 0;z-index:99999;background:#7f1d1d;' +
+        'color:#fff;padding:14px 18px;font:14px/1.5 system-ui,sans-serif';
+      b.innerHTML = '<b>Los estilos no cargaron.</b> La página se está viendo sin formato ' +
+        '(botones fuera de lugar, texto cortado): tu red bloqueó ' +
+        '<code>cdn.tailwindcss.com</code>. No es un error de la aplicación — ' +
+        'revisa proxy, VPN o extensiones del navegador.';
+      document.body.appendChild(b);
+    });
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
@@ -62,6 +80,7 @@
   }
 }
 </script>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Ctext y=%2726%27 font-size=%2728%27%3E%F0%9F%AA%9A%3C/text%3E%3C/svg%3E">
   <link rel="stylesheet" href="/index.css">
 </head>
 
