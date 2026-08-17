@@ -99,6 +99,21 @@ Honestamente:
 - **Llamadas en paralelo bien manejadas.** Se soportan, pero los modelos
   abiertos las emiten con menos consistencia.
 
+## "No pasa nada y no sé por qué"
+
+```powershell
+python -m forge_agent.doctor
+```
+
+Revisa la cadena completa en orden y **dice qué hacer** en cada línea que
+falla: paquetes → llaves → el modelo responde y llama herramientas →
+Supabase → migraciones aplicadas → trabajos en cola → Blender. No modifica
+nada.
+
+La causa número uno de "se queda en cola": **el worker no está corriendo**.
+`python -m forge_agent.worker` tiene que quedarse abierto — es el proceso que
+diseña. La plataforma sólo encola.
+
 ## Elegir el modelo: pruébalo, no lo adivines
 
 El catálogo de build.nvidia.com no dice qué modelos hacen function calling

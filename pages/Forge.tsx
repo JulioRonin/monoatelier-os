@@ -167,7 +167,11 @@ const Forge: React.FC = () => {
             const base = selected
                 ? { modelId: selected.id, projectJson: selected.projectJson }
                 : undefined;
-            await api.createForgeJob(texto, base, refs.map(r => r.url));
+            const job = await api.createForgeJob(texto, base, refs.map(r => r.url));
+            if (refs.length && !job.imagenes?.length) {
+                setError('El diseño se encoló, pero las imágenes de referencia no se '
+                    + 'guardaron: falta la migración 20260807_forge_job_imagenes.sql.');
+            }
             setPrompt('');
             setRefs([]);
             await loadJobs();
