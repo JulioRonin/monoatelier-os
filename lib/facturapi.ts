@@ -4,6 +4,8 @@
  * Docs: https://www.facturapi.io/docs
  */
 
+import { redondear, type CfdiImpuesto } from './cfdi';
+
 const FACTURAPI_BASE = 'https://www.facturapi.io/v2';
 const FACTURAPI_KEY = import.meta.env.VITE_FACTURAPI_KEY;
 
@@ -98,13 +100,14 @@ export interface FacturapiInvoiceResult {
 // Complemento de Pago (REP) Types
 // ---------------------------------------------------------------------------
 
-/** A tax paid within a related document of a REP */
+/** A tax paid within a related document of a REP.
+ *  `amount` is intentionally absent: Facturapi derives it from base × rate, so
+ *  there is only one rounding and it can't disagree with ours. */
 export interface FacturapiTaxPaid {
-    base: number;          // Base gravable
-    type: 'IVA' | 'ISR';
+    base: number;          // Base gravable de esta parcialidad
+    type: 'IVA' | 'ISR' | 'IEPS';
     rate: number;          // e.g. 0.08 for IVA 8%
-    amount: number;        // Monto del impuesto
-    withholding?: boolean;
+    withholding?: boolean; // true = retención (se resta)
 }
 
 /** One related document (factura PPD) within a payment */
@@ -113,7 +116,7 @@ export interface FacturapiRelatedDocument {
     amount: number;               // Monto pagado en esta parcialidad
     installment: number;          // Número de parcialidad (1, 2, 3…)
     last_balance: number;         // Saldo anterior de la factura
-    taxes_paid?: FacturapiTaxPaid[];
+    taxes?: FacturapiTaxPaid[];
 }
 
 /** One payment event inside a REP */
@@ -122,7 +125,6 @@ export interface FacturapiPaymentPayload {
     payment_form: string;         // Clave SAT (e.g. "03")
     currency: string;             // MXN, USD, EUR
     exchange?: number;            // Tipo de cambio (si no es MXN)
-    amount: number;               // Total pagado
     related_documents: FacturapiRelatedDocument[];
 }
 
@@ -153,8 +155,18 @@ export interface FacturapiInvoiceRecord {
         id: string;
         legal_name: string;
         tax_id: string;
+        tax_system?: string;
+        address?: { zip?: string };
     };
-    items: { quantity: number; product: { description: string; price: number } }[];
+    items: {
+        quantity: number;
+        product: {
+            description: string;
+            price: number;
+            tax_included?: boolean;
+            taxes?: { type: 'IVA' | 'ISR' | 'IEPS'; rate: number; withholding?: boolean }[];
+        };
+    }[];
 }
 
 export interface FacturapiInvoiceListParams {
@@ -307,6 +319,119 @@ export async function facturapiListInvoices(
 }
 
 /**
+ * Retrieve a single invoice with its full detail (items and their taxes).
+ *
+ * The list endpoint returns a trimmed record; the REP needs the tax structure
+ * of the original invoice to split it proportionally, and that only comes with
+ * the full document.
+ */
+export async function facturapiRetrieveInvoice(
+    invoiceId: string
+): Promise<FacturapiInvoiceRecord> {
+    const res = await fetch(`${FACTURAPI_BASE}/invoices/${invoiceId}`, {
+        method: 'GET',
+        headers: authHeaders(),
+    });
+    if (!res.ok) {
+        const msg = await parseFacturapiError(res);
+        throw new Error(`Error al leer la factura: ${msg}`);
+    }
+    return res.json() as Promise<FacturapiInvoiceRecord>;
+}
+
+/**
+ * Reconstruye la estructura fiscal de una factura de Facturapi a partir de sus
+ * conceptos, en el mismo formato que se lee de un XML externo.
+ *
+ * Devuelve null cuando no se puede derivar (factura sin conceptos o sin
+ * impuestos declarados): quien llama debe entonces decir en pantalla que la
+ * estructura es supuesta, no dar por hecho que el pago es base × 1.08.
+ */
+export function estructuraDeFactura(
+    inv: FacturapiInvoiceRecord
+): { subtotal: number; impuestos: CfdiImpuesto[]; cuadra: boolean } | null {
+    if (!inv.items?.length) return null;
+
+    const acumulado = new Map<string, CfdiImpuesto>();
+    let subtotal = 0;
+    let hayImpuestos = false;
+
+    for (const item of inv.items) {
+        const impuestos = item.product.taxes ?? [];
+        let base = (item.quantity ?? 1) * (item.product.price ?? 0);
+
+        // En Facturapi tax_included es true por omisión: el precio ya trae los
+        // traslados dentro y hay que sacarlos para llegar a la base.
+        if (item.product.tax_included !== false) {
+            const trasladadas = impuestos
+                .filter(t => !t.withholding)
+                .reduce((s, t) => s + (t.rate ?? 0), 0);
+            if (trasladadas > 0) base = base / (1 + trasladadas);
+        }
+        base = redondear(base);
+        subtotal += base;
+
+        for (const t of impuestos) {
+            if (!t?.type || t.rate == null) continue;
+            hayImpuestos = true;
+            const retencion = t.withholding === true;
+            const llave = `${t.type}|${t.rate}|${retencion}`;
+            const previo = acumulado.get(llave);
+            const importe = redondear(base * t.rate);
+            if (previo) {
+                previo.base = redondear(previo.base + base);
+                previo.importe = redondear(previo.importe + importe);
+            } else {
+                acumulado.set(llave, {
+                    tipo: t.type, tasa: t.rate, base, importe, retencion,
+                });
+            }
+        }
+    }
+
+    if (!hayImpuestos) return null;
+
+    subtotal = redondear(subtotal);
+    const impuestos = Array.from(acumulado.values());
+    const trasladado = impuestos.filter(i => !i.retencion).reduce((s, i) => s + i.importe, 0);
+    const retenido = impuestos.filter(i => i.retencion).reduce((s, i) => s + i.importe, 0);
+    // Un peso de tolerancia: si no reconcilia contra el total timbrado, la
+    // derivación no es de fiar y quien llama debe avisarlo.
+    const cuadra = Math.abs(redondear(subtotal + trasladado - retenido) - inv.total) <= 1;
+
+    return { subtotal, impuestos, cuadra };
+}
+
+/**
+ * Find a customer by RFC, or create it.
+ *
+ * POST /customers always creates a NEW record, so calling it on every timbrado
+ * fills the account with duplicates of the same client. Worse for a REP: the
+ * receiver's régimen fiscal and postal code must match the original invoice
+ * exactly, and a duplicate created with placeholder data would carry the wrong
+ * ones into the stamped complement.
+ */
+export async function facturapiFindOrCreateCustomer(
+    payload: FacturapiCustomerPayload
+): Promise<string> {
+    const rfc = payload.tax_id.trim().toUpperCase();
+    try {
+        const res = await fetch(
+            `${FACTURAPI_BASE}/customers?q=${encodeURIComponent(rfc)}&limit=50`,
+            { method: 'GET', headers: authHeaders() });
+        if (res.ok) {
+            const body = await res.json();
+            const hit = (body?.data ?? []).find(
+                (c: any) => (c.tax_id ?? '').toUpperCase() === rfc);
+            if (hit?.id) return hit.id as string;
+        }
+    } catch {
+        // la búsqueda es una optimización: si falla, se intenta crear
+    }
+    return facturapiCreateCustomer({ ...payload, tax_id: rfc });
+}
+
+/**
  * Utility – Triggers a browser download for a Blob.
  */
 export function triggerBlobDownload(blob: Blob, filename: string): void {
@@ -327,11 +452,39 @@ export function triggerBlobDownload(blob: Blob, filename: string): void {
 /**
  * Create a Complemento de Pago (REP) — type "P" invoice.
  * Called when a PPD invoice receives a full or partial payment.
+ *
+ * Facturapi does NOT take the payments at the top level: a type "P" invoice
+ * carries them inside `complements`, and sending `payments` is exactly what
+ * produced `El campo "complements" es requerido`. The ergonomic shape stays in
+ * this signature and the wire shape is built here:
+ *
+ *     { type: "P", customer, complements: [{ type: "pago", data: { … } }] }
+ *
+ * Each payment becomes its own complement entry.
  */
 export async function facturapiCreatePaymentComplement(
     payload: FacturapiPaymentComplementPayload
 ): Promise<FacturapiInvoiceResult> {
-    const finalPayload = { ...payload, type: 'P' };
+    const { payments, ...resto } = payload;
+
+    if (!payments?.length) {
+        throw new Error('El REP no lleva ningún pago. Selecciona la factura y captura el monto.');
+    }
+
+    const complements = payments.map(p => ({
+        type: 'pago',
+        data: {
+            payment_form: p.payment_form,
+            date: p.date,
+            currency: p.currency,
+            // Facturapi rechaza exchange en MXN; sólo va cuando de verdad aplica
+            ...(p.currency !== 'MXN' && p.exchange ? { exchange: p.exchange } : {}),
+            related_documents: p.related_documents,
+        },
+    }));
+
+    const finalPayload = { ...resto, type: 'P', complements };
+
     const res = await fetch(`${FACTURAPI_BASE}/invoices`, {
         method: 'POST',
         headers: authHeaders(),

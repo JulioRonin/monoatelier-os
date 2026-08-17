@@ -1,22 +1,45 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
     facturapiListInvoices,
-    facturapiCreateCustomer,
+    facturapiRetrieveInvoice,
+    facturapiFindOrCreateCustomer,
     facturapiCreatePaymentComplement,
     facturapiDownloadPdf,
     facturapiDownloadXml,
+    estructuraDeFactura,
     triggerBlobDownload,
     type FacturapiInvoiceRecord,
 } from '../lib/facturapi';
 import {
+    leerCfdi,
+    motivoParaNoTimbrarRep,
+    repartirImpuestos,
+    desglosarPago,
+    estructuraSupuesta,
+    redondear,
+    CfdiInvalido,
+    type CfdiExterno,
+    type CfdiImpuesto,
+} from '../lib/cfdi';
+import { api } from '../lib/api';
+import type { FacturaExterna, RepPago } from '../types';
+import {
     Search, Check, AlertCircle, CheckCircle, Loader, Download,
     ReceiptText, RefreshCw, ChevronLeft, ChevronRight, XCircle, CreditCard,
+    Upload, FileText, Trash2, Info,
 } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
+
+/** Franja fronteriza norte. Sólo se usa como SUPUESTO cuando no se conoce la
+ *  estructura fiscal real de la factura, y en ese caso se avisa en pantalla. */
 const IVA_RATE = 0.08;
+
+/** RFC del emisor, si está configurado. Sirve para avisar cuando alguien
+ *  importa una factura RECIBIDA: de esas no se emite REP, se recibe. */
+const RFC_EMISOR = (import.meta.env.VITE_RFC_EMISOR || '').toUpperCase();
 
 const PAYMENT_FORMS: { value: string; label: string }[] = [
     { value: '01', label: '01 – Efectivo' },
@@ -44,12 +67,106 @@ const PAYMENT_FORMS: { value: string; label: string }[] = [
 ];
 
 // ---------------------------------------------------------------------------
-// Timbrado flow types
+// Documento por pagar — una factura PPD, venga de donde venga
+// ---------------------------------------------------------------------------
+
+/**
+ * El REP no distingue de dónde salió la factura: se relaciona por UUID. Esta
+ * forma unifica las facturas timbradas aquí (Facturapi) con las importadas de
+ * otra plataforma, para que el resto de la pantalla no tenga que preguntarlo.
+ */
+interface DocPorPagar {
+    origen: 'facturapi' | 'externa';
+    uuid: string;
+    serie: string;
+    folio: string;
+    fecha: string;
+    total: number;
+    subtotal: number;
+    moneda: string;
+    tipoCambio: number;
+    impuestos: CfdiImpuesto[];
+    /** true = la estructura fiscal se supuso, no se leyó. Se avisa en pantalla. */
+    estructuraSupuesta: boolean;
+    clienteNombre: string;
+    clienteRfc: string;
+    /** id del cliente en Facturapi, si la factura salió de ahí */
+    clienteFacturapiId?: string;
+    clienteRegimen?: string;
+    clienteCp?: string;
+    /** id del documento en Facturapi (para leer su detalle) */
+    facturapiId?: string;
+}
+
+const etiqueta = (d: { serie?: string; folio?: string | number }) =>
+    `${d.serie || ''}${d.folio ?? ''}` || 's/folio';
+
+function docDeFacturapi(inv: FacturapiInvoiceRecord): DocPorPagar {
+    const derivada = estructuraDeFactura(inv);
+    const usable = derivada && derivada.cuadra;
+    return {
+        origen: 'facturapi',
+        uuid: (inv.uuid || '').toLowerCase(),
+        serie: inv.series || '',
+        folio: String(inv.folio_number ?? ''),
+        fecha: inv.created_at,
+        total: inv.total,
+        subtotal: usable ? derivada!.subtotal : redondear(inv.total / (1 + IVA_RATE)),
+        moneda: inv.currency || 'MXN',
+        tipoCambio: 1,
+        impuestos: usable ? derivada!.impuestos : estructuraSupuesta(inv.total, IVA_RATE),
+        estructuraSupuesta: !usable,
+        clienteNombre: inv.customer?.legal_name || '',
+        clienteRfc: inv.customer?.tax_id || '',
+        clienteFacturapiId: inv.customer?.id,
+        clienteRegimen: inv.customer?.tax_system,
+        clienteCp: inv.customer?.address?.zip,
+        facturapiId: inv.id,
+    };
+}
+
+function docDeExterna(f: FacturaExterna): DocPorPagar {
+    return {
+        origen: 'externa',
+        uuid: f.uuid,
+        serie: f.serie,
+        folio: f.folio,
+        fecha: f.fecha,
+        total: f.total,
+        subtotal: f.subtotal,
+        moneda: f.moneda,
+        tipoCambio: f.tipoCambio,
+        impuestos: f.impuestos as CfdiImpuesto[],
+        estructuraSupuesta: false,
+        clienteNombre: f.receptorNombre,
+        clienteRfc: f.receptorRfc,
+        clienteRegimen: f.receptorRegimen,
+        clienteCp: f.receptorCp,
+    };
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+const money = (n: number, moneda = 'MXN') =>
+    `$${(n ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${moneda}`;
+
+/** `datetime-local` habla en hora LOCAL. toISOString() da UTC y adelantaría el
+ *  pago varias horas — en un pago del día 5 eso puede cambiarle el mes. */
+function ahoraLocal(): string {
+    const d = new Date();
+    const off = d.getTimezoneOffset() * 60000;
+    return new Date(d.getTime() - off).toISOString().slice(0, 16);
+}
+
+// ---------------------------------------------------------------------------
+// Timbrado flow
 // ---------------------------------------------------------------------------
 type TimbradoStep = 'idle' | 'customer' | 'rep' | 'download' | 'done' | 'error';
 
 const STEPS: { key: TimbradoStep; label: string }[] = [
-    { key: 'customer', label: 'Sincronizando cliente con SAT' },
+    { key: 'customer', label: 'Sincronizando receptor con el SAT' },
     { key: 'rep',      label: 'Timbrando Complemento de Pago' },
     { key: 'download', label: 'Descargando PDF y XML' },
     { key: 'done',     label: 'REP completado' },
@@ -77,39 +194,246 @@ function StepIndicator({ current }: { current: TimbradoStep }) {
 }
 
 // ---------------------------------------------------------------------------
+// Importador de facturas externas
+// ---------------------------------------------------------------------------
+
+interface ImportadorProps {
+    externas: FacturaExterna[];
+    onGuardada: () => void;
+    onEliminar: (f: FacturaExterna) => void;
+}
+
+function ImportadorExternas({ externas, onGuardada, onEliminar }: ImportadorProps) {
+    const inputRef = useRef<HTMLInputElement>(null);
+    const [leida, setLeida] = useState<CfdiExterno | null>(null);
+    const [xmlCrudo, setXmlCrudo] = useState('');
+    const [error, setError] = useState<string | null>(null);
+    const [aviso, setAviso] = useState<string | null>(null);
+    const [guardando, setGuardando] = useState(false);
+    const [arrastrando, setArrastrando] = useState(false);
+
+    const procesar = async (file: File) => {
+        setError(null); setAviso(null); setLeida(null);
+        try {
+            const texto = await file.text();
+            const cfdi = leerCfdi(texto);
+
+            const motivo = motivoParaNoTimbrarRep(cfdi);
+            if (motivo) { setError(motivo); return; }
+
+            if (RFC_EMISOR && cfdi.emisorRfc !== RFC_EMISOR) {
+                setAviso(`Esta factura la emitió ${cfdi.emisorRfc}, no ${RFC_EMISOR}. ` +
+                         'Si es una factura que TE emitieron, el REP lo timbra quien la emitió, no tú.');
+            }
+            setLeida(cfdi);
+            setXmlCrudo(texto);
+        } catch (e: any) {
+            setError(e instanceof CfdiInvalido ? e.message : `No pude leer el archivo: ${e.message}`);
+        }
+    };
+
+    const guardar = async () => {
+        if (!leida) return;
+        setGuardando(true);
+        try {
+            await api.guardarFacturaExterna(leida, xmlCrudo);
+            setLeida(null); setXmlCrudo(''); setAviso(null);
+            if (inputRef.current) inputRef.current.value = '';
+            onGuardada();
+        } catch (e: any) {
+            setError(`No se pudo guardar: ${e.message}. ` +
+                     '¿Corriste supabase/migrations/20260817_rep_facturas_externas.sql?');
+        } finally { setGuardando(false); }
+    };
+
+    return (
+        <div className="space-y-6">
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-xl p-5 flex gap-3">
+                <Info size={18} className="text-blue-500 flex-shrink-0 mt-0.5" />
+                <div className="text-sm text-blue-800 dark:text-blue-200 space-y-1">
+                    <p className="font-bold">Para facturas timbradas en otra plataforma</p>
+                    <p className="text-xs leading-relaxed opacity-90">
+                        El Complemento de Pago se relaciona con la factura sólo por su UUID, así que
+                        puede timbrarse aquí aunque la factura haya salido de otro PAC. Sube el XML
+                        timbrado (no el PDF) y la factura queda disponible en “Emitir REP”.
+                    </p>
+                </div>
+            </div>
+
+            {/* Zona de carga */}
+            <div
+                onDragOver={e => { e.preventDefault(); setArrastrando(true); }}
+                onDragLeave={() => setArrastrando(false)}
+                onDrop={e => {
+                    e.preventDefault(); setArrastrando(false);
+                    const f = e.dataTransfer.files?.[0];
+                    if (f) procesar(f);
+                }}
+                onClick={() => inputRef.current?.click()}
+                className={`border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition-colors ${arrastrando ? 'border-primary bg-primary/5' : 'border-gray-200 dark:border-gray-700 hover:border-primary/50'}`}
+            >
+                <Upload size={28} className="mx-auto mb-3 text-gray-300" />
+                <p className="text-sm text-gray-600 dark:text-gray-300 font-medium">
+                    Arrastra el XML del CFDI o haz clic para elegirlo
+                </p>
+                <p className="text-[11px] text-gray-400 mt-1">
+                    Sólo el XML timbrado (CFDI 4.0). El PDF no sirve: no lleva el UUID en un formato legible.
+                </p>
+                <input
+                    ref={inputRef} type="file" accept=".xml,text/xml,application/xml" className="hidden"
+                    onChange={e => { const f = e.target.files?.[0]; if (f) procesar(f); }}
+                />
+            </div>
+
+            {error && (
+                <div className="flex items-start gap-3 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-xl text-sm text-red-700 dark:text-red-300">
+                    <AlertCircle size={16} className="flex-shrink-0 mt-0.5" /><span>{error}</span>
+                </div>
+            )}
+            {aviso && (
+                <div className="flex items-start gap-3 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-xl text-sm text-amber-800 dark:text-amber-200">
+                    <AlertCircle size={16} className="flex-shrink-0 mt-0.5" /><span>{aviso}</span>
+                </div>
+            )}
+
+            {/* Vista previa antes de registrar */}
+            {leida && (
+                <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl p-6 shadow-sm space-y-5">
+                    <div className="flex items-center justify-between">
+                        <h3 className="text-sm font-bold uppercase tracking-widest text-gray-500 flex items-center gap-2">
+                            <FileText size={15} /> Factura leída
+                        </h3>
+                        <span className="text-[10px] uppercase tracking-widest px-2 py-1 rounded bg-green-50 text-green-600 font-bold">
+                            {leida.metodoPago} · CFDI 4.0
+                        </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+                        <div><span className="text-gray-400">Folio</span><p className="font-mono font-bold">{etiqueta(leida)}</p></div>
+                        <div><span className="text-gray-400">Fecha</span><p className="font-mono">{new Date(leida.fecha).toLocaleDateString('es-MX')}</p></div>
+                        <div><span className="text-gray-400">Receptor</span><p className="font-medium truncate">{leida.receptorNombre}</p></div>
+                        <div><span className="text-gray-400">RFC</span><p className="font-mono">{leida.receptorRfc}</p></div>
+                        <div><span className="text-gray-400">Régimen</span><p className="font-mono">{leida.receptorRegimen}</p></div>
+                        <div><span className="text-gray-400">CP receptor</span><p className="font-mono">{leida.receptorCp}</p></div>
+                        <div><span className="text-gray-400">Subtotal</span><p className="font-mono">{money(leida.subtotal, leida.moneda)}</p></div>
+                        <div><span className="text-gray-400">Total</span><p className="font-mono font-bold text-primary">{money(leida.total, leida.moneda)}</p></div>
+                    </div>
+
+                    {!leida.serie && (
+                        <p className="text-[11px] text-gray-400 italic">
+                            Esta factura no tiene serie (el CFDI la trae como opcional). Se registra sin serie, tal cual.
+                        </p>
+                    )}
+
+                    <div>
+                        <p className="text-[10px] uppercase tracking-widest text-gray-400 mb-2">Impuestos de la factura</p>
+                        <div className="space-y-1">
+                            {leida.impuestos.length === 0 && (
+                                <p className="text-xs text-gray-400 italic">Sin impuestos desglosados.</p>
+                            )}
+                            {leida.impuestos.map((i, n) => (
+                                <div key={n} className="flex justify-between text-xs">
+                                    <span className={i.retencion ? 'text-amber-600' : 'text-gray-500'}>
+                                        {i.retencion ? 'Retenido' : 'Trasladado'} {i.tipo} {(i.tasa * 100).toFixed(2)}%
+                                        <span className="text-gray-400"> · base {money(i.base, leida.moneda)}</span>
+                                    </span>
+                                    <span className={`font-mono ${i.retencion ? 'text-amber-600' : 'text-green-600'}`}>
+                                        {i.retencion ? '−' : '+'}{money(i.importe, leida.moneda)}
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-3">
+                        <p className="text-[10px] uppercase tracking-widest text-gray-400">Folio Fiscal (UUID)</p>
+                        <p className="font-mono text-xs break-all mt-1">{leida.uuid}</p>
+                    </div>
+
+                    <button onClick={guardar} disabled={guardando}
+                        className="w-full py-3 bg-primary text-white text-xs font-bold uppercase tracking-widest rounded-lg hover:bg-black transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+                        {guardando ? <Loader size={14} className="animate-spin" /> : <Check size={14} />}
+                        Registrar esta factura
+                    </button>
+                </div>
+            )}
+
+            {/* Ya registradas */}
+            <div>
+                <h3 className="text-sm font-bold uppercase tracking-widest text-gray-500 mb-4">
+                    Facturas externas registradas ({externas.length})
+                </h3>
+                {externas.length === 0 ? (
+                    <p className="text-xs text-gray-400 italic py-8 text-center">Todavía no hay ninguna.</p>
+                ) : (
+                    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 overflow-hidden">
+                        <table className="w-full text-sm">
+                            <thead>
+                                <tr className="border-b border-gray-100 dark:border-gray-700 text-[10px] uppercase tracking-widest text-gray-400">
+                                    <th className="px-5 py-3 text-left">Folio</th>
+                                    <th className="px-5 py-3 text-left">Fecha</th>
+                                    <th className="px-5 py-3 text-left">Receptor</th>
+                                    <th className="px-5 py-3 text-right">Total</th>
+                                    <th className="px-5 py-3"></th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-50 dark:divide-gray-700/50">
+                                {externas.map(f => (
+                                    <tr key={f.id}>
+                                        <td className="px-5 py-3 font-mono font-bold text-primary">{etiqueta(f)}</td>
+                                        <td className="px-5 py-3 text-xs text-gray-500">{new Date(f.fecha).toLocaleDateString('es-MX')}</td>
+                                        <td className="px-5 py-3">
+                                            <p className="text-xs font-medium truncate max-w-[200px]">{f.receptorNombre}</p>
+                                            <p className="font-mono text-[10px] text-gray-400">{f.receptorRfc}</p>
+                                        </td>
+                                        <td className="px-5 py-3 text-right font-mono font-bold">{money(f.total, f.moneda)}</td>
+                                        <td className="px-5 py-3 text-right">
+                                            <button onClick={() => onEliminar(f)} className="text-gray-300 hover:text-red-500 transition-colors" title="Quitar del registro">
+                                                <Trash2 size={14} />
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
+
+// ---------------------------------------------------------------------------
 // Main Component
 // ---------------------------------------------------------------------------
 const PaymentReceipts: React.FC = () => {
-    const [activeTab, setActiveTab] = useState<'emitir' | 'historial'>('emitir');
+    const [activeTab, setActiveTab] = useState<'emitir' | 'externas' | 'historial'>('emitir');
 
-    // ── Form state ──────────────────────────────────────────────────────────
-    const [ppdinvoices, setPpdInvoices] = useState<FacturapiInvoiceRecord[]>([]);
+    // ── Documentos por pagar ────────────────────────────────────────────────
+    const [ppdFacturapi, setPpdFacturapi] = useState<FacturapiInvoiceRecord[]>([]);
+    const [externas, setExternas] = useState<FacturaExterna[]>([]);
+    const [pagos, setPagos] = useState<RepPago[]>([]);
     const [loadingPpd, setLoadingPpd] = useState(false);
+    const [errorPpd, setErrorPpd] = useState<string | null>(null);
+
     const [invoiceSearch, setInvoiceSearch] = useState('');
     const [showInvoiceDrop, setShowInvoiceDrop] = useState(false);
-    const [selectedInvoice, setSelectedInvoice] = useState<FacturapiInvoiceRecord | null>(null);
+    const [doc, setDoc] = useState<DocPorPagar | null>(null);
+    const [cargandoDetalle, setCargandoDetalle] = useState(false);
 
-    const today = new Date().toISOString().slice(0, 16); // datetime-local format
-    const [paymentDate, setPaymentDate] = useState(today);
+    // ── Datos del pago ──────────────────────────────────────────────────────
+    const [paymentDate, setPaymentDate] = useState(ahoraLocal());
     const [paymentForm, setPaymentForm] = useState('03');
-    const [currency, setCurrency] = useState('MXN');
     const [exchange, setExchange] = useState(1);
     const [amountPaid, setAmountPaid] = useState(0);
-    const [installment, setInstallment] = useState(1);
-    const [lastBalance, setLastBalance] = useState(0);
 
-    // Calculated IVA on the paid amount
-    // Total paid = subtotal + IVA  →  subtotal = amount / 1.08
-    const baseGravable = amountPaid / (1 + IVA_RATE);
-    const ivaPagado = amountPaid - baseGravable;
-
-    // ── Timbrado state ───────────────────────────────────────────────────────
+    // ── Timbrado state ──────────────────────────────────────────────────────
     const [timbradoStep, setTimbradoStep] = useState<TimbradoStep>('idle');
     const [timbradoError, setTimbradoError] = useState<string | null>(null);
     const [repResult, setRepResult] = useState<{ uuid: string; folio: number; series: string } | null>(null);
     const [errors, setErrors] = useState<{ [k: string]: string }>({});
 
-    // ── Historial state ──────────────────────────────────────────────────────
+    // ── Historial state ─────────────────────────────────────────────────────
     const [histList, setHistList] = useState<FacturapiInvoiceRecord[]>([]);
     const [histLoading, setHistLoading] = useState(false);
     const [histError, setHistError] = useState<string | null>(null);
@@ -119,43 +443,118 @@ const PaymentReceipts: React.FC = () => {
     const [histTotal, setHistTotal] = useState(0);
     const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
-    // ── Load PPD invoices ────────────────────────────────────────────────────
-    const loadPpdInvoices = useCallback(async (q = '') => {
-        setLoadingPpd(true);
-        try {
-            const res = await facturapiListInvoices({ limit: 50, status: 'valid', q: q || undefined });
-            // Filter to PPD only
-            setPpdInvoices(res.data.filter(inv => inv.payment_method === 'PPD'));
-        } catch { /* silent */ }
-        finally { setLoadingPpd(false); }
+    // ── Carga ───────────────────────────────────────────────────────────────
+    const cargarExternas = useCallback(async () => {
+        try { setExternas(await api.getFacturasExternas()); }
+        catch (e) { console.warn('facturas_externas no disponible:', e); }
     }, []);
 
-    useEffect(() => { loadPpdInvoices(); }, [loadPpdInvoices]);
+    const cargarPagos = useCallback(async () => {
+        try { setPagos(await api.getRepPagos()); }
+        catch (e) { console.warn('rep_pagos no disponible:', e); }
+    }, []);
 
-    // Debounce search
+    const loadPpdInvoices = useCallback(async (q = '') => {
+        setLoadingPpd(true);
+        setErrorPpd(null);
+        try {
+            const res = await facturapiListInvoices({ limit: 50, status: 'valid', q: q || undefined });
+            setPpdFacturapi(res.data.filter(inv => inv.payment_method === 'PPD' && inv.type !== 'P'));
+        } catch (e: any) {
+            setErrorPpd(e.message);
+        } finally { setLoadingPpd(false); }
+    }, []);
+
+    useEffect(() => { cargarExternas(); cargarPagos(); }, [cargarExternas, cargarPagos]);
+
     useEffect(() => {
         const t = setTimeout(() => loadPpdInvoices(invoiceSearch), 400);
         return () => clearTimeout(t);
     }, [invoiceSearch, loadPpdInvoices]);
 
-    // When invoice selected, auto-fill amount and last_balance from invoice total
-    const handleSelectInvoice = (inv: FacturapiInvoiceRecord) => {
-        setSelectedInvoice(inv);
-        setAmountPaid(inv.total);
-        setLastBalance(inv.total);
+    // ── Saldos por factura, tomados del libro de pagos ───────────────────────
+    const pagadoPorUuid = useMemo(() => {
+        const m = new Map<string, { monto: number; parcialidades: number }>();
+        for (const p of pagos) {
+            const k = p.facturaUuid.toLowerCase();
+            const prev = m.get(k) ?? { monto: 0, parcialidades: 0 };
+            m.set(k, {
+                monto: redondear(prev.monto + p.monto),
+                parcialidades: Math.max(prev.parcialidades, p.parcialidad),
+            });
+        }
+        return m;
+    }, [pagos]);
+
+    /** Saldo y parcialidad del documento seleccionado — nunca a mano. */
+    const { saldoAnterior, parcialidad } = useMemo(() => {
+        if (!doc) return { saldoAnterior: 0, parcialidad: 1 };
+        const prev = pagadoPorUuid.get(doc.uuid) ?? { monto: 0, parcialidades: 0 };
+        return {
+            saldoAnterior: redondear(doc.total - prev.monto),
+            parcialidad: prev.parcialidades + 1,
+        };
+    }, [doc, pagadoPorUuid]);
+
+    const saldoInsoluto = doc ? redondear(saldoAnterior - amountPaid) : 0;
+
+    // Desglose del pago con la estructura REAL de la factura
+    const desglose = useMemo(
+        () => doc
+            ? desglosarPago(doc.impuestos, doc.subtotal, amountPaid, doc.total)
+            : { base: 0, trasladado: 0, retenido: 0, total: 0, diferencia: 0 },
+        [doc, amountPaid]);
+
+    /** Descuadre de verdad, no redondeo: con dos o tres impuestos la suma puede
+     *  moverse un par de centavos y eso es normal. Un peso ya no lo es. */
+    const descuadre = !!doc && amountPaid > 0 && Math.abs(desglose.diferencia) > 1;
+
+    // ── Lista unificada del selector ─────────────────────────────────────────
+    const opciones = useMemo(() => {
+        const q = invoiceSearch.trim().toLowerCase();
+        const todos: DocPorPagar[] = [
+            ...externas.map(docDeExterna),
+            ...ppdFacturapi.map(docDeFacturapi),
+        ];
+        const coincide = (d: DocPorPagar) => !q ||
+            d.clienteNombre.toLowerCase().includes(q) ||
+            d.clienteRfc.toLowerCase().includes(q) ||
+            etiqueta(d).toLowerCase().includes(q) ||
+            d.uuid.includes(q);
+        return todos.filter(coincide);
+    }, [externas, ppdFacturapi, invoiceSearch]);
+
+    // ── Selección ────────────────────────────────────────────────────────────
+    const seleccionar = async (d: DocPorPagar) => {
         setShowInvoiceDrop(false);
-        setInvoiceSearch(`${inv.series}${inv.folio_number} – ${inv.customer?.legal_name}`);
+        setInvoiceSearch(`${etiqueta(d)} – ${d.clienteNombre}`);
+        setErrors({});
+
+        // Para las de Facturapi se pide el detalle completo: la lista viene
+        // recortada y sin los impuestos no se puede prorratear el pago.
+        let completo = d;
+        if (d.origen === 'facturapi' && d.facturapiId) {
+            setCargandoDetalle(true);
+            try {
+                completo = docDeFacturapi(await facturapiRetrieveInvoice(d.facturapiId));
+            } catch (e) {
+                console.warn('No se pudo leer el detalle de la factura:', e);
+            } finally { setCargandoDetalle(false); }
+        }
+
+        setDoc(completo);
+        const prev = pagadoPorUuid.get(completo.uuid) ?? { monto: 0, parcialidades: 0 };
+        setAmountPaid(redondear(completo.total - prev.monto));
+        if (completo.moneda !== 'MXN') setExchange(completo.tipoCambio || 1);
     };
 
-    // ── Load historial REP ───────────────────────────────────────────────────
+    // ── Historial ────────────────────────────────────────────────────────────
     const loadHistorial = useCallback(async () => {
         setHistLoading(true);
         setHistError(null);
         try {
             const res = await facturapiListInvoices({ limit: 20, page: histPage, q: histSearch || undefined });
-            // Facturapi doesn't filter by type in GET invoices easily; filter client-side
-            const reps = res.data.filter(inv => inv.type === 'P');
-            setHistList(reps);
+            setHistList(res.data.filter(inv => inv.type === 'P'));
             setHistTotalPages(res.total_pages);
             setHistTotal(res.total_results);
         } catch (e: any) { setHistError(e.message); }
@@ -164,35 +563,49 @@ const PaymentReceipts: React.FC = () => {
 
     useEffect(() => { if (activeTab === 'historial') loadHistorial(); }, [activeTab, loadHistorial]);
 
-    // ── Validation ───────────────────────────────────────────────────────────
+    // ── Validación ───────────────────────────────────────────────────────────
     const validate = () => {
         const e: { [k: string]: string } = {};
-        if (!selectedInvoice) e.invoice = 'Selecciona una factura PPD';
+        if (!doc) e.invoice = 'Selecciona la factura PPD que se está pagando';
         if (amountPaid <= 0) e.amount = 'El monto pagado debe ser mayor a 0';
-        if (lastBalance <= 0) e.lastBalance = 'El saldo anterior debe ser mayor a 0';
-        if (amountPaid > lastBalance) e.amount = 'El monto no puede ser mayor al saldo anterior';
-        if (installment <= 0) e.installment = 'El número de parcialidad debe ser mayor a 0';
+        if (doc && amountPaid > saldoAnterior + 0.005) {
+            e.amount = `El monto no puede pasar del saldo pendiente (${money(saldoAnterior, doc.moneda)})`;
+        }
+        if (doc && saldoAnterior <= 0) e.amount = 'Esta factura ya está liquidada.';
+        if (!doc?.clienteRfc) e.invoice = 'La factura no trae RFC del receptor.';
         setErrors(e);
         return Object.keys(e).length === 0;
     };
 
-    // ── Timbrar REP ──────────────────────────────────────────────────────────
+    // ── Timbrar ──────────────────────────────────────────────────────────────
     const handleTimbrar = async () => {
-        if (!validate() || !selectedInvoice) return;
+        if (!validate() || !doc) return;
         setTimbradoError(null);
         setRepResult(null);
         setTimbradoStep('customer');
 
         try {
-            // Step 1: sync customer
-            const customerId = await facturapiCreateCustomer({
-                legal_name: selectedInvoice.customer.legal_name,
-                tax_id: selectedInvoice.customer.tax_id,
-                tax_system: '616', // default; Facturapi will use existing record if already created
-                address: { zip: '06600' }, // placeholder — Facturapi uses existing customer data
-            });
+            // 1. Receptor. El del REP debe ser IDÉNTICO al de la factura: mismo
+            //    RFC, mismo régimen y mismo código postal. Si la factura salió
+            //    de Facturapi ya tenemos su cliente y no hay nada que adivinar.
+            let customerId = doc.clienteFacturapiId;
+            if (!customerId) {
+                if (!doc.clienteRegimen || !doc.clienteCp) {
+                    throw new Error(
+                        'A la factura le falta el régimen fiscal o el código postal del receptor. ' +
+                        'Vuelve a importar su XML: esos dos datos deben ir idénticos en el REP.');
+                }
+                customerId = await facturapiFindOrCreateCustomer({
+                    legal_name: doc.clienteNombre,
+                    tax_id: doc.clienteRfc,
+                    tax_system: doc.clienteRegimen,
+                    address: { zip: doc.clienteCp },
+                });
+            }
 
-            // Step 2: build REP payload
+            // 2. El REP. Los impuestos se reparten a prorrata de la estructura
+            //    real de la factura; se manda la base y la tasa, y Facturapi
+            //    deriva el importe (un solo redondeo, sin discrepancias).
             setTimbradoStep('rep');
             const stamped = await facturapiCreatePaymentComplement({
                 customer: customerId,
@@ -200,25 +613,44 @@ const PaymentReceipts: React.FC = () => {
                 payments: [{
                     date: new Date(paymentDate).toISOString(),
                     payment_form: paymentForm,
-                    currency,
-                    exchange: currency !== 'MXN' ? exchange : undefined,
-                    amount: amountPaid,
+                    currency: doc.moneda,
+                    exchange: doc.moneda !== 'MXN' ? exchange : undefined,
                     related_documents: [{
-                        uuid: selectedInvoice.uuid,
-                        amount: amountPaid,
-                        installment,
-                        last_balance: lastBalance,
-                        taxes_paid: [{
-                            base: parseFloat(baseGravable.toFixed(6)),
-                            type: 'IVA',
-                            rate: IVA_RATE,
-                            amount: parseFloat(ivaPagado.toFixed(6)),
-                        }],
+                        uuid: doc.uuid,
+                        amount: redondear(amountPaid),
+                        installment: parcialidad,
+                        last_balance: redondear(saldoAnterior),
+                        taxes: repartirImpuestos(doc.impuestos, amountPaid, doc.total),
                     }],
                 }],
             });
 
-            // Step 3: download
+            // 3. Asentar el pago ANTES de descargar: si la descarga falla, el
+            //    REP ya está timbrado y el saldo tiene que reflejarlo.
+            try {
+                await api.registrarRepPago({
+                    facturaUuid: doc.uuid,
+                    facturaOrigen: doc.origen,
+                    facturaFolio: etiqueta(doc),
+                    repUuid: stamped.uuid,
+                    repFacturapiId: stamped.id,
+                    repSerie: stamped.series || 'P',
+                    repFolio: stamped.folio_number,
+                    fechaPago: new Date(paymentDate).toISOString(),
+                    formaPago: paymentForm,
+                    moneda: doc.moneda,
+                    tipoCambio: doc.moneda !== 'MXN' ? exchange : 1,
+                    monto: redondear(amountPaid),
+                    parcialidad,
+                    saldoAnterior: redondear(saldoAnterior),
+                    saldoInsoluto: redondear(saldoAnterior - amountPaid),
+                });
+                await cargarPagos();
+            } catch (e) {
+                console.warn('El REP se timbró pero no se pudo asentar en rep_pagos:', e);
+            }
+
+            // 4. Descargas
             setTimbradoStep('download');
             try {
                 const pdf = await facturapiDownloadPdf(stamped.id);
@@ -243,11 +675,10 @@ const PaymentReceipts: React.FC = () => {
 
     const resetForm = () => {
         setTimbradoStep('idle'); setTimbradoError(null); setRepResult(null);
-        setSelectedInvoice(null); setInvoiceSearch(''); setAmountPaid(0);
-        setLastBalance(0); setInstallment(1); setErrors({});
+        setDoc(null); setInvoiceSearch(''); setAmountPaid(0); setErrors({});
     };
 
-    // ── Download helpers ─────────────────────────────────────────────────────
+    // ── Descargas del historial ─────────────────────────────────────────────
     const handleDownloadPdf = async (inv: FacturapiInvoiceRecord) => {
         setDownloadingId(inv.id + '-pdf');
         try { const b = await facturapiDownloadPdf(inv.id); triggerBlobDownload(b, `REP-${inv.uuid}.pdf`); }
@@ -261,13 +692,13 @@ const PaymentReceipts: React.FC = () => {
         finally { setDownloadingId(null); }
     };
 
-    const filteredPpd = ppdinvoices.filter(inv =>
-        !invoiceSearch || invoiceSearch.toLowerCase().split('–')[1]?.trim()
-            ? inv.customer?.legal_name?.toLowerCase().includes(invoiceSearch.toLowerCase())
-            : true
-    );
+    const eliminarExterna = async (f: FacturaExterna) => {
+        if (!confirm(`¿Quitar la factura ${etiqueta(f)} del registro?\n\nNo cancela nada ante el SAT: sólo deja de aparecer aquí.`)) return;
+        try { await api.eliminarFacturaExterna(f.id); await cargarExternas(); }
+        catch (e: any) { alert('No se pudo eliminar: ' + e.message); }
+    };
 
-    // ── Timbrado overlay ────────────────────────────────────────────────────
+    // ── Overlay de timbrado ─────────────────────────────────────────────────
     if (timbradoStep !== 'idle') {
         return (
             <div className="max-w-7xl mx-auto animate-fade-in">
@@ -301,7 +732,7 @@ const PaymentReceipts: React.FC = () => {
                                 <div className="flex gap-6">
                                     <div><p className="text-[10px] uppercase tracking-widest text-gray-400">Serie</p><p className="font-mono text-sm">{repResult.series}</p></div>
                                     <div><p className="text-[10px] uppercase tracking-widest text-gray-400">Folio</p><p className="font-mono text-sm">{repResult.folio}</p></div>
-                                    <div><p className="text-[10px] uppercase tracking-widest text-gray-400">Monto pagado</p><p className="font-mono text-sm">${amountPaid.toLocaleString('es-MX', { minimumFractionDigits: 2 })} {currency}</p></div>
+                                    <div><p className="text-[10px] uppercase tracking-widest text-gray-400">Monto pagado</p><p className="font-mono text-sm">{money(amountPaid, doc?.moneda)}</p></div>
                                 </div>
                             </div>
                             <div className="flex items-center justify-center gap-2 text-xs text-gray-400"><Download size={12} /> PDF y XML descargados automáticamente</div>
@@ -322,12 +753,11 @@ const PaymentReceipts: React.FC = () => {
         );
     }
 
-    // ── Main UI ─────────────────────────────────────────────────────────────
+    // ── UI principal ────────────────────────────────────────────────────────
     return (
         <div className="max-w-7xl mx-auto space-y-8 pb-12 animate-fade-in">
-            {/* Header + Tabs */}
             <div className="border-b border-gray-200 dark:border-gray-700 pb-0">
-                <div className="flex justify-between items-start pb-4">
+                <div className="flex justify-between items-start pb-4 flex-wrap gap-4">
                     <div>
                         <h1 className="font-serif text-4xl dark:text-white text-primary mb-2">Complemento de Pago</h1>
                         <p className="text-xs font-mono uppercase tracking-widest text-gray-400">Recibo Electrónico de Pago (REP) — CFDI 4.0</p>
@@ -343,9 +773,13 @@ const PaymentReceipts: React.FC = () => {
                         </button>
                     )}
                 </div>
-                <div className="flex">
+                <div className="flex flex-wrap">
                     <button onClick={() => setActiveTab('emitir')} className={`flex items-center gap-2 px-6 py-3 text-xs font-bold uppercase tracking-widest border-b-2 transition-colors ${activeTab === 'emitir' ? 'border-primary text-primary' : 'border-transparent text-gray-400 hover:text-gray-600'}`}>
                         <CreditCard size={14} /> Emitir REP
+                    </button>
+                    <button onClick={() => setActiveTab('externas')} className={`flex items-center gap-2 px-6 py-3 text-xs font-bold uppercase tracking-widest border-b-2 transition-colors ${activeTab === 'externas' ? 'border-primary text-primary' : 'border-transparent text-gray-400 hover:text-gray-600'}`}>
+                        <Upload size={14} /> Importar factura externa
+                        {externas.length > 0 && <span className="px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-[10px]">{externas.length}</span>}
                     </button>
                     <button onClick={() => setActiveTab('historial')} className={`flex items-center gap-2 px-6 py-3 text-xs font-bold uppercase tracking-widest border-b-2 transition-colors ${activeTab === 'historial' ? 'border-primary text-primary' : 'border-transparent text-gray-400 hover:text-gray-600'}`}>
                         <ReceiptText size={14} /> Historial REP
@@ -353,12 +787,20 @@ const PaymentReceipts: React.FC = () => {
                 </div>
             </div>
 
-            {/* ── Emitir REP Tab ────────────────────────────────────────── */}
+            {/* ── Importar factura externa ───────────────────────────────── */}
+            {activeTab === 'externas' && (
+                <ImportadorExternas
+                    externas={externas}
+                    onGuardada={() => { cargarExternas(); setActiveTab('emitir'); }}
+                    onEliminar={eliminarExterna}
+                />
+            )}
+
+            {/* ── Emitir REP ─────────────────────────────────────────────── */}
             {activeTab === 'emitir' && (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    {/* Left: Factura PPD + Payment */}
+                    {/* Izquierda: factura + pago */}
                     <div className="space-y-6">
-                        {/* Select PPD Invoice */}
                         <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
                             <h3 className="text-sm font-bold uppercase tracking-widest text-gray-500 mb-5 flex items-center gap-2">
                                 <Search size={15} /> Factura PPD a liquidar
@@ -370,58 +812,90 @@ const PaymentReceipts: React.FC = () => {
                                 <input
                                     type="text"
                                     value={invoiceSearch}
-                                    onChange={e => { setInvoiceSearch(e.target.value); setShowInvoiceDrop(true); setSelectedInvoice(null); }}
-                                    onFocus={() => setShowInvoiceDrop(true)}
-                                    placeholder="Buscar por folio, cliente o RFC..."
+                                    onChange={e => { setInvoiceSearch(e.target.value); setShowInvoiceDrop(true); setDoc(null); }}
+                                    // Al volver al campo se limpia el texto: si no, la búsqueda
+                                    // se hace con la etiqueta de lo ya elegido y no sale nada.
+                                    onFocus={() => { if (doc) setInvoiceSearch(''); setShowInvoiceDrop(true); }}
+                                    placeholder="Folio, cliente, RFC o UUID..."
                                     className={`w-full bg-gray-50 dark:bg-gray-900 border ${errors.invoice ? 'border-red-500' : 'border-gray-200 dark:border-gray-700'} rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-primary transition-colors`}
                                 />
                                 {errors.invoice && <p className="text-[10px] text-red-500 mt-1">{errors.invoice}</p>}
 
                                 {showInvoiceDrop && (
-                                    <div className="absolute z-10 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 mt-1 rounded-xl shadow-2xl max-h-72 overflow-y-auto">
+                                    <div className="absolute z-10 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 mt-1 rounded-xl shadow-2xl max-h-80 overflow-y-auto">
                                         {loadingPpd && (
                                             <div className="flex items-center gap-2 px-4 py-3 text-xs text-gray-400">
                                                 <Loader size={12} className="animate-spin" /> Cargando facturas PPD...
                                             </div>
                                         )}
-                                        {!loadingPpd && ppdinvoices.length === 0 && (
-                                            <div className="px-4 py-4 text-xs text-gray-400 text-center italic">
-                                                No hay facturas PPD válidas
+                                        {!loadingPpd && opciones.length === 0 && (
+                                            <div className="px-4 py-5 text-xs text-gray-400 text-center italic space-y-2">
+                                                <p>No hay facturas PPD que coincidan.</p>
+                                                <button onClick={() => setActiveTab('externas')} className="text-primary font-bold uppercase tracking-widest not-italic">
+                                                    ¿La factura se timbró en otra plataforma? Impórtala
+                                                </button>
                                             </div>
                                         )}
-                                        {!loadingPpd && ppdinvoices.map(inv => (
-                                            <div key={inv.id} onClick={() => handleSelectInvoice(inv)} className="px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer border-b border-gray-50 dark:border-gray-700 last:border-0">
-                                                <div className="flex justify-between items-start">
-                                                    <div>
-                                                        <span className="font-mono font-bold text-primary text-sm">{inv.series}{inv.folio_number}</span>
-                                                        <span className="ml-2 text-xs text-gray-400">{new Date(inv.created_at).toLocaleDateString('es-MX')}</span>
+                                        {opciones.map(d => {
+                                            const prev = pagadoPorUuid.get(d.uuid) ?? { monto: 0, parcialidades: 0 };
+                                            const saldo = redondear(d.total - prev.monto);
+                                            return (
+                                                <div key={`${d.origen}-${d.uuid}`} onClick={() => saldo > 0 && seleccionar(d)}
+                                                    className={`px-4 py-3 border-b border-gray-50 dark:border-gray-700 last:border-0 ${saldo > 0 ? 'hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer' : 'opacity-50 cursor-not-allowed'}`}>
+                                                    <div className="flex justify-between items-start gap-2">
+                                                        <div className="flex items-center gap-2 flex-wrap">
+                                                            <span className="font-mono font-bold text-primary text-sm">{etiqueta(d)}</span>
+                                                            {d.origen === 'externa' && (
+                                                                <span className="text-[9px] uppercase tracking-widest px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 font-bold">externa</span>
+                                                            )}
+                                                            <span className="text-xs text-gray-400">{new Date(d.fecha).toLocaleDateString('es-MX')}</span>
+                                                        </div>
+                                                        <span className="font-mono text-sm font-bold whitespace-nowrap">{money(d.total, d.moneda)}</span>
                                                     </div>
-                                                    <span className="font-mono text-sm font-bold">${inv.total.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</span>
+                                                    <p className="text-sm text-gray-700 dark:text-gray-300 mt-0.5">{d.clienteNombre}</p>
+                                                    <p className="font-mono text-[10px] text-gray-400">
+                                                        {d.clienteRfc} · {saldo > 0
+                                                            ? <>saldo {money(saldo, d.moneda)}{prev.parcialidades > 0 && ` · ${prev.parcialidades} parcialidad(es) reportada(s)`}</>
+                                                            : 'liquidada'}
+                                                    </p>
                                                 </div>
-                                                <p className="text-sm text-gray-700 dark:text-gray-300 mt-0.5">{inv.customer?.legal_name}</p>
-                                                <p className="font-mono text-[10px] text-gray-400">{inv.customer?.tax_id} · UUID: {inv.uuid?.slice(0, 16)}…</p>
-                                            </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                 )}
                             </div>
 
-                            {/* Selected invoice summary */}
-                            {selectedInvoice && (
+                            {errorPpd && (
+                                <p className="mt-3 text-[11px] text-amber-600">
+                                    No se pudieron leer las facturas de Facturapi: {errorPpd}
+                                </p>
+                            )}
+
+                            {cargandoDetalle && (
+                                <p className="mt-4 flex items-center gap-2 text-xs text-gray-400">
+                                    <Loader size={12} className="animate-spin" /> Leyendo el desglose de impuestos...
+                                </p>
+                            )}
+
+                            {doc && (
                                 <div className="mt-4 p-4 bg-primary/5 dark:bg-primary/10 border border-primary/20 rounded-lg space-y-2">
-                                    <p className="text-[10px] uppercase tracking-widest text-primary font-bold">Factura Seleccionada</p>
-                                    <div className="grid grid-cols-2 gap-3 text-xs">
-                                        <div><span className="text-gray-400">Cliente</span><p className="font-medium">{selectedInvoice.customer.legal_name}</p></div>
-                                        <div><span className="text-gray-400">RFC</span><p className="font-mono">{selectedInvoice.customer.tax_id}</p></div>
-                                        <div><span className="text-gray-400">Folio</span><p className="font-mono font-bold">{selectedInvoice.series}{selectedInvoice.folio_number}</p></div>
-                                        <div><span className="text-gray-400">Total factura</span><p className="font-mono font-bold text-primary">${selectedInvoice.total.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</p></div>
+                                    <div className="flex items-center gap-2">
+                                        <p className="text-[10px] uppercase tracking-widest text-primary font-bold">Factura seleccionada</p>
+                                        {doc.origen === 'externa' && (
+                                            <span className="text-[9px] uppercase tracking-widest px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 font-bold">otra plataforma</span>
+                                        )}
                                     </div>
-                                    <p className="font-mono text-[9px] text-gray-400 break-all">UUID: {selectedInvoice.uuid}</p>
+                                    <div className="grid grid-cols-2 gap-3 text-xs">
+                                        <div><span className="text-gray-400">Cliente</span><p className="font-medium">{doc.clienteNombre}</p></div>
+                                        <div><span className="text-gray-400">RFC</span><p className="font-mono">{doc.clienteRfc}</p></div>
+                                        <div><span className="text-gray-400">Folio</span><p className="font-mono font-bold">{etiqueta(doc)}</p></div>
+                                        <div><span className="text-gray-400">Total factura</span><p className="font-mono font-bold text-primary">{money(doc.total, doc.moneda)}</p></div>
+                                    </div>
+                                    <p className="font-mono text-[9px] text-gray-400 break-all">UUID: {doc.uuid}</p>
                                 </div>
                             )}
                         </div>
 
-                        {/* Payment Details */}
                         <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
                             <h3 className="text-sm font-bold uppercase tracking-widest text-gray-500 mb-5 flex items-center gap-2">
                                 <CreditCard size={15} /> Datos del Pago
@@ -430,41 +904,43 @@ const PaymentReceipts: React.FC = () => {
                                 <div>
                                     <label className="block text-[10px] uppercase tracking-widest text-gray-400 mb-1">Fecha y Hora del Pago <span className="text-red-500">*</span></label>
                                     <input type="datetime-local" value={paymentDate} onChange={e => setPaymentDate(e.target.value)} className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-primary transition-colors" />
+                                    <p className="text-[9px] text-gray-400 mt-1">
+                                        El REP se presenta a más tardar el día 5 del mes siguiente al del pago.
+                                    </p>
                                 </div>
                                 <div>
                                     <label className="block text-[10px] uppercase tracking-widest text-gray-400 mb-1">Forma de Pago <span className="text-red-500">*</span></label>
                                     <select value={paymentForm} onChange={e => setPaymentForm(e.target.value)} className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-primary transition-colors">
                                         {PAYMENT_FORMS.map(pf => <option key={pf.value} value={pf.value}>{pf.label}</option>)}
                                     </select>
+                                    <p className="text-[9px] text-gray-400 mt-1">
+                                        Es cómo se recibió el dinero, no la “99 – Por definir” de la factura PPD.
+                                    </p>
                                 </div>
-                                <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-[10px] uppercase tracking-widest text-gray-400 mb-1">Moneda</label>
+                                    <input type="text" readOnly value={doc?.moneda ?? 'MXN'}
+                                        className="w-full bg-gray-100 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-4 py-2.5 text-sm text-gray-500" />
+                                    <p className="text-[9px] text-gray-400 mt-1">La toma de la factura: el REP se paga en la moneda en que se facturó.</p>
+                                </div>
+                                {doc && doc.moneda !== 'MXN' && (
                                     <div>
-                                        <label className="block text-[10px] uppercase tracking-widest text-gray-400 mb-1">Moneda</label>
-                                        <select value={currency} onChange={e => setCurrency(e.target.value)} className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-primary transition-colors">
-                                            <option value="MXN">MXN – Peso mexicano</option>
-                                            <option value="USD">USD – Dólar americano</option>
-                                            <option value="EUR">EUR – Euro</option>
-                                        </select>
+                                        <label className="block text-[10px] uppercase tracking-widest text-gray-400 mb-1">Tipo de Cambio</label>
+                                        <input type="number" value={exchange} onChange={e => setExchange(parseFloat(e.target.value) || 1)} step="0.0001" className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-primary transition-colors" />
                                     </div>
-                                    {currency !== 'MXN' && (
-                                        <div>
-                                            <label className="block text-[10px] uppercase tracking-widest text-gray-400 mb-1">Tipo de Cambio</label>
-                                            <input type="number" value={exchange} onChange={e => setExchange(parseFloat(e.target.value))} step="0.01" className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-primary transition-colors" />
-                                        </div>
-                                    )}
-                                </div>
+                                )}
                             </div>
                         </div>
                     </div>
 
-                    {/* Right: Document details + Summary */}
+                    {/* Derecha: documento relacionado + resumen */}
                     <div className="space-y-6">
                         <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
                             <h3 className="text-sm font-bold uppercase tracking-widest text-gray-500 mb-5">Documento Relacionado</h3>
                             <div className="space-y-4">
                                 <div>
                                     <label className="block text-[10px] uppercase tracking-widest text-gray-400 mb-1">
-                                        Monto Pagado ({currency}) <span className="text-red-500">*</span>
+                                        Monto Pagado ({doc?.moneda ?? 'MXN'}) <span className="text-red-500">*</span>
                                     </label>
                                     <div className="relative">
                                         <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-bold">$</span>
@@ -478,73 +954,85 @@ const PaymentReceipts: React.FC = () => {
                                     </div>
                                     {errors.amount && <p className="text-[10px] text-red-500 mt-1">{errors.amount}</p>}
                                 </div>
-                                <div>
-                                    <label className="block text-[10px] uppercase tracking-widest text-gray-400 mb-1">
-                                        Saldo Anterior de la Factura <span className="text-red-500">*</span>
-                                    </label>
-                                    <div className="relative">
-                                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-bold">$</span>
-                                        <input
-                                            type="number"
-                                            value={lastBalance || ''}
-                                            onChange={e => setLastBalance(parseFloat(e.target.value) || 0)}
-                                            step="0.01"
-                                            className={`w-full pl-8 bg-gray-50 dark:bg-gray-900 border ${errors.lastBalance ? 'border-red-500' : 'border-gray-200 dark:border-gray-700'} rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-primary transition-colors`}
-                                        />
+
+                                {/* Parcialidad y saldo NO se capturan: salen del libro de pagos */}
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-[10px] uppercase tracking-widest text-gray-400 mb-1">Parcialidad</label>
+                                        <div className="bg-gray-100 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-4 py-2.5 text-sm font-mono">{parcialidad}</div>
                                     </div>
-                                    {errors.lastBalance && <p className="text-[10px] text-red-500 mt-1">{errors.lastBalance}</p>}
-                                    <p className="text-[9px] text-gray-400 mt-1">Para la primera parcialidad, es el total de la factura original.</p>
+                                    <div>
+                                        <label className="block text-[10px] uppercase tracking-widest text-gray-400 mb-1">Saldo anterior</label>
+                                        <div className="bg-gray-100 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-4 py-2.5 text-sm font-mono">{money(saldoAnterior, doc?.moneda)}</div>
+                                    </div>
                                 </div>
-                                <div>
-                                    <label className="block text-[10px] uppercase tracking-widest text-gray-400 mb-1">
-                                        Número de Parcialidad <span className="text-red-500">*</span>
-                                    </label>
-                                    <input
-                                        type="number"
-                                        value={installment}
-                                        onChange={e => setInstallment(parseInt(e.target.value) || 1)}
-                                        min="1"
-                                        className={`w-full bg-gray-50 dark:bg-gray-900 border ${errors.installment ? 'border-red-500' : 'border-gray-200 dark:border-gray-700'} rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-primary transition-colors`}
-                                    />
-                                    {errors.installment && <p className="text-[10px] text-red-500 mt-1">{errors.installment}</p>}
-                                </div>
+                                <p className="text-[9px] text-gray-400">
+                                    Los calcula el sistema con los REP ya timbrados de esta factura. Escribirlos a mano
+                                    es lo que rompe la parcialidad 2.
+                                </p>
                             </div>
                         </div>
 
-                        {/* Tax breakdown */}
+                        {/* Desglose */}
                         <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
                             <h3 className="text-sm font-bold uppercase tracking-widest text-gray-500 mb-5">Resumen del Pago</h3>
+
+                            {doc?.estructuraSupuesta && (
+                                <div className="mb-4 flex items-start gap-2 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg text-[11px] text-amber-800 dark:text-amber-200">
+                                    <AlertCircle size={14} className="flex-shrink-0 mt-0.5" />
+                                    <span>
+                                        No pude leer el desglose de impuestos de esta factura. El desglose de abajo
+                                        <strong> supone</strong> IVA {(IVA_RATE * 100).toFixed(0)}% y ninguna retención.
+                                        Verifícalo contra el XML de la factura antes de timbrar.
+                                    </span>
+                                </div>
+                            )}
+
                             <div className="space-y-3">
                                 <div className="flex justify-between text-sm text-gray-500">
                                     <span>Monto Total del Pago</span>
-                                    <span className="font-mono font-bold">${amountPaid.toLocaleString('es-MX', { minimumFractionDigits: 2 })} {currency}</span>
+                                    <span className="font-mono font-bold">{money(amountPaid, doc?.moneda)}</span>
                                 </div>
                                 <div className="flex justify-between text-sm text-gray-500">
-                                    <span>Base Gravable (excl. IVA 8%)</span>
-                                    <span className="font-mono">${baseGravable.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</span>
+                                    <span>Base gravable</span>
+                                    <span className="font-mono">{money(desglose.base, doc?.moneda)}</span>
                                 </div>
-                                <div className="flex justify-between text-sm text-gray-500 border-t border-gray-100 dark:border-gray-700 pt-3">
-                                    <span>IVA Trasladado (8%)</span>
-                                    <span className="font-mono text-green-600">+${ivaPagado.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</span>
+                                {(doc?.impuestos ?? []).map((i, n) => {
+                                    const factor = doc && doc.total > 0 ? amountPaid / doc.total : 0;
+                                    const importe = redondear(redondear(i.base * factor) * i.tasa);
+                                    return (
+                                        <div key={n} className="flex justify-between text-sm text-gray-500">
+                                            <span>{i.retencion ? `${i.tipo} retenido` : `${i.tipo} trasladado`} ({(i.tasa * 100).toFixed(2)}%)</span>
+                                            <span className={`font-mono ${i.retencion ? 'text-amber-600' : 'text-green-600'}`}>
+                                                {i.retencion ? '−' : '+'}{money(importe, doc?.moneda)}
+                                            </span>
+                                        </div>
+                                    );
+                                })}
+                                <div className="flex justify-between text-sm border-t border-gray-100 dark:border-gray-700 pt-3">
+                                    <span className="text-gray-500">Suma</span>
+                                    <span className={`font-mono font-bold ${descuadre ? 'text-red-500' : 'text-gray-700 dark:text-gray-200'}`}>
+                                        {money(desglose.total, doc?.moneda)}
+                                    </span>
                                 </div>
-                                <div className="flex justify-between text-sm text-gray-500">
-                                    <span>Número de parcialidad</span>
-                                    <span className="font-mono font-bold">{installment}</span>
-                                </div>
-                                <div className="flex justify-between text-sm text-gray-500">
-                                    <span>Saldo anterior</span>
-                                    <span className="font-mono">${lastBalance.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</span>
-                                </div>
+                                {/* Unos centavos son redondeo y no significan nada; un peso o más
+                                    quiere decir que el desglose no corresponde a esta factura. */}
+                                {descuadre && (
+                                    <p className="text-[11px] text-red-500">
+                                        La suma no cuadra con el monto pagado por {money(Math.abs(desglose.diferencia), doc?.moneda)}.
+                                        El desglose no corresponde a esta factura: revísalo contra su XML antes de timbrar.
+                                    </p>
+                                )}
                                 <div className="flex justify-between text-sm text-gray-500">
                                     <span>Saldo insoluto</span>
-                                    <span className="font-mono font-bold text-primary">${Math.max(0, lastBalance - amountPaid).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</span>
+                                    <span className="font-mono font-bold text-primary">{money(Math.max(0, saldoInsoluto), doc?.moneda)}</span>
                                 </div>
                             </div>
 
                             <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-lg">
                                 <p className="text-[10px] uppercase tracking-widest text-blue-600 dark:text-blue-400 font-bold mb-2">Referencia Factura</p>
-                                {selectedInvoice ? (
-                                    <p className="font-mono text-xs text-blue-700 dark:text-blue-300 break-all">{selectedInvoice.uuid}</p>
+                                {doc ? (
+                                    <p className="font-mono text-xs text-blue-700 dark:text-blue-300 break-all">{doc.uuid}</p>
                                 ) : (
                                     <p className="text-xs text-blue-500 italic">Selecciona una factura PPD arriba</p>
                                 )}
@@ -558,7 +1046,7 @@ const PaymentReceipts: React.FC = () => {
                 </div>
             )}
 
-            {/* ── Historial REP Tab ─────────────────────────────────────── */}
+            {/* ── Historial REP ──────────────────────────────────────────── */}
             {activeTab === 'historial' && (
                 <div className="space-y-6">
                     <div className="flex flex-wrap gap-4 items-center">

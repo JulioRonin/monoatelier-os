@@ -1,8 +1,51 @@
 
 import { supabase } from './supabaseClient';
-import { Project, Client, Quote, ProjectStatus, PriorityLevel, PhaseEnum, User, ForgeModel, ForgeJob, Service, ServiceVariable, TipoVariante } from '../types';
+import { Project, Client, Quote, ProjectStatus, PriorityLevel, PhaseEnum, User, ForgeModel, ForgeJob, Service, ServiceVariable, TipoVariante, FacturaExterna, RepPago } from '../types';
+import type { CfdiExterno } from './cfdi';
 
 // --- MAPPING HELPERS ---
+
+const mapFacturaExterna = (d: any): FacturaExterna => ({
+    id: d.id,
+    uuid: d.uuid,
+    serie: d.serie || '',
+    folio: d.folio || '',
+    fecha: d.fecha,
+    emisorRfc: d.emisor_rfc,
+    emisorNombre: d.emisor_nombre || '',
+    receptorRfc: d.receptor_rfc,
+    receptorNombre: d.receptor_nombre || '',
+    receptorRegimen: d.receptor_regimen,
+    receptorCp: d.receptor_cp,
+    usoCfdi: d.uso_cfdi || '',
+    moneda: d.moneda || 'MXN',
+    tipoCambio: Number(d.tipo_cambio ?? 1),
+    metodoPago: d.metodo_pago,
+    formaPago: d.forma_pago || '',
+    subtotal: Number(d.subtotal ?? 0),
+    total: Number(d.total ?? 0),
+    impuestos: d.impuestos || [],
+    createdAt: d.created_at,
+});
+
+const mapRepPago = (d: any): RepPago => ({
+    id: d.id,
+    facturaUuid: d.factura_uuid,
+    facturaOrigen: d.factura_origen,
+    facturaFolio: d.factura_folio || undefined,
+    repUuid: d.rep_uuid || undefined,
+    repFacturapiId: d.rep_facturapi_id || undefined,
+    repSerie: d.rep_serie || undefined,
+    repFolio: d.rep_folio ?? undefined,
+    fechaPago: d.fecha_pago,
+    formaPago: d.forma_pago,
+    moneda: d.moneda || 'MXN',
+    tipoCambio: Number(d.tipo_cambio ?? 1),
+    monto: Number(d.monto ?? 0),
+    parcialidad: Number(d.parcialidad ?? 1),
+    saldoAnterior: Number(d.saldo_anterior ?? 0),
+    saldoInsoluto: Number(d.saldo_insoluto ?? 0),
+});
 
 const mapClient = (data: any): Client => ({
     id: data.id,
@@ -736,7 +779,11 @@ export const api = {
                 total_taxes_transferred: invoice.totalTaxesTransferred,
                 total_taxes_retained: invoice.totalTaxesRetained,
                 total: invoice.total,
-                status: invoice.status
+                status: invoice.status,
+                // El UUID llegaba desde Invoicing.tsx y se tiraba aquí: toda
+                // factura timbrada quedaba guardada sin folio fiscal, y sin él
+                // no hay cómo ligarle su REP ni encontrarla ante una aclaración.
+                uuid: invoice.uuid || null
             }])
             .select()
             .single();
@@ -934,5 +981,108 @@ export const api = {
             .createSignedUrl(costosPath, segundos);
         if (error) throw error;
         return data.signedUrl;
+    },
+
+    // ── REP: facturas externas y libro de pagos ─────────────────────────
+    // Migración: supabase/migrations/20260817_rep_facturas_externas.sql
+
+    /** Facturas PPD timbradas con otro PAC, registradas para poder emitir su REP. */
+    async getFacturasExternas(): Promise<FacturaExterna[]> {
+        if (!supabase) return [];
+        const { data, error } = await supabase
+            .from('facturas_externas')
+            .select('*')
+            .order('fecha', { ascending: false });
+        if (error) {
+            console.error('Error al leer facturas externas:', error);
+            return [];
+        }
+        return (data || []).map(mapFacturaExterna);
+    },
+
+    /**
+     * Registra una factura externa a partir de su XML ya leído.
+     *
+     * El UUID es único en la tabla: reimportar la misma factura actualiza el
+     * registro en vez de duplicarlo, porque dos filas con el mismo UUID
+     * llevarían a timbrar dos veces la misma parcialidad.
+     */
+    async guardarFacturaExterna(f: CfdiExterno, xml?: string): Promise<FacturaExterna> {
+        if (!supabase) throw new Error("Supabase not configured");
+        const { data, error } = await supabase
+            .from('facturas_externas')
+            .upsert([{
+                uuid: f.uuid,
+                serie: f.serie || null,
+                folio: f.folio || null,
+                fecha: f.fecha,
+                emisor_rfc: f.emisorRfc,
+                emisor_nombre: f.emisorNombre,
+                receptor_rfc: f.receptorRfc,
+                receptor_nombre: f.receptorNombre,
+                receptor_regimen: f.receptorRegimen,
+                receptor_cp: f.receptorCp,
+                uso_cfdi: f.usoCfdi,
+                moneda: f.moneda,
+                tipo_cambio: f.tipoCambio,
+                metodo_pago: f.metodoPago,
+                forma_pago: f.formaPago,
+                subtotal: f.subtotal,
+                total: f.total,
+                impuestos: f.impuestos,
+                xml: xml ?? null,
+            }], { onConflict: 'uuid' })
+            .select()
+            .single();
+        if (error) throw error;
+        return mapFacturaExterna(data);
+    },
+
+    async eliminarFacturaExterna(id: string) {
+        if (!supabase) throw new Error("Supabase not configured");
+        const { error } = await supabase.from('facturas_externas').delete().eq('id', id);
+        if (error) throw error;
+    },
+
+    /** Pagos ya reportados en un REP, de todas las facturas o de una sola. */
+    async getRepPagos(facturaUuid?: string): Promise<RepPago[]> {
+        if (!supabase) return [];
+        let q = supabase.from('rep_pagos').select('*');
+        if (facturaUuid) q = q.eq('factura_uuid', facturaUuid);
+        const { data, error } = await q.order('parcialidad', { ascending: true });
+        if (error) {
+            console.error('Error al leer el libro de pagos:', error);
+            return [];
+        }
+        return (data || []).map(mapRepPago);
+    },
+
+    /**
+     * Asienta un REP ya timbrado.
+     *
+     * De aquí salen la parcialidad y el saldo anterior del pago siguiente: sin
+     * este registro, en la parcialidad 2 el saldo se vuelve a escribir a mano y
+     * un saldo mal puesto invalida el complemento ante el SAT.
+     */
+    async registrarRepPago(p: Omit<RepPago, 'id'>): Promise<void> {
+        if (!supabase) throw new Error("Supabase not configured");
+        const { error } = await supabase.from('rep_pagos').insert([{
+            factura_uuid: p.facturaUuid,
+            factura_origen: p.facturaOrigen,
+            factura_folio: p.facturaFolio || null,
+            rep_uuid: p.repUuid || null,
+            rep_facturapi_id: p.repFacturapiId || null,
+            rep_serie: p.repSerie || null,
+            rep_folio: p.repFolio ?? null,
+            fecha_pago: p.fechaPago,
+            forma_pago: p.formaPago,
+            moneda: p.moneda,
+            tipo_cambio: p.tipoCambio,
+            monto: p.monto,
+            parcialidad: p.parcialidad,
+            saldo_anterior: p.saldoAnterior,
+            saldo_insoluto: p.saldoInsoluto,
+        }]);
+        if (error) throw error;
     }
 };

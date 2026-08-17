@@ -326,3 +326,56 @@ export interface ForgeJob {
   createdAt?: string;
   updatedAt?: string;
 }
+
+// --- CFDI: facturas externas y libro de pagos del REP ---
+
+/**
+ * Factura PPD timbrada en OTRA plataforma (otro PAC) registrada aquí para
+ * poder emitir su Complemento de Pago. El REP se relaciona por UUID, así que
+ * no necesita haber salido del mismo proveedor.
+ */
+export interface FacturaExterna {
+  id: string;
+  uuid: string;
+  /** Opcional en el CFDI: hay facturas sin serie. No la inventes. */
+  serie: string;
+  folio: string;
+  fecha: string;
+  emisorRfc: string;
+  emisorNombre: string;
+  /** El receptor del REP debe ser idéntico al de la factura original. */
+  receptorRfc: string;
+  receptorNombre: string;
+  receptorRegimen: string;
+  receptorCp: string;
+  usoCfdi: string;
+  moneda: string;
+  tipoCambio: number;
+  metodoPago: string;
+  formaPago: string;
+  subtotal: number;
+  total: number;
+  /** Estructura fiscal real. El REP la reparte a prorrata del monto pagado. */
+  impuestos: { tipo: 'ISR' | 'IVA' | 'IEPS'; tasa: number; base: number; importe: number; retencion: boolean }[];
+  createdAt?: string;
+}
+
+/** Un REP timbrado. De aquí salen la parcialidad y el saldo del pago siguiente. */
+export interface RepPago {
+  id: string;
+  facturaUuid: string;
+  facturaOrigen: 'facturapi' | 'externa';
+  facturaFolio?: string;
+  repUuid?: string;
+  repFacturapiId?: string;
+  repSerie?: string;
+  repFolio?: number;
+  fechaPago: string;
+  formaPago: string;
+  moneda: string;
+  tipoCambio: number;
+  monto: number;
+  parcialidad: number;
+  saldoAnterior: number;
+  saldoInsoluto: number;
+}
