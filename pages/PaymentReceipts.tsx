@@ -7,6 +7,7 @@ import {
     facturapiDownloadPdf,
     facturapiDownloadXml,
     estructuraDeFactura,
+    facturapiModo,
     triggerBlobDownload,
     type FacturapiInvoiceRecord,
 } from '../lib/facturapi';
@@ -409,6 +410,10 @@ function ImportadorExternas({ externas, onGuardada, onEliminar }: ImportadorProp
 const PaymentReceipts: React.FC = () => {
     const [activeTab, setActiveTab] = useState<'emitir' | 'externas' | 'historial'>('emitir');
 
+    /** Sandbox o producción, según la llave activa. Los timbres y los saldos
+     *  de cada modo viven separados: una prueba no descuenta saldo real. */
+    const modo = facturapiModo();
+
     // ── Documentos por pagar ────────────────────────────────────────────────
     const [ppdFacturapi, setPpdFacturapi] = useState<FacturapiInvoiceRecord[]>([]);
     const [externas, setExternas] = useState<FacturaExterna[]>([]);
@@ -473,9 +478,12 @@ const PaymentReceipts: React.FC = () => {
     }, [invoiceSearch, loadPpdInvoices]);
 
     // ── Saldos por factura, tomados del libro de pagos ───────────────────────
+    // SÓLO los pagos del modo activo: el REP de sandbox que se hizo de prueba
+    // no llegó al SAT y no puede dejar la factura real como "liquidada".
     const pagadoPorUuid = useMemo(() => {
         const m = new Map<string, { monto: number; parcialidades: number }>();
         for (const p of pagos) {
+            if (p.modo !== (modo === 'test' ? 'test' : 'live')) continue;
             const k = p.facturaUuid.toLowerCase();
             const prev = m.get(k) ?? { monto: 0, parcialidades: 0 };
             m.set(k, {
@@ -484,7 +492,7 @@ const PaymentReceipts: React.FC = () => {
             });
         }
         return m;
-    }, [pagos]);
+    }, [pagos, modo]);
 
     /** Saldo y parcialidad del documento seleccionado — nunca a mano. */
     const { saldoAnterior, parcialidad } = useMemo(() => {
@@ -580,6 +588,23 @@ const PaymentReceipts: React.FC = () => {
     // ── Timbrar ──────────────────────────────────────────────────────────────
     const handleTimbrar = async () => {
         if (!validate() || !doc) return;
+
+        if (modo === 'sin-llave') {
+            setErrors({ invoice: 'No hay llave de Facturapi (VITE_FACTURAPI_KEY). Revisa .env.local y reinicia el servidor.' });
+            return;
+        }
+
+        // En producción el timbre es un CFDI real ante el SAT: se confirma una
+        // vez, con los datos a la vista. En sandbox no, para probar sin fricción.
+        if (modo === 'live' && !confirm(
+            `Vas a timbrar un CFDI REAL ante el SAT:\n\n` +
+            `Factura: ${etiqueta(doc)} — ${doc.clienteNombre}\n` +
+            `Monto: ${money(amountPaid, doc.moneda)}\n` +
+            `Parcialidad ${parcialidad} · saldo anterior ${money(saldoAnterior, doc.moneda)}\n\n` +
+            `¿Continuar?`)) {
+            return;
+        }
+
         setTimbradoError(null);
         setRepResult(null);
         setTimbradoStep('customer');
@@ -631,6 +656,7 @@ const PaymentReceipts: React.FC = () => {
                 await api.registrarRepPago({
                     facturaUuid: doc.uuid,
                     facturaOrigen: doc.origen,
+                    modo: modo === 'test' ? 'test' : 'live',
                     facturaFolio: etiqueta(doc),
                     repUuid: stamped.uuid,
                     repFacturapiId: stamped.id,
@@ -722,8 +748,20 @@ const PaymentReceipts: React.FC = () => {
                             <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto"><CheckCircle size={32} className="text-green-500" /></div>
                             <div>
                                 <h2 className="font-serif text-2xl text-primary dark:text-white mb-1">¡REP Timbrado!</h2>
-                                <p className="text-xs text-gray-400 uppercase tracking-widest">Complemento de Pago CFDI 4.0 válido</p>
+                                <p className="text-xs text-gray-400 uppercase tracking-widest">
+                                    {modo === 'test' ? 'Timbrado de PRUEBA (sandbox)' : 'Complemento de Pago CFDI 4.0 válido'}
+                                </p>
                             </div>
+                            {modo === 'test' && (
+                                <div className="flex items-start gap-2 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg text-[11px] text-amber-800 dark:text-amber-200 text-left">
+                                    <AlertCircle size={14} className="flex-shrink-0 mt-0.5" />
+                                    <span>
+                                        Este REP salió del <strong>sandbox</strong>: no llegó al SAT y su PDF/XML
+                                        <strong> no se le manda al cliente</strong>. Para el timbre real, cambia la
+                                        llave a la de producción (sk_live_…) y vuelve a timbrar.
+                                    </span>
+                                </div>
+                            )}
                             <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 text-left space-y-3">
                                 <div>
                                     <p className="text-[10px] uppercase tracking-widest text-gray-400">Folio Fiscal (UUID)</p>
@@ -759,7 +797,27 @@ const PaymentReceipts: React.FC = () => {
             <div className="border-b border-gray-200 dark:border-gray-700 pb-0">
                 <div className="flex justify-between items-start pb-4 flex-wrap gap-4">
                     <div>
-                        <h1 className="font-serif text-4xl dark:text-white text-primary mb-2">Complemento de Pago</h1>
+                        <div className="flex items-center gap-3 flex-wrap mb-2">
+                            <h1 className="font-serif text-4xl dark:text-white text-primary">Complemento de Pago</h1>
+                            {/* El modo lo dice la llave activa. Si cambiaste a la de
+                                producción y aquí sigue diciendo SANDBOX, el servidor no
+                                la ha leído: reinicia npm run dev (o vuelve a hacer build). */}
+                            {modo === 'test' && (
+                                <span className="text-[10px] uppercase tracking-widest px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 font-bold border border-amber-200">
+                                    Sandbox — pruebas, sin validez fiscal
+                                </span>
+                            )}
+                            {modo === 'live' && (
+                                <span className="text-[10px] uppercase tracking-widest px-2.5 py-1 rounded-full bg-green-100 text-green-700 font-bold border border-green-200">
+                                    Producción — timbra ante el SAT
+                                </span>
+                            )}
+                            {modo === 'sin-llave' && (
+                                <span className="text-[10px] uppercase tracking-widest px-2.5 py-1 rounded-full bg-red-100 text-red-700 font-bold border border-red-200">
+                                    Sin llave de Facturapi
+                                </span>
+                            )}
+                        </div>
                         <p className="text-xs font-mono uppercase tracking-widest text-gray-400">Recibo Electrónico de Pago (REP) — CFDI 4.0</p>
                     </div>
                     {activeTab === 'emitir' && (

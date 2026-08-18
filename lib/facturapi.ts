@@ -13,6 +13,16 @@ const FACTURAPI_KEY = import.meta.env.VITE_FACTURAPI_KEY;
 // Helpers
 // ---------------------------------------------------------------------------
 
+/** Sandbox o producción — lo dice el prefijo de la llave, no una config aparte
+ *  que se pueda desincronizar. Todo lo que dependa del modo (el saldo de las
+ *  facturas, los avisos en pantalla) debe leerlo de aquí. */
+export type FacturapiModo = 'live' | 'test' | 'sin-llave';
+
+export function facturapiModo(): FacturapiModo {
+    if (!FACTURAPI_KEY) return 'sin-llave';
+    return FACTURAPI_KEY.startsWith('sk_test') ? 'test' : 'live';
+}
+
 function authHeaders(): HeadersInit {
     if (!FACTURAPI_KEY) {
         throw new Error('La clave de Facturapi no está configurada. Verifica tu archivo .env.local (VITE_FACTURAPI_KEY).');

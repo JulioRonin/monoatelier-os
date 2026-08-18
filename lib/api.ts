@@ -32,6 +32,10 @@ const mapRepPago = (d: any): RepPago => ({
     id: d.id,
     facturaUuid: d.factura_uuid,
     facturaOrigen: d.factura_origen,
+    // Sin la migración del modo, todo lo que existe salió del sandbox: la
+    // llave de producción no existía cuando se asentó. Igual que hace la
+    // migración, se asume 'test' para no descontar saldo real con pruebas.
+    modo: d.modo === 'live' ? 'live' : 'test',
     facturaFolio: d.factura_folio || undefined,
     repUuid: d.rep_uuid || undefined,
     repFacturapiId: d.rep_facturapi_id || undefined,
@@ -1069,6 +1073,7 @@ export const api = {
         const { error } = await supabase.from('rep_pagos').insert([{
             factura_uuid: p.facturaUuid,
             factura_origen: p.facturaOrigen,
+            modo: p.modo,
             factura_folio: p.facturaFolio || null,
             rep_uuid: p.repUuid || null,
             rep_facturapi_id: p.repFacturapiId || null,
