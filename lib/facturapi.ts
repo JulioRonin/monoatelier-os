@@ -367,8 +367,14 @@ export function estructuraDeFactura(
     let hayImpuestos = false;
 
     for (const item of inv.items) {
-        const impuestos = item.product.taxes ?? [];
-        let base = (item.quantity ?? 1) * (item.product.price ?? 0);
+        // Según el endpoint, product puede venir nulo o como un id plano en
+        // lugar del objeto completo. Sin el objeto no hay tasas que leer:
+        // se devuelve null y quien llama usa la estructura supuesta (avisando).
+        const product = item?.product;
+        if (!product || typeof product !== 'object') return null;
+
+        const impuestos = product.taxes ?? [];
+        let base = (item.quantity ?? 1) * (product.price ?? 0);
 
         // En Facturapi tax_included es true por omisión: el precio ya trae los
         // traslados dentro y hay que sacarlos para llegar a la base.

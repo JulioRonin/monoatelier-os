@@ -520,9 +520,19 @@ const PaymentReceipts: React.FC = () => {
     // ── Lista unificada del selector ─────────────────────────────────────────
     const opciones = useMemo(() => {
         const q = invoiceSearch.trim().toLowerCase();
+        // Una factura con datos incompletos se salta y se avisa en consola:
+        // no puede tumbar la pantalla entera y bloquear los REP de las demás.
+        const seguros = <T,>(xs: T[], f: (x: T) => DocPorPagar): DocPorPagar[] => {
+            const out: DocPorPagar[] = [];
+            for (const x of xs) {
+                try { out.push(f(x)); }
+                catch (e) { console.warn('Factura ilegible, se omite del selector:', e, x); }
+            }
+            return out;
+        };
         const todos: DocPorPagar[] = [
-            ...externas.map(docDeExterna),
-            ...ppdFacturapi.map(docDeFacturapi),
+            ...seguros(externas, docDeExterna),
+            ...seguros(ppdFacturapi, docDeFacturapi),
         ];
         const coincide = (d: DocPorPagar) => !q ||
             d.clienteNombre.toLowerCase().includes(q) ||
