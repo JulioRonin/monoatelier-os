@@ -231,6 +231,98 @@ function PreviewModal({ onClose, fiscalName, rfc, postalCode, selectedRegime, cf
 // Main Component
 // ---------------------------------------------------------------------------
 // ---------------------------------------------------------------------------
+// Sustituir una factura que no está en la lista
+// ---------------------------------------------------------------------------
+
+/**
+ * Para cuando la factura mala se timbró con OTRA llave de Facturapi (otra
+ * organización) y por eso no aparece. La sustituta sí se puede emitir aquí y
+ * relacionarla por UUID; la cancelación de la original se pide donde vive.
+ */
+function SustituirPorUuidModal(
+    { onCerrar, onAceptar }: { onCerrar: () => void; onAceptar: (uuid: string, folio: string) => void },
+) {
+    const [uuid, setUuid] = useState('');
+    const [folio, setFolio] = useState('');
+    const limpio = uuid.trim();
+    // 8-4-4-4-12 hexadecimal: el formato de un folio fiscal.
+    const valido = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(limpio);
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onCerrar}>
+            <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-lg" onClick={e => e.stopPropagation()}>
+                <div className="flex items-center justify-between p-6 border-b border-gray-100 dark:border-gray-700">
+                    <div className="flex items-center gap-3">
+                        <Copy size={20} className="text-primary" />
+                        <h2 className="font-serif text-2xl text-primary dark:text-white">Sustituir por UUID</h2>
+                    </div>
+                    <button onClick={onCerrar} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
+                </div>
+
+                <div className="p-6 space-y-5">
+                    <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+                        Captura el folio fiscal de la factura que vas a sustituir. Está en su PDF
+                        como <strong>Folio Fiscal</strong>, y en su XML como el atributo
+                        <code className="font-mono"> UUID</code> del Timbre Fiscal Digital.
+                    </p>
+
+                    <div>
+                        <label className="block text-[10px] uppercase tracking-widest text-gray-400 mb-1">
+                            Folio fiscal (UUID) de la factura a sustituir <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                            type="text" value={uuid} onChange={e => setUuid(e.target.value)}
+                            placeholder="48C90D01-C557-4E2D-817D-421D26279A2B"
+                            className={`w-full font-mono text-xs bg-gray-50 dark:bg-gray-800 border ${limpio && !valido ? 'border-red-500' : 'border-gray-200 dark:border-gray-700'} rounded-lg px-4 py-2.5 focus:outline-none focus:border-primary`}
+                        />
+                        {limpio && !valido && (
+                            <p className="text-[10px] text-red-500 mt-1">
+                                No tiene forma de folio fiscal (8-4-4-4-12 en hexadecimal).
+                            </p>
+                        )}
+                    </div>
+
+                    <div>
+                        <label className="block text-[10px] uppercase tracking-widest text-gray-400 mb-1">
+                            Folio visible (opcional)
+                        </label>
+                        <input
+                            type="text" value={folio} onChange={e => setFolio(e.target.value)}
+                            placeholder="A7"
+                            className="w-full text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-4 py-2.5 focus:outline-none focus:border-primary"
+                        />
+                        <p className="text-[10px] text-gray-400 mt-1">Sólo para reconocerla en pantalla.</p>
+                    </div>
+
+                    <div className="flex items-start gap-2 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg text-[11px] text-amber-800 dark:text-amber-200">
+                        <AlertCircle size={14} className="flex-shrink-0 mt-0.5" />
+                        <span>
+                            La nueva factura se emitirá aquí y quedará relacionada con ese folio.
+                            <strong> La cancelación de la original NO se puede hacer desde esta
+                            pantalla</strong> si se timbró con otra llave: hay que pedirla donde
+                            vive, o cambiando la llave a la de esa organización.
+                        </span>
+                    </div>
+
+                    <div className="flex gap-3">
+                        <button onClick={onCerrar} className="flex-1 py-3 border border-gray-200 dark:border-gray-700 text-gray-500 text-xs font-bold uppercase tracking-widest rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                            Cerrar
+                        </button>
+                        <button
+                            onClick={() => onAceptar(limpio, folio.trim())}
+                            disabled={!valido}
+                            className="flex-1 py-3 bg-primary text-white text-xs font-bold uppercase tracking-widest rounded-lg hover:bg-black transition-colors disabled:opacity-40"
+                        >
+                            Capturar la sustituta
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// ---------------------------------------------------------------------------
 // Cancelación ante el SAT
 // ---------------------------------------------------------------------------
 interface CancelModalProps {
@@ -453,9 +545,16 @@ const Invoicing: React.FC = () => {
     const [cancelError, setCancelError] = useState<string | null>(null);
     const [cancelResultado, setCancelResultado] = useState<string | null>(null);
 
-    /** Factura que esta nueva viene a sustituir (flujo "corregir y sustituir"). */
+    /**
+     * Factura que esta nueva viene a sustituir.
+     *
+     * `id` vacío = la original NO está en la organización de la llave activa
+     * (se capturó su UUID a mano). Se puede relacionar la nueva con ella, pero
+     * NO cancelarla desde aquí: la cancelación se pide donde vive la factura.
+     */
     const [sustituyeA, setSustituyeA] = useState<
         { id: string; uuid: string; folio: string } | null>(null);
+    const [pidiendoUuid, setPidiendoUuid] = useState(false);
 
     const modo = facturapiModo();
 
@@ -833,7 +932,19 @@ const Invoicing: React.FC = () => {
                                         Falta el segundo paso: la factura <strong>{sustituyeA.folio}</strong> sigue
                                         vigente. Cancélala con motivo <strong>01</strong>, ya ligada a ésta.
                                     </p>
-                                    {cancelResultado ? (
+                                    {!sustituyeA.id ? (
+                                        // La original vive en otra organización de Facturapi: aquí
+                                        // no existe, y un botón de cancelar sólo daría un 404.
+                                        <p className="text-[11px] text-amber-900 dark:text-amber-100 leading-relaxed">
+                                            La original se timbró con otra llave, así que su cancelación
+                                            <strong> no se puede pedir desde aquí</strong>. Hazla donde vive
+                                            (o cambiando la llave a la de esa organización), con
+                                            <strong> motivo 01</strong> y este folio fiscal como sustituto:
+                                            <span className="block font-mono text-[10px] mt-1 break-all bg-white/60 dark:bg-black/20 rounded p-2">
+                                                {invoiceResult.uuid}
+                                            </span>
+                                        </p>
+                                    ) : cancelResultado ? (
                                         <p className="text-[11px] font-bold text-amber-900 dark:text-amber-100">
                                             {cancelResultado === 'cancelada'
                                                 ? `Listo: ${sustituyeA.folio} quedó cancelada.`
@@ -887,6 +998,18 @@ const Invoicing: React.FC = () => {
                 />
             )}
 
+            {pidiendoUuid && (
+                <SustituirPorUuidModal
+                    onCerrar={() => setPidiendoUuid(false)}
+                    onAceptar={(uuid, folio) => {
+                        setSustituyeA({ id: '', uuid, folio: folio || 'la anterior' });
+                        setPidiendoUuid(false);
+                        setActiveTab('nueva');
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }}
+                />
+            )}
+
             {porCancelar && (
                 <CancelModal
                     inv={porCancelar}
@@ -907,10 +1030,17 @@ const Invoicing: React.FC = () => {
                         <div className="text-sm text-emerald-900 dark:text-emerald-100 flex-1">
                             <p className="font-bold">Estás emitiendo la factura que sustituye a {sustituyeA.folio}</p>
                             <p className="text-xs mt-1 opacity-90 leading-relaxed">
-                                Los conceptos se copiaron, pero <strong>la ClaveProdServ quedó vacía a
-                                propósito</strong>: es lo que hay que corregir. Al timbrar, se te ofrece
-                                cancelar {sustituyeA.folio} con motivo 01 ya ligada a la nueva.
+                                {sustituyeA.id ? (
+                                    <>Los conceptos se copiaron, pero <strong>la ClaveProdServ quedó vacía a
+                                    propósito</strong>: es lo que hay que corregir. Al timbrar, se te ofrece
+                                    cancelar {sustituyeA.folio} con motivo 01 ya ligada a la nueva.</>
+                                ) : (
+                                    <>Captura los conceptos con la ClaveProdServ correcta. La nueva quedará
+                                    relacionada con ese folio fiscal; la cancelación de la original hay que
+                                    pedirla donde se timbró.</>
+                                )}
                             </p>
+                            <p className="font-mono text-[10px] mt-1 opacity-70 break-all">{sustituyeA.uuid}</p>
                         </div>
                         <button onClick={() => setSustituyeA(null)} className="text-emerald-600 hover:text-emerald-800" title="Cancelar la sustitución">
                             <X size={16} />
@@ -921,7 +1051,26 @@ const Invoicing: React.FC = () => {
                 <div className="border-b border-gray-200 dark:border-gray-700 pb-0">
                     <div className="flex justify-between items-start pb-4">
                         <div>
-                            <h1 className="font-serif text-4xl dark:text-white text-primary mb-2">Facturación 4.0</h1>
+                            <div className="flex items-center gap-3 flex-wrap mb-2">
+                                <h1 className="font-serif text-4xl dark:text-white text-primary">Facturación 4.0</h1>
+                                {/* Sin esto no hay forma de saber a qué organización de Facturapi
+                                    le estás hablando, y las facturas de una NO aparecen en la otra. */}
+                                {modo === 'test' && (
+                                    <span className="text-[10px] uppercase tracking-widest px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 font-bold border border-amber-200">
+                                        Sandbox — pruebas, sin validez fiscal
+                                    </span>
+                                )}
+                                {modo === 'live' && (
+                                    <span className="text-[10px] uppercase tracking-widest px-2.5 py-1 rounded-full bg-green-100 text-green-700 font-bold border border-green-200">
+                                        Producción — timbra ante el SAT
+                                    </span>
+                                )}
+                                {modo === 'sin-llave' && (
+                                    <span className="text-[10px] uppercase tracking-widest px-2.5 py-1 rounded-full bg-red-100 text-red-700 font-bold border border-red-200">
+                                        Sin llave de Facturapi
+                                    </span>
+                                )}
+                            </div>
                             <p className="text-xs font-mono uppercase tracking-widest text-gray-400">Emisión de Comprobantes Fiscales Digitales</p>
                         </div>
                         {activeTab === 'nueva' && (
@@ -999,6 +1148,29 @@ const Invoicing: React.FC = () => {
                         {/* Invoice list */}
                         {!historialLoading && !historialError && (
                             <>
+                                {/* Una factura sólo existe dentro de la organización de Facturapi
+                                    donde se timbró. Si se cambió la llave, las anteriores dejan de
+                                    aparecer — y eso confunde mucho si nadie lo dice. */}
+                                <div className="flex items-start gap-3 p-4 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl">
+                                    <AlertCircle size={16} className="text-gray-400 flex-shrink-0 mt-0.5" />
+                                    <div className="flex-1 text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+                                        <span className="font-bold text-gray-600 dark:text-gray-300">
+                                            ¿Falta una factura que sí emitiste?
+                                        </span>{' '}
+                                        Aquí sólo salen las de la organización de la llave activa
+                                        ({modo === 'live' ? 'producción' : modo === 'test' ? 'sandbox' : 'sin llave'}).
+                                        Una factura timbrada con la otra llave no aparece — y desde
+                                        aquí tampoco se puede cancelar: eso se hace donde vive.
+                                        Para emitir su sustituta de todos modos, usa el botón.
+                                    </div>
+                                    <button
+                                        onClick={() => setPidiendoUuid(true)}
+                                        className="flex-shrink-0 flex items-center gap-1 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 rounded-lg hover:border-primary hover:text-primary transition-colors"
+                                    >
+                                        <Copy size={11} /> Sustituir por UUID
+                                    </button>
+                                </div>
+
                                 {historialList.length === 0 ? (
                                     <div className="text-center py-20 text-gray-400">
                                         <ReceiptText size={40} className="mx-auto mb-4 opacity-30" />
