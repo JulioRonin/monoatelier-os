@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
+import BannerFacturacion from './components/BannerFacturacion';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Projects from './pages/Projects';
@@ -122,6 +123,10 @@ const App: React.FC = () => {
           user={currentUser} // Pass full user if Header needs it
           onNotificationClick={handleNotificationClick}
         />
+
+        {/* Va aquí, fuera del <main> y sin poder cerrarse: si el aviso vive
+            dentro de una página, sólo se ve cuando ya entraste a facturar. */}
+        <BannerFacturacion />
 
         <main className="flex-1 overflow-y-auto p-8 scrollbar-hide">
           {currentPage === Page.Dashboard && <Dashboard />}

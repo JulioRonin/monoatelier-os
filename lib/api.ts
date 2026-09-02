@@ -784,6 +784,9 @@ export const api = {
                 total_taxes_retained: invoice.totalTaxesRetained,
                 total: invoice.total,
                 status: invoice.status,
+                // Sandbox o producción. Sin esto, una factura de prueba y una
+                // real se ven idénticas en el historial propio.
+                modo: invoice.modo || 'live',
                 // El UUID llegaba desde Invoicing.tsx y se tiraba aquí: toda
                 // factura timbrada quedaba guardada sin folio fiscal, y sin él
                 // no hay cómo ligarle su REP ni encontrarla ante una aclaración.

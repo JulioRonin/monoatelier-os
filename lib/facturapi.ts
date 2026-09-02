@@ -23,6 +23,18 @@ export function facturapiModo(): FacturapiModo {
     return FACTURAPI_KEY.startsWith('sk_test') ? 'test' : 'live';
 }
 
+/**
+ * Sólo el prefijo de la llave (`sk_test_…` / `sk_live_…`), para poder
+ * compararla de un vistazo con la que está puesta en Vercel.
+ *
+ * Nunca devuelve el resto: es un secreto y no tiene por qué aparecer en
+ * pantalla ni en una captura.
+ */
+export function facturapiPrefijoLlave(): string {
+    if (!FACTURAPI_KEY) return 'ninguna';
+    return `${FACTURAPI_KEY.slice(0, 7)}_…`;
+}
+
 function authHeaders(): HeadersInit {
     if (!FACTURAPI_KEY) {
         throw new Error('La clave de Facturapi no está configurada. Verifica tu archivo .env.local (VITE_FACTURAPI_KEY).');

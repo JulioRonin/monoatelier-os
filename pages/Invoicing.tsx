@@ -752,6 +752,32 @@ const Invoicing: React.FC = () => {
 
     const handleTimbrar = async () => {
         if (!validateForm()) return;
+
+        // Un CFDI de sandbox se ve idéntico a uno real: mismo PDF, mismo folio
+        // fiscal, mismo sello. La única oportunidad de notarlo es ANTES de
+        // timbrarlo, así que aquí hay que decirlo de frente y a propósito.
+        if (modo === 'sin-llave') {
+            setTimbradoError('No hay llave de Facturapi (VITE_FACTURAPI_KEY) en este despliegue.');
+            setTimbradoStep('error');
+            return;
+        }
+        if (modo === 'test' && !confirm(
+            'ATENCIÓN: la facturación está en MODO PRUEBAS.\n\n' +
+            'Esta factura NO se envía al SAT, no tiene validez fiscal y tu cliente ' +
+            'no la puede deducir — aunque el PDF se vea igual de real.\n\n' +
+            '¿Aun así quieres timbrarla como prueba?')) {
+            return;
+        }
+        if (modo === 'live' && !confirm(
+            `Vas a timbrar un CFDI REAL ante el SAT:\n\n` +
+            `Cliente: ${fiscalName} (${rfc})\n` +
+            `Total: $${total.toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN\n` +
+            `Conceptos: ${items.length}\n` +
+            `Claves SAT: ${items.map(i => i.productCode.trim()).join(', ')}\n\n` +
+            `Corregir una factura mal emitida cuesta una cancelación. ¿Continuar?`)) {
+            return;
+        }
+
         setTimbradoError(null);
         setInvoiceResult(null);
         setTimbradoStep('customer');
@@ -842,6 +868,7 @@ const Invoicing: React.FC = () => {
                     subtotal, totalTaxesTransferred: totalIva,
                     totalTaxesRetained: totalIsr, total,
                     status: 'Stamped' as any, uuid: stamped.uuid,
+                    modo: modo === 'test' ? 'test' : 'live',
                     items: items.map(i => ({ ...i, productCode: i.productCode, unitCode: i.unitCode, taxObject: '02', taxes: [] })),
                     date: new Date().toISOString(), series: stamped.series || 'A', folio: stamped.folio_number,
                 });
@@ -894,9 +921,24 @@ const Invoicing: React.FC = () => {
                         <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl p-8 text-center space-y-6 shadow-xl">
                             <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto"><CheckCircle size={32} className="text-green-500" /></div>
                             <div>
-                                <h2 className="font-serif text-2xl text-primary dark:text-white mb-1">¡Factura Timbrada!</h2>
-                                <p className="text-xs text-gray-400 uppercase tracking-widest">CFDI 4.0 válido ante el SAT</p>
+                                <h2 className="font-serif text-2xl text-primary dark:text-white mb-1">
+                                    {modo === 'test' ? 'Factura de PRUEBA timbrada' : '¡Factura Timbrada!'}
+                                </h2>
+                                <p className="text-xs text-gray-400 uppercase tracking-widest">
+                                    {modo === 'test' ? 'Sandbox — sin validez fiscal' : 'CFDI 4.0 válido ante el SAT'}
+                                </p>
                             </div>
+                            {modo === 'test' && (
+                                <div className="flex items-start gap-2 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg text-[11px] text-amber-800 dark:text-amber-200 text-left">
+                                    <AlertCircle size={14} className="flex-shrink-0 mt-0.5" />
+                                    <span>
+                                        Salió del <strong>sandbox</strong>: no llegó al SAT y
+                                        <strong> no se le manda al cliente</strong>. No hay que cancelarla
+                                        —para el SAT nunca existió—; basta con volver a emitirla con la
+                                        llave de producción.
+                                    </span>
+                                </div>
+                            )}
                             <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 text-left space-y-3">
                                 <div>
                                     <p className="text-[10px] uppercase tracking-widest text-gray-400">Folio Fiscal (UUID)</p>
