@@ -88,6 +88,10 @@ export interface FacturapiInvoicePayload {
     items: FacturapiItem[];
     series?: string;
     folio_number?: number;
+    /** TipoRelacion del SAT. '04' = sustitución de los CFDI previos. */
+    relation?: string;
+    /** UUID(s) del CFDI al que se relaciona esta factura. */
+    related?: string[];
     // Required by SAT when receiver RFC is XAXX010101000 (Público en General)
     global_information?: {
         periodicity: 'day' | 'week' | 'fortnight' | 'month' | 'bimonthly';
@@ -104,6 +108,9 @@ export interface FacturapiInvoiceResult {
     created_at: string;
     folio_number: number;
     series: string;
+    /** true = se timbró, pero SIN el CFDI relacionado que se pidió. Ver
+     *  facturapiCreateInvoice: la liga de sustitución queda en la cancelación. */
+    relacionOmitida?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -168,11 +175,15 @@ export interface FacturapiInvoiceRecord {
         tax_system?: string;
         address?: { zip?: string };
     };
+    /** 'pending' = cancelación solicitada, esperando que el receptor la acepte. */
+    cancellation_status?: string;
     items: {
         quantity: number;
         product: {
             description: string;
             price: number;
+            product_key?: string;   // ClaveProdServ del SAT
+            unit_key?: string;      // ClaveUnidad del SAT
             tax_included?: boolean;
             taxes?: { type: 'IVA' | 'ISR' | 'IEPS'; rate: number; withholding?: boolean }[];
         };
@@ -245,10 +256,116 @@ export async function facturapiCreateInvoice(
 
     if (!res.ok) {
         const msg = await parseFacturapiError(res);
+
+        // Si lo único que estorbó fue el CFDI relacionado, se timbra sin él y
+        // se avisa. Quedarse sin factura por un campo accesorio es peor: la
+        // liga de sustitución vive de todos modos en la cancelación (motivo
+        // 01 lleva el UUID que sustituye), que es lo que el SAT registra.
+        const esProblemaDeRelacion =
+            !!payload.relation &&
+            /relation|related|relacionad/i.test(msg);
+
+        if (esProblemaDeRelacion) {
+            const { relation, related, ...sinRelacion } = finalPayload as any;
+            const reintento = await fetch(`${FACTURAPI_BASE}/invoices`, {
+                method: 'POST',
+                headers: authHeaders(),
+                body: JSON.stringify(sinRelacion),
+            });
+            if (reintento.ok) {
+                const data = await reintento.json();
+                return { ...data, relacionOmitida: true } as FacturapiInvoiceResult;
+            }
+        }
+
         throw new Error(`Error al timbrar factura con Facturapi: ${msg}`);
     }
 
     return res.json() as Promise<FacturapiInvoiceResult>;
+}
+
+// ---------------------------------------------------------------------------
+// Cancelación (esquema SAT vigente desde 2022)
+// ---------------------------------------------------------------------------
+
+/** Motivos de cancelación del catálogo del SAT. */
+export const MOTIVOS_CANCELACION: {
+    value: string; label: string; ayuda: string; requiereSustitucion: boolean;
+}[] = [
+    {
+        value: '01',
+        label: '01 — Comprobante emitido con errores CON relación',
+        ayuda: 'Se equivocó y YA existe (o vas a emitir) una factura nueva que la sustituye. ' +
+               'Hay que indicar el folio fiscal de esa factura nueva.',
+        requiereSustitucion: true,
+    },
+    {
+        value: '02',
+        label: '02 — Comprobante emitido con errores SIN relación',
+        ayuda: 'Estaba mal y NO se va a volver a facturar esa operación.',
+        requiereSustitucion: false,
+    },
+    {
+        value: '03',
+        label: '03 — No se llevó a cabo la operación',
+        ayuda: 'La venta o el servicio nunca ocurrió.',
+        requiereSustitucion: false,
+    },
+    {
+        value: '04',
+        label: '04 — Operación nominativa relacionada en una factura global',
+        ayuda: 'La operación ya quedó incluida en una factura global.',
+        requiereSustitucion: false,
+    },
+];
+
+export interface FacturapiCancelResult {
+    id: string;
+    uuid: string;
+    status: string;
+    /** 'pending' = el receptor todavía tiene que aceptarla en su buzón. */
+    cancellation_status?: string;
+}
+
+/**
+ * Cancela un CFDI ante el SAT.
+ *
+ * Con el motivo '01' hay que mandar `substitution`: el folio fiscal (UUID) o el
+ * id de Facturapi de la factura que la sustituye, **y esa factura ya debe
+ * existir**. Por eso el orden correcto es emitir primero la corregida y
+ * cancelar después — no al revés.
+ *
+ * Ojo con el resultado: arriba de $1,000 el receptor tiene que aceptar la
+ * cancelación en su buzón tributario, así que lo normal es recibir
+ * `cancellation_status: 'pending'` y NO una cancelación consumada.
+ */
+export async function facturapiCancelInvoice(
+    invoiceId: string,
+    motive: string,
+    substitution?: string,
+): Promise<FacturapiCancelResult> {
+    const motivo = MOTIVOS_CANCELACION.find(m => m.value === motive);
+    if (!motivo) {
+        throw new Error(`Motivo de cancelación '${motive}' desconocido.`);
+    }
+    if (motivo.requiereSustitucion && !substitution) {
+        throw new Error(
+            'El motivo 01 exige el folio fiscal de la factura que sustituye a ésta. ' +
+            'Emite primero la factura corregida y vuelve a intentar.');
+    }
+
+    const qs = new URLSearchParams({ motive });
+    if (substitution) qs.set('substitution', substitution);
+
+    const res = await fetch(`${FACTURAPI_BASE}/invoices/${invoiceId}?${qs.toString()}`, {
+        method: 'DELETE',
+        headers: authHeaders(),
+    });
+    if (!res.ok) {
+        const msg = await parseFacturapiError(res);
+        throw new Error(`Error al cancelar la factura: ${msg}`);
+    }
+    return res.json() as Promise<FacturapiCancelResult>;
 }
 
 /**
