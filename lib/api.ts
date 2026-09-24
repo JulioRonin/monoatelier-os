@@ -607,6 +607,38 @@ export const api = {
         return Object.fromEntries((data || []).map((r: any) => [r.clave, r.valor]));
     },
 
+    /**
+     * Guarda un ajuste del negocio (IVA, tarifas, margen).
+     *
+     * Se guarda el valor como JSON para que un número siga siendo número: si el
+     * IVA o el margen se guardan como texto, el día que alguien escriba "0,08"
+     * la aritmética se rompe en silencio.
+     */
+    async setAjuste(clave: string, valor: any, quien?: string) {
+        if (!supabase) throw new Error("Supabase not configured");
+        const { error } = await supabase.from('ajustes').upsert([{
+            clave,
+            valor,
+            updated_at: new Date().toISOString(),
+            actualizado_por: quien ?? null,
+        }], { onConflict: 'clave' });
+        if (error) throw error;
+    },
+
+    /** Desactiva un servicio o una variante sin borrarlos: lo ya cotizado con
+     *  ellos debe seguir teniendo sentido al releerlo. */
+    async archivarServicio(id: string, activo: boolean) {
+        if (!supabase) throw new Error("Supabase not configured");
+        const { error } = await supabase.from('services').update({ active: activo }).eq('id', id);
+        if (error) throw error;
+    },
+
+    async archivarVariante(id: string, activo: boolean) {
+        if (!supabase) throw new Error("Supabase not configured");
+        const { error } = await supabase.from('service_variables').update({ active: activo }).eq('id', id);
+        if (error) throw error;
+    },
+
     // AUTH
     auth: {
         async login(email: string, password: string) {

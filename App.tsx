@@ -10,6 +10,7 @@ import ClientPortal from './pages/ClientPortal';
 import ProjectInitialization from './pages/ProjectInitialization';
 import ProjectDetails from './pages/ProjectDetails';
 import Quotes from './pages/Quotes';
+import Precios from './pages/Precios'; // New: lista maestra de precios y tarifas
 import Clients from './pages/Clients';
 import TeamManagement from './pages/TeamManagement';
 import UserManagement from './pages/UserManagement'; // New
@@ -31,6 +32,7 @@ export enum Page {
   ProjectInit,
   ProjectDetails,
   Quotes,
+  Precios, // New
   Team,
   UserManagement, // New
   Invoicing, // New
@@ -141,6 +143,7 @@ const App: React.FC = () => {
               onAssignQuote={handleAssignQuote}
             />
           )}
+          {currentPage === Page.Precios && <Precios />}
           {currentPage === Page.Financials && <Financials />}
           {currentPage === Page.ClientPortal && <ClientPortal />}
           {currentPage === Page.ProjectInit && (
