@@ -18,7 +18,26 @@
 --
 -- Aquí quedan guardadas, junto al IVA que ya estaba.
 
+-- La tabla se crea aquí también. La creaba 20260808_master_list.sql, pero una
+-- migración que da por hecho que otra ya corrió falla con "relation does not
+-- exist" y no dice cuál falta. Es idempotente: si ya existe, no pasa nada.
+create table if not exists ajustes (
+  clave text primary key,
+  valor jsonb not null,
+  descripcion text,
+  updated_at timestamptz default now()
+);
+
+alter table ajustes enable row level security;
+drop policy if exists "ajustes_select" on ajustes;
+create policy "ajustes_select" on ajustes for select using (true);
+drop policy if exists "ajustes_write" on ajustes;
+create policy "ajustes_write" on ajustes for all using (true) with check (true);
+
 insert into ajustes (clave, valor, descripcion) values
+  ('iva', '0.08'::jsonb,
+   'Tasa de IVA. 0.08 = franja fronteriza norte; 0.16 = resto del país.'),
+  ('moneda', '"MXN"'::jsonb, 'Moneda de las cotizaciones.'),
   -- Por MÓDULO, no por hora. Es la unidad que ya usa mono-forge
   -- (Tarifas.mano_obra_modulo) y la que el taller sabe estimar: cambiar a
   -- horas obligaría a estimar horas por tipo de mueble, que es otro modelo.

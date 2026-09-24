@@ -13,7 +13,10 @@
 
 import { PDFDocument, rgb, StandardFonts, type PDFFont, type PDFPage } from 'pdf-lib';
 import type { Quote } from '../types';
-import { totalesDe } from './cotizador';
+// Con extensión .js a propósito: Vite la resuelve al .ts igual, pero Node en
+// modo ESM la exige. Sin ella este módulo funciona en la web y truena en el
+// worker del agente, que es justo el escenario que se quería evitar.
+import { totalesDe } from './cotizador.js';
 
 // ── Coordenadas de la plantilla (calibradas, no adivinadas) ──────────────
 const ENCABEZADO = { proyecto: [220, 195], cliente: [220, 220], fecha: [450, 220] };
