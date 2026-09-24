@@ -43,7 +43,7 @@ function diasDesde(fecha?: string | null): number | null {
 // ---------------------------------------------------------------------------
 
 const CAMPOS_TARIFA: { clave: string; label: string; ayuda: string; sufijo?: string; porcentaje?: boolean }[] = [
-    { clave: 'mano_obra_hora',   label: 'Mano de obra por hora', ayuda: 'Lo que te CUESTA la hora de taller, no lo que la cobras.', sufijo: '$/h' },
+    { clave: 'mano_obra_modulo', label: 'Mano de obra por módulo', ayuda: 'Lo que te CUESTA producir un mueble, no lo que lo cobras. Es la unidad que ya usa mono-forge.', sufijo: '$/mueble' },
     { clave: 'margen_objetivo',  label: 'Margen objetivo',       ayuda: 'Sobre precio: precio = costo / (1 − margen). Nunca se imprime al cliente.', porcentaje: true },
     { clave: 'canto_maquina_ml', label: 'Cubrecanto a máquina',  ayuda: 'Por metro lineal.', sufijo: '$/ml' },
     { clave: 'canto_manual_ml',  label: 'Cubrecanto a mano',     ayuda: 'El alto brillo 19mm siempre va manual.', sufijo: '$/ml' },

@@ -19,8 +19,11 @@
 -- Aquí quedan guardadas, junto al IVA que ya estaba.
 
 insert into ajustes (clave, valor, descripcion) values
-  ('mano_obra_hora', '0'::jsonb,
-   'Costo de una hora de taller, en pesos. Incluye lo que te cuesta la hora, NO lo que la cobras.'),
+  -- Por MÓDULO, no por hora. Es la unidad que ya usa mono-forge
+  -- (Tarifas.mano_obra_modulo) y la que el taller sabe estimar: cambiar a
+  -- horas obligaría a estimar horas por tipo de mueble, que es otro modelo.
+  ('mano_obra_modulo', '0'::jsonb,
+   'Costo de mano de obra por módulo (mueble), en pesos. Lo que te CUESTA producirlo, no lo que lo cobras.'),
 
   ('margen_objetivo', '0.35'::jsonb,
    'Margen sobre PRECIO (no sobre costo): precio = costo / (1 − margen). 0.35 = el costo es el 65% del precio. NUNCA se imprime en un documento del cliente.'),

@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { MOCK_QUOTES } from '../constants';
 import { Quote, QuoteItem, User } from '../types';
 import { Plus, FileText, Printer, Trash2, ArrowLeft, Send, Save, Download, CheckCircle, Loader, Calculator as CalcIcon, ChevronDown, ChevronUp, Shield, Check, X, AlertTriangle, User as UserIcon } from 'lucide-react';
-import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
+import { generarCotizacionPdf } from '../lib/cotizacionPdf';
+import { clasificarVariantes, precioUnitario, cantidadDe as cantidadDeAdicional, partidasDe } from '../lib/cotizador';
 
 import { api } from '../lib/api';
 
@@ -82,160 +83,23 @@ const Quotes: React.FC<QuotesProps> = ({ user, initialQuoteId }) => {
         }
     };
 
+    /**
+     * Envoltorio de navegador sobre lib/cotizacionPdf.
+     *
+     * Lo único que aporta esta capa es de dónde salen los bytes de la plantilla
+     * y qué se hace con el resultado. El dibujo es compartido con el agente:
+     * si se copiara aquí, los dos PDF se separarían con el tiempo.
+     */
     const createPdfBlob = async (quote: Quote): Promise<string | null> => {
         try {
-            // encoding the filename to handle spaces and special characters
             const templateName = 'TEMPLATE Mono Atelier  (1).pdf';
-            const existingPdfBytes = await fetch(`/${encodeURIComponent(templateName)}`).then(res => {
+            const plantilla = await fetch(`/${encodeURIComponent(templateName)}`).then(res => {
                 if (!res.ok) throw new Error(`Failed to load template: ${res.statusText}`);
                 return res.arrayBuffer();
             });
-            const pdfDoc = await PDFDocument.load(existingPdfBytes);
-            const helveticaFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
-            const helveticaBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
-            const pages = pdfDoc.getPages();
-            // User requested page 2. Index 1.
-            const pageIndex = pages.length > 1 ? 1 : 0;
-            let targetPage = pages[pageIndex];
-            const plantillaPartidas = targetPage;
-            const { height } = targetPage.getSize();
-
-            const fontSize = 10;
-            const drawText = (text: string, x: number, yFromTop: number, font = helveticaFont, size = fontSize) => {
-                targetPage.drawText(text, {
-                    x,
-                    y: height - yFromTop,
-                    size,
-                    font,
-                    color: rgb(0.1, 0.1, 0.1),
-                });
-            };
-
-            // NEW COORDINATES (Refined V7 - Final Polish)
-            // Header Info
-            drawText(quote.projectName, 220, 195, helveticaBold, 10);
-            drawText(quote.clientName, 220, 220, helveticaBold, 10);
-
-            // Date: Moved Left to 450 to be closer to "Fecha:" label
-            drawText(quote.date, 450, 220, helveticaFont, 10);
-
-            // Items Table
-            let currentY = 300;
-
-            // X Coordinates for alignment
-            const qtyCenter = 280; // Kept (Good)
-            const priceRight = 415; // Kept (Good)
-            const totalRight = 495; // Kept (Good)
-
-            // La tabla arranca en 300 y los totales viven en 450: caben 7 partidas.
-            // Antes no había límite y a partir de la octava el texto se dibujaba
-            // ENCIMA de los totales, sin avisar. Ahora se abre otra hoja.
-            const Y_TOPE = 435;
-            const partidasPorHoja = () => Math.floor((Y_TOPE - 300) / 20) + 1;
-
-            quote.items.forEach((item, i) => {
-                if (currentY > Y_TOPE) {
-                    targetPage = pdfDoc.addPage(
-                        [plantillaPartidas.getWidth(), plantillaPartidas.getHeight()]);
-                    currentY = 300;
-                    drawText(`${quote.projectName} — continuación`, 65, 250,
-                             helveticaBold, 10);
-                    drawText('CONCEPTO', 65, 280, helveticaBold, 9);
-                    drawText('CANT', 265, 280, helveticaBold, 9);
-                    drawText('P. UNIT', 380, 280, helveticaBold, 9);
-                    drawText('IMPORTE', 455, 280, helveticaBold, 9);
-                }
-
-                const qty = Number(item.quantity) || 0;
-                const price = Number(item.unitPrice) || 0;
-                const total = qty * price;
-
-                // Description - Kept at 65
-                drawText(item.description.substring(0, 60), 65, currentY);
-
-                // Quantity (Centered)
-                const qtyText = qty.toString();
-                const qtyWidth = helveticaFont.widthOfTextAtSize(qtyText, 10);
-                drawText(qtyText, qtyCenter - (qtyWidth / 2), currentY);
-
-                // Unit Price (Right Aligned)
-                const priceText = `$${price.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
-                const priceWidth = helveticaFont.widthOfTextAtSize(priceText, 10);
-                drawText(priceText, priceRight - priceWidth, currentY);
-
-                // Total (Right Aligned)
-                const totalText = `$${total.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
-                const totalWidth = helveticaFont.widthOfTextAtSize(totalText, 10);
-                drawText(totalText, totalRight - totalWidth, currentY);
-
-                currentY += 20;
-            });
-
-            // Financials — siempre en la hoja de la plantilla, donde el diseño
-            // los espera, aunque las partidas hayan seguido en hojas nuevas.
-            targetPage = plantillaPartidas;
-
-            const subTotal = quote.totalAmount || 0;
-            const montoIva = subTotal * iva;
-            const grandTotal = subTotal + montoIva;
-
-            const financialsRight = 495; // Match Total Right Column
-            const startY = 450; // Moved UP slightly (Refined V8)
-
-            // Sub Total
-            const subTotalText = `$${subTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-            const subTotalWidth = helveticaBold.widthOfTextAtSize(subTotalText, 10);
-            drawText(subTotalText, financialsRight - subTotalWidth, startY, helveticaBold, 10);
-
-            // IVA — la tasa sale de ajustes, no del código
-            const ivaText = `$${montoIva.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-            const ivaWidth = helveticaBold.widthOfTextAtSize(ivaText, 10);
-            drawText(ivaText, financialsRight - ivaWidth, startY + 15, helveticaBold, 10);
-
-            // Total
-            const grandTotalText = `$${grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-            const grandTotalWidth = helveticaBold.widthOfTextAtSize(grandTotalText, 12);
-            drawText(grandTotalText, financialsRight - grandTotalWidth, startY + 35, helveticaBold, 12);
-
-            // Notes Section 
-            if (quote.notes) {
-                // Moved Right to 140, UP to 450
-                const notesY = 450;
-                drawText(quote.notes.substring(0, 80), 140, notesY, helveticaFont, 8);
-            }
-
-            // DELIVERY TIME CALCULATION (Business Days)
-            // Template text: "TIEMPO DE ENTREGA __ DÍAS..."
-            // "NOTAS" label is around Y=450. 
-            // "TIEMPO DE ENTREGA" is below "TÉRMINOS DE PAGO".
-            // Estimated Y = 515. Estimated X = 170 (after "TIEMPO DE ENTREGA ")
-
-            const countBusinessDays = (startStr: string, endStr: string) => {
-                const start = new Date(startStr);
-                const end = new Date(endStr);
-                if (isNaN(start.getTime()) || isNaN(end.getTime())) return 0;
-                if (end < start) return 0;
-
-                let count = 0;
-                const cur = new Date(start);
-                while (cur <= end) {
-                    const dayOfWeek = cur.getDay();
-                    if (dayOfWeek !== 0 && dayOfWeek !== 6) count++;
-                    cur.setDate(cur.getDate() + 1);
-                }
-                return count;
-            };
-
-            const businessDays = countBusinessDays(quote.date, quote.deliveryTime);
-            if (businessDays > 0) {
-                // Adjusted coordinates to land on "TIEMPO DE ENTREGA __ DÍAS"
-                // Moved DOWN to 540 and RIGHT to 210
-                drawText(String(businessDays), 210, 540, helveticaBold, 9);
-            }
-
-            const pdfBytes = await pdfDoc.save();
-            const blob = new Blob([pdfBytes as any], { type: 'application/pdf' });
+            const bytes = await generarCotizacionPdf(quote, { plantilla, iva });
+            const blob = new Blob([bytes as any], { type: 'application/pdf' });
             return URL.createObjectURL(blob);
         } catch (error) {
             console.error('Error generating PDF:', error);
@@ -309,26 +173,18 @@ const Quotes: React.FC<QuotesProps> = ({ user, initialQuoteId }) => {
     // Una variante NO es siempre una sustitución. Antes todas reemplazaban el
     // precio base: elegir "Cascada 1 lado $2,000" en una cocina de $2,850/ml
     // BAJABA el precio a $2,000. Ahora cada tipo hace lo suyo.
-    const variantesDelServicio = calcService
-        ? variables.filter(v => v.serviceId === calcService.id) : [];
-    const sustituciones = variantesDelServicio.filter(v => v.kind === 'sustitucion');
-    const adicionales = variantesDelServicio.filter(v => v.kind === 'adicional');
-    const opciones = variantesDelServicio.filter(v => v.kind === 'opcion');
+    // Las reglas de precio viven en lib/cotizador para que el agente de chat use
+    // EXACTAMENTE las mismas. Una copia aquí se separaría, y ya sabemos a qué
+    // sabe eso: un adicional tratado como sustitución cotiza de menos.
+    const { sustituciones, adicionales, opciones } = calcService
+        ? clasificarVariantes(variables, calcService.id)
+        : { sustituciones: [], adicionales: [], opciones: [] };
     const currentServiceVariables = sustituciones;
 
-    /** Precio unitario de la partida base: la sustitución lo reemplaza. */
-    const precioBase = calcService
-        ? (calcVariable && Number(calcVariable.price) > 0
-            ? Number(calcVariable.price) : Number(calcService.basePrice) || 0)
-        : 0;
+    const precioBase = calcService ? precioUnitario(calcService, calcVariable) : 0;
 
-    /** Un adicional con la MISMA unidad que el servicio va por la misma
-     *  cantidad; con unidad distinta (o sin unidad) va como pieza. Multiplicar
-     *  una cascada por los metros de la cocina sería cobrarla cinco veces. */
     const cantidadDe = (ad: any) =>
-        (ad.units && calcService?.units &&
-         ad.units.toLowerCase() === String(calcService.units).toLowerCase())
-            ? calcQuantity : 1;
+        calcService ? cantidadDeAdicional(ad, calcService, calcQuantity) : 1;
 
     const adicionalesElegidos = adicionales.filter(a => calcAdicionales.includes(a.id));
     const totalCalculado = precioBase * calcQuantity +
@@ -338,24 +194,14 @@ const Quotes: React.FC<QuotesProps> = ({ user, initialQuoteId }) => {
     const handleAddFromCalculator = () => {
         if (!calcService) return;
 
-        // La partida base, con la sustitución aplicada si la hay
-        const nuevos: QuoteItem[] = [{
-            description: calcVariable
-                ? `${calcService.name} - ${calcVariable.name}`
-                : calcService.name,
-            quantity: calcQuantity,
-            unitPrice: precioBase,
-        }];
-
-        // Cada adicional va como SU PROPIA partida: el cliente lo ve desglosado
-        // en la cotización y cada uno lleva la cantidad que le toca.
-        for (const a of adicionalesElegidos) {
-            nuevos.push({
-                description: `${a.name}`,
-                quantity: cantidadDe(a),
-                unitPrice: Number(a.price) || 0,
-            });
-        }
+        // Misma función que usará el agente: la partida base con la sustitución
+        // aplicada, y cada adicional como SU PROPIA partida con su cantidad.
+        const nuevos: QuoteItem[] = partidasDe({
+            servicio: calcService,
+            cantidad: calcQuantity,
+            sustitucion: calcVariable,
+            adicionales: adicionalesElegidos,
+        });
 
         setFormData(prev => ({ ...prev, items: [...(prev.items || []), ...nuevos] }));
         setCalcQuantity(1);
