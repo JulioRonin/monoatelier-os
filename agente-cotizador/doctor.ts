@@ -104,6 +104,34 @@ async function main() {
         linea(OK, `tabla ${tabla} accesible`);
     }
 
+    // Que la tabla exista no basta: una migración a medias deja la tabla sin
+    // las columnas nuevas, y el error que sale ("column ... does not exist") no
+    // dice qué archivo falta. Se piden por nombre, que es como se detecta.
+    console.log('\nColumnas');
+    const COLUMNAS: [string, string[], string][] = [
+        ['services', ['cost', 'active', 'price_updated_at', 'sku'],
+         'supabase/migrations/20260808_master_list.sql'],
+        ['service_variables', ['kind', 'sort_order', 'cost', 'units', 'active'],
+         'supabase/migrations/20260808_master_list.sql'],
+    ];
+    for (const [tabla, columnas, migracion] of COLUMNAS) {
+        const faltan: string[] = [];
+        for (const col of columnas) {
+            const r = await rest(`/${tabla}?select=${col}&limit=1`);
+            if (r.codigo >= 400) faltan.push(col);
+        }
+        if (faltan.length) {
+            linea(MAL, `a ${tabla} le faltan columnas: ${faltan.join(', ')}`,
+                `Corre ${migracion}\n` +
+                (faltan.includes('kind')
+                    ? 'Sin "kind" no se distingue una sustitución de un adicional,\n' +
+                      'que es lo que hace que una cotización salga de menos.'
+                    : ''));
+        } else {
+            linea(OK, `${tabla} tiene las columnas de la lista maestra`);
+        }
+    }
+
     // ── 4. catálogo con datos ────────────────────────────────────────────
     console.log('\nCatálogo');
     try {
@@ -143,7 +171,13 @@ async function main() {
             linea(OK, 'ninguna variante abarata su servicio');
         }
     } catch (e: any) {
-        linea(MAL, `no pude leer el catálogo: ${e.message}`);
+        // 42703 = columna inexistente. Es siempre una migración sin correr, y
+        // decirlo así ahorra ir a buscar qué significa el código.
+        const falta = /column ([\w.]+) does not exist/.exec(e.message)?.[1];
+        linea(MAL, `no pude leer el catálogo: ${e.message.slice(0, 120)}`,
+            falta
+                ? `Falta la columna ${falta}: corre supabase/migrations/20260808_master_list.sql`
+                : '');
     }
 
     // ── 5. plantilla y PDF ───────────────────────────────────────────────
