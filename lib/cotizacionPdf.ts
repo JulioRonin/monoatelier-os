@@ -31,7 +31,11 @@ import { totalesDe } from './cotizador.js';
 //   Fecha:   393.9–439.9  213.2–227.3      Costo       352.2–386.2
 //   NOTAS:    82.0–131.4  447.2–460.8      Total       460.4–490.3
 //   Sub Total 370.4–426.0 445.4–459.0
-const ENCABEZADO = { proyecto: [220, 203], cliente: [220, 220], fecha: [450, 217] };
+// anchoNombre: los nombres arrancan en 220 y "Fecha:" empieza en 393.9. Un
+// nombre fiscal largo ("…SERVICIOS INDUSTRIALES SA DE CV") lo atravesaba
+// entero, escribiendo encima del rótulo y de la fecha.
+const ENCABEZADO = { proyecto: [220, 203], cliente: [220, 220], fecha: [450, 217],
+                     anchoNombre: 168 };
 // anchoDescripcion: hasta dónde puede llegar el texto antes de invadir la
 // columna de cantidad, que va centrada en 280.
 // cantidadCentro va al centro del rótulo "#" (266.1–272.9), y las cifras
@@ -48,7 +52,11 @@ const TABLA = { inicioY: 300, paso: 20, descripcionX: 65, anchoDescripcion: 190,
  */
 const Y_TOPE = 435;
 
-const FINANZAS = { derecha: 495, inicioY: 450 };
+// anchoCifra: los rótulos impresos "Sub Total", "IVA (8%)" y "Total" terminan
+// cerca de x=430. Una cifra de siete dígitos a 10pt mide ~77pt y desde 495
+// hacia la izquierda llegaba hasta 418, encima del rótulo. Se encoge para
+// caber en lugar de montarse.
+const FINANZAS = { derecha: 495, inicioY: 450, anchoCifra: 62 };
 
 /**
  * Las notas van en la columna de la izquierda, bajo "NOTAS:".
@@ -192,10 +200,19 @@ export async function generarCotizacionPdf(
     const derecha = (t: string, xDer: number, y: number, font: PDFFont = normal, size = 10) => {
         texto(t, xDer - font.widthOfTextAtSize(t, size), y, font, size);
     };
+    /** Como `derecha`, pero encoge la fuente hasta que la cifra quepa en `ancho`. */
+    const derechaAjustada = (t: string, xDer: number, y: number, ancho: number,
+                             font: PDFFont = normal, size = 10) => {
+        let s = size;
+        while (s > 6 && font.widthOfTextAtSize(t, s) > ancho) s -= 0.25;
+        texto(t, xDer - font.widthOfTextAtSize(t, s), y, font, s);
+    };
 
     // ── Encabezado ───────────────────────────────────────────────────────
-    texto(quote.projectName ?? '', ENCABEZADO.proyecto[0], ENCABEZADO.proyecto[1], negrita);
-    texto(quote.clientName ?? '', ENCABEZADO.cliente[0], ENCABEZADO.cliente[1], negrita);
+    texto(recortar(quote.projectName ?? '', negrita, 10, ENCABEZADO.anchoNombre),
+          ENCABEZADO.proyecto[0], ENCABEZADO.proyecto[1], negrita);
+    texto(recortar(quote.clientName ?? '', negrita, 10, ENCABEZADO.anchoNombre),
+          ENCABEZADO.cliente[0], ENCABEZADO.cliente[1], negrita);
     texto(quote.date ?? '', ENCABEZADO.fecha[0], ENCABEZADO.fecha[1]);
 
     // ── Partidas ─────────────────────────────────────────────────────────
@@ -214,10 +231,14 @@ export async function generarCotizacionPdf(
         const cant = Number(item.quantity) || 0;
         const unitario = Number(item.unitPrice) || 0;
 
-        texto(recortar(item.description ?? '', normal, 10, TABLA.anchoDescripcion),
-              TABLA.descripcionX, y);
+        // El ancho de la descripción se calcula contra la cantidad de ESTE
+        // renglón: "1234.56" centrado ocupa más a la izquierda que "4", y con
+        // un ancho fijo la descripción le caía encima.
         const tCant = String(cant);
-        texto(tCant, TABLA.cantidadCentro - normal.widthOfTextAtSize(tCant, 10) / 2, y);
+        const xCant = TABLA.cantidadCentro - normal.widthOfTextAtSize(tCant, 10) / 2;
+        const anchoDesc = Math.min(TABLA.anchoDescripcion, xCant - TABLA.descripcionX - 6);
+        texto(recortar(item.description ?? '', normal, 10, anchoDesc), TABLA.descripcionX, y);
+        texto(tCant, xCant, y);
         derecha(pesos(unitario, 0), TABLA.precioDer, y);
         derecha(pesos(cant * unitario, 0), TABLA.totalDer, y);
 
@@ -235,9 +256,9 @@ export async function generarCotizacionPdf(
     // subtotal no cuadre con los renglones que tiene arriba es un documento que
     // el cliente va a objetar. Manda lo que está impreso.
     const t = totalesDe(quote.items ?? [], iva);
-    derecha(pesos(t.subtotal), FINANZAS.derecha, FINANZAS.inicioY, negrita);
-    derecha(pesos(t.iva), FINANZAS.derecha, FINANZAS.inicioY + 15, negrita);
-    derecha(pesos(t.total), FINANZAS.derecha, FINANZAS.inicioY + 35, negrita, 12);
+    derechaAjustada(pesos(t.subtotal), FINANZAS.derecha, FINANZAS.inicioY, FINANZAS.anchoCifra, negrita);
+    derechaAjustada(pesos(t.iva), FINANZAS.derecha, FINANZAS.inicioY + 15, FINANZAS.anchoCifra, negrita);
+    derechaAjustada(pesos(t.total), FINANZAS.derecha, FINANZAS.inicioY + 35, FINANZAS.anchoCifra, negrita, 12);
 
     if (quote.notes) {
         const lineas = envolver(quote.notes, normal, 8, NOTAS.ancho);

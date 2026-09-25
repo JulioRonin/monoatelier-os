@@ -130,6 +130,25 @@ function resumen(b: Borrador, iva: number): string {
 
 const texto = (t: string) => ({ content: [{ type: 'text' as const, text: t }] });
 
+/**
+ * Cómo pedirle al agente que entregue el archivo.
+ *
+ * El gateway de Hermes sube el PDF como adjunto nativo cuando detecta su ruta
+ * absoluta en la respuesta, pero con dos reglas que hay que respetar o el
+ * usuario recibe una ruta en vez del archivo:
+ *
+ *   1. Sólo mira el TEXTO FINAL del agente, no la salida de las herramientas.
+ *   2. Ignora a propósito las rutas dentro de bloques de código o `comillas`
+ *      invertidas, para no romper ejemplos de código.
+ *
+ * Los modelos tienden a formatear las rutas como código, que es justo lo que
+ * la desactiva. Por eso se dice explícito.
+ */
+const comoEntregar = (ruta: string) =>
+    `Para que el usuario reciba el PDF como archivo adjunto y no como texto, ` +
+    `escribe esta ruta TAL CUAL en tu respuesta, en texto plano y en su propio ` +
+    `renglón, SIN comillas invertidas y SIN bloque de código:\n${ruta}`;
+
 // ── Servidor ─────────────────────────────────────────────────────────────
 
 const server = new McpServer({ name: 'mono-cotizador', version: '1.0.0' });
@@ -499,8 +518,7 @@ server.registerTool('cerrar_cotizacion', {
     borradores.delete(id);
     return texto(
         `${resumen({ ...b, avisos: [] }, iva)}\n\n` +
-        `PDF: ${ruta}\n${guardado}\n` +
-        `Adjúntaselo al usuario en el chat.`);
+        `${guardado}\n\n${comoEntregar(ruta)}`);
 });
 
 server.registerTool('guardar_en_catalogo', {
@@ -703,7 +721,7 @@ server.registerTool('pdf_de_cotizacion', {
 
     return texto(
         `PDF de la cotización ${corto(f.id)} (${quote.clientName} — ${quote.projectName}, ` +
-        `${pesos(t.total)} con IVA):\n${ruta}\n\nAdjúntaselo al usuario en el chat.`);
+        `${pesos(t.total)} con IVA).\n\n${comoEntregar(ruta)}`);
 });
 
 /**
