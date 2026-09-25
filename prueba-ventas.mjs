@@ -17,6 +17,8 @@
  */
 
 import { createServer } from 'node:http';
+import { existsSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 
@@ -159,6 +161,28 @@ ok(/INTERNO/.test(resumen) && /INTERNO/.test(clientes),
 ok(/EMDICO SA DE CV/.test(clientes), 'el cliente debe salir por su razón social');
 ok(pedidos.some(u => u.includes('sold_at=gte')),
    'el servidor debe filtrar proyectos por sold_at, no traerlos todos');
+
+// El PDF se revisa por su TEXTO, no por que el archivo exista y pese algo.
+// Así se detectó que el aviso de proyectos sin fecha quedaba escrito con la
+// lista cortada por el borde de la hoja: encabezado sin nada debajo.
+const rutaPdf = reporte.split('\n').find(l => l.trim().endsWith('.pdf'))?.trim();
+if (rutaPdf && existsSync(rutaPdf)) {
+  let texto = null;
+  try {
+    texto = execFileSync('pdftotext', ['-layout', rutaPdf, '-'], { encoding: 'utf8' });
+  } catch { console.log('\n(sin pdftotext: no se pudo revisar el contenido del PDF)'); }
+  if (texto) {
+    ok(/USO INTERNO/.test(texto), 'el PDF debe ir sellado de uso interno en la página');
+    ok(/noviembre 2026/.test(texto), 'el PDF debe traer el mes de la venta');
+    ok(!/540,000/.test(texto) && !/108,000/.test(texto),
+       'el PDF cuenta como ingreso una factura de sandbox o cancelada');
+    ok(/Barra bar/.test(texto),
+       'el PDF anuncia proyectos sin fecha de venta pero no los lista: el bloque se cortó');
+    ok(/TOTAL/.test(texto), 'el PDF debe cerrar con los totales');
+  }
+} else {
+  fallas.push('reporte_ventas no devolvió una ruta de PDF que exista');
+}
 
 console.log(`\n${'─'.repeat(70)}`);
 if (fallas.length) {

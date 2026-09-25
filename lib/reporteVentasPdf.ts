@@ -34,6 +34,8 @@ const ACENTO = rgb(0.77, 0.31, 0.75);
 const HOJA: [number, number] = [842, 595];   // A4 horizontal
 const MARGEN = 40;
 const DERECHA = HOJA[0] - MARGEN;            // 802
+/** Piso del contenido: debajo va el pie de página, en y=24. */
+const PIE = 44;
 
 /** Umbral de margen sano, el mismo que usa Financials para el semáforo. */
 const MARGEN_SANO = 0.30;
@@ -201,7 +203,12 @@ export async function generarReporteVentasPdf(d: DatosReporte): Promise<Uint8Arr
         mgTotal == null ? GRIS : mgTotal > MARGEN_SANO ? BUENO : ALERTA);
 
     // 3. Tabla por mes
-    l.y = tarjetaY - 55;
+    //
+    // 42 y no los 65 que deja Financials entre las tarjetas y la tabla: ese
+    // hueco se ve bien en una pantalla con scroll, pero en una hoja se come el
+    // espacio que necesita la nota del pie y manda un reporte de tres meses a
+    // una segunda página casi vacía.
+    l.y = tarjetaY - 42;
     l.y = encabezadoTabla(l, txt, txtDer, 'MES');
 
     for (const m of d.meses) {
@@ -256,7 +263,16 @@ export async function generarReporteVentasPdf(d: DatosReporte): Promise<Uint8Arr
 
     // 5. Qué fecha usa cada cifra. Sin esta nota, dos reportes del mismo mes
     //    con criterios distintos parecen contradecirse.
-    if (l.y < 110) l = nuevaHoja();
+    //
+    // Se mide el bloque COMPLETO antes de empezarlo, contando los proyectos
+    // que va a listar. Si sólo se comprobara el hueco del primer renglón, el
+    // aviso podría quedar escrito —"1 proyecto(s) sin fecha de venta:"— y la
+    // lista caerse por el borde: un encabezado anunciando una lista vacía.
+    const huerfanosAListar = (d.sinFechaDeVenta ?? []).slice(0, 6);
+    const altoNotas = 14 + 4 * 12
+        + (huerfanosAListar.length ? 6 + 12 + huerfanosAListar.length * 11 : 0)
+        + ((d.sinFechaDeVenta?.length ?? 0) > huerfanosAListar.length ? 11 : 0);
+    if (l.y - altoNotas < PIE) l = nuevaHoja();
     txt(l, 'Cómo se midió', MARGEN, l.y, 9, true, GRIS);
     l.y -= 14;
     for (const nota of [
@@ -272,15 +288,18 @@ export async function generarReporteVentasPdf(d: DatosReporte): Promise<Uint8Arr
         l.y -= 12;
     }
 
-    if (d.sinFechaDeVenta?.length) {
+    if (huerfanosAListar.length) {
+        const n = d.sinFechaDeVenta!.length;
         l.y -= 6;
-        txt(l, `${d.sinFechaDeVenta.length} proyecto(s) sin fecha de venta — no entran en ningún mes:`,
+        txt(l, `${n} proyecto${n === 1 ? '' : 's'} sin fecha de venta — no entra${n === 1 ? '' : 'n'} en ningún mes:`,
             MARGEN, l.y, 8, true, ALERTA);
         l.y -= 12;
-        for (const p of d.sinFechaDeVenta.slice(0, 6)) {
-            if (l.y < 50) break;
+        for (const p of huerfanosAListar) {
             txt(l, `${p.nombre} — ${pesos(p.monto)}`, MARGEN + 10, l.y, 8, false, GRIS);
             l.y -= 11;
+        }
+        if (n > huerfanosAListar.length) {
+            txt(l, `y ${n - huerfanosAListar.length} más.`, MARGEN + 10, l.y, 8, false, GRIS);
         }
     }
 
