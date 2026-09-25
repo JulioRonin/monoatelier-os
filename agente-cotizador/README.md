@@ -35,12 +35,45 @@ darían números distintos para la misma cocina.
 |---|---|
 | `ver_catalogo` | Servicios, precios, unidades y variantes, diciendo cuáles **sustituyen** el precio base y cuáles **se suman** |
 | `iniciar_cotizacion` | Abre el borrador (cliente, proyecto, fecha de entrega) |
-| `agregar_partida` | Agrega un servicio. Tres rutas de precio: de lista, desde costo con margen, o dictado |
+| `agregar_partida` | Agrega un servicio **del catálogo**. Tres rutas de precio: de lista, desde costo con margen, o dictado |
+| `agregar_concepto` | Agrega una partida **fuera de catálogo**: descripción, cantidad, unidad, precio y notas dictados por ti |
 | `ver_borrador` | Partidas y totales, **para pedir aprobación** |
 | `quitar_partida` | Corregir sin empezar de cero |
 | `cerrar_cotizacion` | Guarda en la plataforma y genera el PDF |
 
+Y para consultar lo ya cotizado:
+
+| Herramienta | Qué hace |
+|---|---|
+| `listar_cotizaciones` | Las guardadas, de la más reciente a la más vieja. Filtra por cliente o estado |
+| `ver_cotizacion` | El detalle de una: partidas y totales |
+| `pdf_de_cotizacion` | Vuelve a generar su PDF para reenviarlo, sin modificarla |
+
+Cada cotización se identifica con una **referencia corta** (los primeros ocho
+caracteres del id) para poder decir "mándame el PDF de la 7c8d4400". Si la
+referencia coincide con más de una, el agente pregunta en vez de adivinar:
+mandarle al cliente el PDF equivocado es peor que pedir que lo aclare.
+
 El PDF **sólo se genera al cerrar**, después de que apruebes los totales.
+
+### Conceptos fuera de catálogo
+
+Para proyectos específicos que no están en la lista de servicios:
+
+```
+agregar_concepto(descripcion="Lambrín de madera en muros de gerencia",
+                 cantidad=18, unidad="m²", precio_unitario=1250,
+                 notas="Incluye preparación de muro. No incluye instalación eléctrica.")
+```
+
+La **unidad se pega a la descripción** (`Lambrín … (m²)`) porque la plantilla
+sólo tiene columnas de Descripción, Cantidad, Costo e Importe: no hay dónde
+imprimirla aparte, y perderla dejaría "18 ×" sin decir 18 de qué.
+
+Las **notas se acumulan** entre conceptos y se imprimen juntas al pie. Acepta
+también `costo_directo` en lugar de `precio_unitario`, para aplicarle el margen
+objetivo igual que en el catálogo. Exige uno de los dos y rechaza los dos a la
+vez: elegir precio por alguien más es justo lo que este servidor no hace.
 
 ### Las tres rutas de precio
 

@@ -20,7 +20,10 @@ import { totalesDe } from './cotizador.js';
 
 // ── Coordenadas de la plantilla (calibradas, no adivinadas) ──────────────
 const ENCABEZADO = { proyecto: [220, 195], cliente: [220, 220], fecha: [450, 220] };
-const TABLA = { inicioY: 300, paso: 20, descripcionX: 65, cantidadCentro: 280, precioDer: 415, totalDer: 495 };
+// anchoDescripcion: hasta dónde puede llegar el texto antes de invadir la
+// columna de cantidad, que va centrada en 280.
+const TABLA = { inicioY: 300, paso: 20, descripcionX: 65, anchoDescripcion: 195,
+                cantidadCentro: 280, precioDer: 415, totalDer: 495 };
 
 /**
  * La tabla arranca en 300 y los totales viven en 450: caben 7 partidas.
@@ -30,7 +33,18 @@ const TABLA = { inicioY: 300, paso: 20, descripcionX: 65, cantidadCentro: 280, p
 const Y_TOPE = 435;
 
 const FINANZAS = { derecha: 495, inicioY: 450 };
-const NOTAS = { x: 140, y: 450, limite: 80 };
+
+/**
+ * Las notas van en la columna de la izquierda, bajo "NOTAS:".
+ *
+ * `ancho` está calculado para no invadir la columna de totales, que arranca
+ * cerca de x=375: antes se dibujaba una sola línea de 80 caracteres desde
+ * x=140 y a 8pt eso mide ~350pt, así que una nota larga terminaba escrita
+ * ENCIMA del subtotal. Ahora se parte en renglones y se corta al llegar al
+ * tope, en vez de pisar cifras.
+ */
+const NOTAS = { x: 140, y: 450, ancho: 225, alto: 10, maxLineas: 4 };
+
 const ENTREGA = { x: 210, y: 540 };
 
 export interface OpcionesPdf {
@@ -56,6 +70,62 @@ export function diasHabiles(desde: string, hasta: string): number {
         cur.setDate(cur.getDate() + 1);
     }
     return n;
+}
+
+/**
+ * Parte un texto en renglones que quepan en `ancho`.
+ *
+ * Mide con la fuente real (`widthOfTextAtSize`) en vez de contar caracteres:
+ * "IIII" y "MMMM" tienen el mismo número de letras y muy distinto ancho, y es
+ * justo esa diferencia la que hace que una nota se salga del área.
+ */
+export function envolver(texto: string, font: PDFFont, size: number, ancho: number): string[] {
+    const lineas: string[] = [];
+    let actual = '';
+    for (const palabra of texto.split(/\s+/).filter(Boolean)) {
+        const tentativa = actual ? `${actual} ${palabra}` : palabra;
+        if (font.widthOfTextAtSize(tentativa, size) <= ancho) {
+            actual = tentativa;
+            continue;
+        }
+        if (actual) lineas.push(actual);
+        // Una palabra sola más ancha que la columna (una URL, un SKU largo)
+        // se parte por letras: dejarla entera la sacaría del área igual.
+        if (font.widthOfTextAtSize(palabra, size) > ancho) {
+            let trozo = '';
+            for (const letra of palabra) {
+                if (font.widthOfTextAtSize(trozo + letra, size) > ancho) {
+                    lineas.push(trozo);
+                    trozo = letra;
+                } else {
+                    trozo += letra;
+                }
+            }
+            actual = trozo;
+        } else {
+            actual = palabra;
+        }
+    }
+    if (actual) lineas.push(actual);
+    return lineas;
+}
+
+/**
+ * Recorta a lo que quepa en `ancho`, con puntos suspensivos.
+ *
+ * Se medía con `substring(0, 60)`, que cuenta letras en vez de medirlas: una
+ * descripción de 60 caracteres anchos se metía encima de la columna de
+ * cantidad y dejaba "…gerencia (m²)18" pegado, sin poder leer ninguno de los
+ * dos. Con conceptos libres, donde las descripciones las escribe el usuario,
+ * pasa a cada rato.
+ */
+export function recortar(texto: string, font: PDFFont, size: number, ancho: number): string {
+    if (font.widthOfTextAtSize(texto, size) <= ancho) return texto;
+    let corto = texto;
+    while (corto.length > 1 && font.widthOfTextAtSize(`${corto}…`, size) > ancho) {
+        corto = corto.slice(0, -1);
+    }
+    return `${corto.trimEnd()}…`;
 }
 
 const pesos = (n: number, dec = 2) =>
@@ -110,7 +180,8 @@ export async function generarCotizacionPdf(
         const cant = Number(item.quantity) || 0;
         const unitario = Number(item.unitPrice) || 0;
 
-        texto((item.description ?? '').substring(0, 60), TABLA.descripcionX, y);
+        texto(recortar(item.description ?? '', normal, 10, TABLA.anchoDescripcion),
+              TABLA.descripcionX, y);
         const tCant = String(cant);
         texto(tCant, TABLA.cantidadCentro - normal.widthOfTextAtSize(tCant, 10) / 2, y);
         derecha(pesos(unitario, 0), TABLA.precioDer, y);
@@ -135,7 +206,15 @@ export async function generarCotizacionPdf(
     derecha(pesos(t.total), FINANZAS.derecha, FINANZAS.inicioY + 35, negrita, 12);
 
     if (quote.notes) {
-        texto(quote.notes.substring(0, NOTAS.limite), NOTAS.x, NOTAS.y, normal, 8);
+        const lineas = envolver(quote.notes, normal, 8, NOTAS.ancho);
+        lineas.slice(0, NOTAS.maxLineas).forEach((l, n) => {
+            texto(l, NOTAS.x, NOTAS.y + n * NOTAS.alto, normal, 8);
+        });
+        // Si no cupo todo, se marca. Una nota cortada en seco hace creer al
+        // cliente que ahí termina la condición.
+        if (lineas.length > NOTAS.maxLineas) {
+            texto('(…)', NOTAS.x, NOTAS.y + NOTAS.maxLineas * NOTAS.alto, normal, 8);
+        }
     }
 
     const habiles = diasHabiles(quote.date, quote.deliveryTime);
