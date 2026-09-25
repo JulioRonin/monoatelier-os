@@ -32,13 +32,13 @@ import { rutaPlantilla, rutaSalida } from './rutas.js';
 import {
     buscarServicios, clasificarVariantes, partidasDe, totalesDe,
     precioUnitario, cantidadDe, sospechaDeClasificacion, precioDesdeCosto,
-    importeDe, redondear,
+    importeDe, redondear, cantidadDeMedidas, MedidasInvalidas, margenDe,
 } from '../lib/cotizador.js';
 import { generarCotizacionPdf } from '../lib/cotizacionPdf.js';
 import type { Service, ServiceVariable, QuoteItem, Quote } from '../types.js';
 import {
     leerServicios, leerVariantes, leerAjustes, guardarCotizacion,
-    leerCotizaciones, leerCotizacion,
+    leerCotizaciones, leerCotizacion, crearServicio,
     type FilaServicio, type FilaVariante, type FilaCotizacion,
 } from './supabase.js';
 
@@ -306,16 +306,63 @@ server.registerTool('agregar_concepto', {
         'lista y no de lo que alguien recuerde.',
     inputSchema: {
         descripcion: z.string().min(1).describe('Qué es, como debe salir impreso en la cotización.'),
-        cantidad: z.number().positive().describe('Cuántas unidades.'),
-        unidad: z.string().optional().describe('Unidad de medida (m², ml, pieza, servicio…). Se imprime junto a la descripción.'),
+        cantidad: z.number().positive().optional()
+            .describe('Cuántas unidades. Si te dan medidas en lugar de cantidad, usa `medidas` y NO calcules tú.'),
+        medidas: z.object({
+            largo: z.number().positive().describe('Largo en metros.'),
+            ancho: z.number().positive().optional().describe('Ancho en metros (superficies horizontales).'),
+            alto: z.number().positive().optional().describe('Alto en metros (muros). Es la misma dimensión que ancho: usa uno u otro.'),
+            piezas: z.number().positive().optional().describe('Cuántas repeticiones de esa medida.'),
+        }).optional().describe(
+            'Medidas en METROS. El servidor calcula la cantidad y te devuelve la operación. ' +
+            'Con largo solo sale metro lineal; con largo y ancho (o alto) sale metro cuadrado.'),
+        unidad: z.string().optional().describe('Unidad de medida (m², ml, pieza, servicio…). Con `medidas` se deduce sola.'),
         precio_unitario: z.number().nonnegative().optional().describe('Precio por unidad que se le cobra al cliente.'),
         costo_directo: z.number().nonnegative().optional().describe('Costo por unidad; el precio sale de aplicarle el margen objetivo.'),
+        costo_materiales: z.number().nonnegative().optional().describe('Costo de materiales por unidad. Se suma a la mano de obra.'),
+        costo_mano_obra: z.number().nonnegative().optional().describe('Costo de mano de obra por unidad. Se suma a los materiales.'),
         notas: z.string().optional().describe('Nota que acompaña a la cotización (condiciones, alcances, exclusiones).'),
         sesion: z.string().optional(),
     },
-}, async ({ descripcion, cantidad, unidad, precio_unitario, costo_directo, notas, sesion }) => {
+}, async ({ descripcion, cantidad, medidas, unidad, precio_unitario, costo_directo,
+            costo_materiales, costo_mano_obra, notas, sesion }) => {
     const b = tomar(sesion ?? 'default');
     const { iva, margen } = await catalogo();
+
+    // ── cantidad: dictada o calculada de las medidas ─────────────────────
+    let deMedidas = '';
+    if (medidas) {
+        if (cantidad != null) {
+            return texto('Mandaste `cantidad` y `medidas` a la vez. Usa una sola: si tienes las ' +
+                         'medidas manda sólo ésas y yo saco la cantidad.');
+        }
+        try {
+            const c = cantidadDeMedidas(medidas);
+            cantidad = c.cantidad;
+            unidad = unidad ?? c.unidad;
+            deMedidas = c.explicacion;
+        } catch (e: any) {
+            if (e instanceof MedidasInvalidas) return texto(e.message);
+            throw e;
+        }
+    }
+    if (cantidad == null) {
+        return texto('Falta la cantidad. Dame `cantidad`, o `medidas` (largo, y ancho o alto) ' +
+                     'y yo la calculo.');
+    }
+
+    // ── costo por partes, si viene desglosado ────────────────────────────
+    let desglosaCosto = '';
+    if (costo_materiales != null || costo_mano_obra != null) {
+        if (costo_directo != null) {
+            return texto('Mandaste `costo_directo` y además el desglose por materiales/mano de obra. ' +
+                         'Usa uno solo: o el costo total, o sus partes.');
+        }
+        const mat = costo_materiales ?? 0;
+        const mo = costo_mano_obra ?? 0;
+        costo_directo = redondear(mat + mo);
+        desglosaCosto = ` (materiales ${pesos(mat)} + mano de obra ${pesos(mo)})`;
+    }
 
     // Uno de los dos, no los dos ni ninguno: si el modelo manda ambos habría
     // que elegir por él, y elegir precio por alguien más es justo lo que este
@@ -341,7 +388,8 @@ server.registerTool('agregar_concepto', {
                          '(margen_objetivo) o dime el precio directo.');
         }
         unitario = precioDesdeCosto(costo_directo!, margen);
-        comoSeCalculo = ` (de un costo de ${pesos(costo_directo!)} con margen ${(margen * 100).toFixed(0)}%)`;
+        comoSeCalculo = ` (de un costo de ${pesos(costo_directo!)}${desglosaCosto} ` +
+                        `con margen ${(margen * 100).toFixed(0)}%)`;
     }
 
     // La unidad va pegada a la descripción porque la plantilla sólo tiene
@@ -360,6 +408,7 @@ server.registerTool('agregar_concepto', {
 
     const t = totalesDe(b.items, iva);
     return texto(
+        (deMedidas ? `Medidas: ${deMedidas}\n` : '') +
         `Agregado:\n  ${linea.quantity} × ${linea.description} @ ${pesos(linea.unitPrice)} = ` +
         `${pesos(importeDe(linea))}${comoSeCalculo}\n` +
         (notas?.trim() ? `Nota registrada: "${notas.trim()}"\n` : '') +
@@ -452,6 +501,89 @@ server.registerTool('cerrar_cotizacion', {
         `${resumen({ ...b, avisos: [] }, iva)}\n\n` +
         `PDF: ${ruta}\n${guardado}\n` +
         `Adjúntaselo al usuario en el chat.`);
+});
+
+server.registerTool('guardar_en_catalogo', {
+    title: 'Dar de alta un concepto en el catálogo',
+    description:
+        'Registra un concepto en la lista maestra de servicios para poder cotizarlo después ' +
+        'sin volver a dictar el precio. Úsala cuando el usuario diga que algo que acaba de ' +
+        'cotizar se repite, o pida explícitamente guardarlo.\n' +
+        'Puede tomar los datos de una partida del borrador (`desde_partida`) o recibirlos ' +
+        'directo. Avisa si ya existe algo con nombre parecido en vez de duplicarlo.',
+    inputSchema: {
+        desde_partida: z.number().int().positive().optional()
+            .describe('Número de partida del borrador, como la muestra ver_borrador. Toma de ahí descripción y precio.'),
+        nombre: z.string().optional().describe('Nombre del servicio en el catálogo. Con desde_partida, por omisión usa su descripción.'),
+        precio_base: z.number().nonnegative().optional().describe('Precio de venta por unidad.'),
+        costo: z.number().nonnegative().optional().describe('Lo que cuesta producirlo. Sin esto no se puede saber el margen después.'),
+        unidad: z.string().optional().describe('Unidad (ml, m², pieza, servicio…).'),
+        categoria: z.string().optional().describe('Categoría para agruparlo en el catálogo.'),
+        descripcion: z.string().optional().describe('Descripción larga, para reconocerlo dentro de un año.'),
+        confirmar_duplicado: z.boolean().optional()
+            .describe('Ponlo en true sólo si el usuario ya confirmó que quiere darlo de alta aunque exista uno parecido.'),
+        sesion: z.string().optional(),
+    },
+}, async ({ desde_partida, nombre, precio_base, costo, unidad, categoria, descripcion,
+            confirmar_duplicado, sesion }) => {
+    // De una partida del borrador, o de lo que manden suelto.
+    if (desde_partida != null) {
+        const b = tomar(sesion ?? 'default');
+        if (desde_partida > b.items.length) {
+            return texto(`El borrador sólo tiene ${b.items.length} partida(s). Llama ver_borrador.`);
+        }
+        const p = b.items[desde_partida - 1];
+        // La unidad se guardó pegada a la descripción al capturarla: se separa
+        // para que el catálogo la tenga en su columna y no dentro del nombre.
+        const m = /^(.*?)\s*\(([^()]{1,12})\)\s*$/.exec(p.description);
+        nombre = nombre ?? (m ? m[1] : p.description);
+        unidad = unidad ?? (m ? m[2] : undefined);
+        precio_base = precio_base ?? p.unitPrice;
+    }
+
+    if (!nombre?.trim()) return texto('Falta el nombre con el que se va a guardar en el catálogo.');
+    if (precio_base == null) {
+        return texto('Falta el precio de venta. Dímelo, o usa `desde_partida` para tomarlo de una ' +
+                     'partida que ya esté en el borrador.');
+    }
+
+    // Un catálogo con "Cocina", "Cocinas" y "Cocina minimalista" es justo el
+    // desorden que ya costó trabajo limpiar: mejor preguntar que duplicar.
+    if (!confirmar_duplicado) {
+        const { servicios } = await catalogo();
+        const parecidos = buscarServicios(servicios, nombre).slice(0, 4);
+        if (parecidos.length) {
+            return texto(
+                `Ya hay servicios parecidos a "${nombre}" en el catálogo:\n` +
+                parecidos.map(s => `  · ${s.name} — ${pesos(s.basePrice)}${s.units ? `/${s.units}` : ''}`).join('\n') +
+                `\n\nPregúntale al usuario si quiere dar de alta uno nuevo de todos modos ` +
+                `(entonces vuelve a llamarme con confirmar_duplicado=true) o si prefiere ` +
+                `cotizar con alguno de esos.`);
+        }
+    }
+
+    let fila;
+    try {
+        fila = await crearServicio({
+            name: nombre.trim(),
+            category: categoria ?? null,
+            description: descripcion ?? null,
+            base_price: redondear(precio_base),
+            cost: costo == null ? null : redondear(costo),
+            units: unidad ?? null,
+        });
+    } catch (e: any) {
+        return texto(`No se pudo guardar en el catálogo: ${e.message}`);
+    }
+
+    const m = margenDe(redondear(precio_base), costo == null ? null : redondear(costo));
+    return texto(
+        `Dado de alta en el catálogo:\n` +
+        `  ${fila?.name ?? nombre} — ${pesos(redondear(precio_base))}${unidad ? `/${unidad}` : ''}` +
+        (m != null ? ` · margen ${(m * 100).toFixed(1)}%` : ' · sin costo cargado') + '\n\n' +
+        (costo == null
+            ? 'Sin costo no se puede saber si ese precio deja margen. Conviene capturarlo en la pantalla de Precios.'
+            : 'Ya se puede cotizar con agregar_partida usando ese nombre.'));
 });
 
 // ── Consultar lo ya cotizado ─────────────────────────────────────────────

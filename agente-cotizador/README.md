@@ -36,7 +36,8 @@ darían números distintos para la misma cocina.
 | `ver_catalogo` | Servicios, precios, unidades y variantes, diciendo cuáles **sustituyen** el precio base y cuáles **se suman** |
 | `iniciar_cotizacion` | Abre el borrador (cliente, proyecto, fecha de entrega) |
 | `agregar_partida` | Agrega un servicio **del catálogo**. Tres rutas de precio: de lista, desde costo con margen, o dictado |
-| `agregar_concepto` | Agrega una partida **fuera de catálogo**: descripción, cantidad, unidad, precio y notas dictados por ti |
+| `agregar_concepto` | Agrega una partida **fuera de catálogo**: descripción, medidas o cantidad, precio o costo, y notas |
+| `guardar_en_catalogo` | Da de alta un concepto en la lista maestra para poder cotizarlo después |
 | `ver_borrador` | Partidas y totales, **para pedir aprobación** |
 | `quitar_partida` | Corregir sin empezar de cero |
 | `cerrar_cotizacion` | Guarda en la plataforma y genera el PDF |
@@ -70,10 +71,51 @@ La **unidad se pega a la descripción** (`Lambrín … (m²)`) porque la plantil
 sólo tiene columnas de Descripción, Cantidad, Costo e Importe: no hay dónde
 imprimirla aparte, y perderla dejaría "18 ×" sin decir 18 de qué.
 
-Las **notas se acumulan** entre conceptos y se imprimen juntas al pie. Acepta
-también `costo_directo` en lugar de `precio_unitario`, para aplicarle el margen
-objetivo igual que en el catálogo. Exige uno de los dos y rechaza los dos a la
-vez: elegir precio por alguien más es justo lo que este servidor no hace.
+Las **notas se acumulan** entre conceptos y se imprimen juntas al pie.
+
+### Medidas en lugar de cantidad
+
+No hay que calcular el área a mano. Se dan las medidas **en metros** y el
+servidor saca la cantidad y devuelve la operación:
+
+```
+medidas: { largo: 6, alto: 3 }               → 6 × 3 = 18 m²
+medidas: { largo: 0.9, alto: 2.1, piezas: 7 } → 0.9 × 2.1 = 1.89 m² × 7 = 13.23 m²
+medidas: { largo: 4.5 }                       → 4.5 ml
+```
+
+`ancho` y `alto` son la misma dimensión —la segunda— con dos nombres porque un
+piso se describe "largo por ancho" y un muro "largo por alto". Mandar los dos
+se rechaza en vez de adivinar cuál se quiso decir.
+
+Esta cuenta la hace el sistema y no el modelo **a propósito**: 6 × 3 es trivial
+hasta que son 3.4 × 2.85 × 7 piezas, y ese resultado se vuelve dinero.
+
+### Precio: cuatro formas
+
+```
+precio_unitario: 1900                              ← lo dictas
+costo_directo: 600                                 ← costo, y se aplica el margen
+costo_materiales: 420, costo_mano_obra: 180        ← desglosado; se suman
+(nada de lo anterior)                              ← te lo pregunta
+```
+
+Exige una sola forma y rechaza las combinaciones: elegir precio por alguien más
+es justo lo que este servidor no hace.
+
+### Dar de alta lo que se repite
+
+Cuando un concepto libre resulta ser recurrente:
+
+```
+guardar_en_catalogo(desde_partida=1, categoria="Carpintería", costo=600)
+```
+
+Toma nombre, precio y unidad de esa partida del borrador —separando la unidad
+del nombre— y lo registra en `services` con la fecha de revisión sellada. Si ya
+hay algo con nombre parecido **avisa en vez de duplicar**: un catálogo con
+"Cocina", "Cocinas" y "Cocina minimalista" es el desorden que costó trabajo
+limpiar.
 
 ### Las tres rutas de precio
 

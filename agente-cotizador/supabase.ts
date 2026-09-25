@@ -155,6 +155,36 @@ export async function leerCotizacion(id: string): Promise<FilaCotizacion | null>
 
 // ── Escritura ────────────────────────────────────────────────────────────
 
+/**
+ * Da de alta un servicio en la lista maestra.
+ *
+ * Sella `price_updated_at` con la fecha de hoy: un precio recién capturado y
+ * uno de hace dos años se ven idénticos si nadie anota cuándo se revisó.
+ */
+export async function crearServicio(s: {
+    name: string; category?: string | null; description?: string | null;
+    base_price: number; cost?: number | null; units?: string | null;
+    sku?: string | null; notes?: string | null;
+}): Promise<FilaServicio> {
+    const filas = await pedir('/services', {
+        method: 'POST',
+        headers: { Prefer: 'return=representation' },
+        body: JSON.stringify([{
+            name: s.name,
+            category: s.category ?? null,
+            description: s.description ?? null,
+            base_price: s.base_price,
+            cost: s.cost ?? null,
+            units: s.units ?? null,
+            sku: s.sku || null,
+            notes: s.notes ?? null,
+            active: true,
+            price_updated_at: new Date().toISOString().slice(0, 10),
+        }]),
+    });
+    return filas?.[0];
+}
+
 export async function guardarCotizacion(c: {
     projectName: string; clientName: string; deliveryTime: string; date: string;
     items: { description: string; quantity: number; unitPrice: number }[];
