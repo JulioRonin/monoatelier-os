@@ -18,12 +18,28 @@ import type { Quote } from '../types';
 // worker del agente, que es justo el escenario que se quería evitar.
 import { totalesDe } from './cotizador.js';
 
-// ── Coordenadas de la plantilla (calibradas, no adivinadas) ──────────────
-const ENCABEZADO = { proyecto: [220, 195], cliente: [220, 220], fecha: [450, 220] };
+// ── Coordenadas de la plantilla ─────────────────────────────────────────
+//
+// Medidas con `pdftotext -bbox` sobre la plantilla real, no a ojo: ahí están
+// las posiciones exactas de cada rótulo impreso, y los valores se alinean
+// contra ellas. Si algún día se cambia la plantilla, hay que volver a medir
+// (ver calibrar.mjs), no mover números hasta que "se vea bien".
+//
+// Rótulos de referencia (x0–x1, y0–y1 desde arriba):
+//   PROYECTO  83.9–160.1  197.7–212.7      Descripción 114.0–184.0  257.6–271.2
+//   CLIENTE   83.1–136.0  216.6–230.1      #           266.1–272.9
+//   Fecha:   393.9–439.9  213.2–227.3      Costo       352.2–386.2
+//   NOTAS:    82.0–131.4  447.2–460.8      Total       460.4–490.3
+//   Sub Total 370.4–426.0 445.4–459.0
+const ENCABEZADO = { proyecto: [220, 203], cliente: [220, 220], fecha: [450, 217] };
 // anchoDescripcion: hasta dónde puede llegar el texto antes de invadir la
 // columna de cantidad, que va centrada en 280.
-const TABLA = { inicioY: 300, paso: 20, descripcionX: 65, anchoDescripcion: 195,
-                cantidadCentro: 280, precioDer: 415, totalDer: 495 };
+// cantidadCentro va al centro del rótulo "#" (266.1–272.9), y las cifras
+// terminan 4pt después del borde derecho de su encabezado. Antes la cantidad
+// caía 10pt a la derecha de su columna y el costo 29pt: las cifras no
+// colgaban de su título.
+const TABLA = { inicioY: 300, paso: 20, descripcionX: 65, anchoDescripcion: 190,
+                cantidadCentro: 269.5, precioDer: 390, totalDer: 494 };
 
 /**
  * La tabla arranca en 300 y los totales viven en 450: caben 7 partidas.
@@ -45,7 +61,25 @@ const FINANZAS = { derecha: 495, inicioY: 450 };
  */
 const NOTAS = { x: 140, y: 450, ancho: 225, alto: 10, maxLineas: 4 };
 
-const ENTREGA = { x: 210, y: 540 };
+/**
+ * Los días de entrega van en el hueco que la plantilla dejó entre "ENTREGA"
+ * (termina en 207.7) y "DÍAS" (empieza en 219.5): once puntos y ocho décimas.
+ *
+ * Un número de dos cifras a 9pt mide ~10pt y quedaba pegado a "DÍAS". Se
+ * centra en el hueco y se encoge la fuente hasta que quepa con aire a los
+ * lados — un "120" no cabría a 9pt y saldría montado sobre el rótulo.
+ *
+ * Queda más pequeño que el texto de la plantilla y no se puede evitar desde
+ * aquí: para igualar su altura (10pt de caja) harían falta ~12pt de fuente,
+ * que miden 13.6pt de ancho y no entran en un hueco de 11.8. Eso se arregla
+ * ensanchando el hueco en el archivo de diseño de la plantilla, no en código.
+ */
+// La línea "TIEMPO DE ENTREGA ... DÍAS" de la plantilla ocupa 540.6–550.6.
+// Se ancla por el BORDE INFERIOR (yMaxObjetivo) y no por una coordenada fija,
+// porque al encoger la fuente el texto se movería de renglón: a 548 el número
+// se caía al renglón siguiente y quedaba encima de "DE ORDEN DE COMPRA".
+const ENTREGA = { hueco: [207.7, 219.5], yLinea: 540.0,
+                  sizeMax: 9, sizeMin: 6, margen: 1.2 };
 
 export interface OpcionesPdf {
     /** Bytes de la plantilla. El que llama decide de dónde salen. */
@@ -218,7 +252,15 @@ export async function generarCotizacionPdf(
     }
 
     const habiles = diasHabiles(quote.date, quote.deliveryTime);
-    if (habiles > 0) texto(String(habiles), ENTREGA.x, ENTREGA.y, negrita, 9);
+    if (habiles > 0) {
+        const t = String(habiles);
+        const disponible = ENTREGA.hueco[1] - ENTREGA.hueco[0] - ENTREGA.margen * 2;
+        let size = ENTREGA.sizeMax;
+        while (size > ENTREGA.sizeMin && negrita.widthOfTextAtSize(t, size) > disponible) size -= 0.5;
+        const ancho = negrita.widthOfTextAtSize(t, size);
+        const centro = (ENTREGA.hueco[0] + ENTREGA.hueco[1]) / 2;
+        texto(t, centro - ancho / 2, ENTREGA.yLinea, negrita, size);
+    }
 
     return pdfDoc.save();
 }
