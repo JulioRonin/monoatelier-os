@@ -81,6 +81,30 @@ async function pedir(ruta: string, init: RequestInit = {}): Promise<any> {
     return texto ? JSON.parse(texto) : null;
 }
 
+/**
+ * Los ids, siempre como texto.
+ *
+ * PostgREST devuelve un `bigint` como NÚMERO de JSON y un `uuid` como cadena,
+ * y las tablas de la plataforma mezclan los dos: `quotes.id` es bigint y los
+ * servicios son uuid. Ese detalle se filtraba a todo el servidor — `corto(id)`
+ * hace `id.slice(0, 8)` y truena con un número, y un `Map` con claves de texto
+ * nunca encuentra una clave numérica, así que los clientes salían todos como
+ * "sin cliente" sin dar error.
+ *
+ * Se normaliza aquí, en la frontera, en vez de poner `String(...)` en cada
+ * uso: basta olvidarlo en uno para que vuelva el mismo fallo callado.
+ */
+function idsDeTexto<T extends Record<string, any>>(fila: T, campos: string[]): T {
+    const out: Record<string, any> = { ...fila };
+    for (const c of campos) {
+        if (out[c] !== null && out[c] !== undefined) out[c] = String(out[c]);
+    }
+    return out as T;
+}
+
+const mapear = <T extends Record<string, any>>(filas: T[] | null, campos: string[]): T[] =>
+    (filas ?? []).map(f => idsDeTexto(f, campos));
+
 // ── Lecturas ─────────────────────────────────────────────────────────────
 
 export interface FilaServicio {
@@ -95,14 +119,14 @@ export interface FilaVariante {
     active: boolean | null; sort_order: number | null;
 }
 
-export const leerServicios = () =>
-    pedir('/services?select=*&order=name') as Promise<FilaServicio[]>;
+export const leerServicios = async (): Promise<FilaServicio[]> =>
+    mapear(await pedir('/services?select=*&order=name'), ['id']);
 
-export const leerVariantes = () =>
-    pedir('/service_variables?select=*&order=sort_order') as Promise<FilaVariante[]>;
+export const leerVariantes = async (): Promise<FilaVariante[]> =>
+    mapear(await pedir('/service_variables?select=*&order=sort_order'), ['id', 'service_id']);
 
-export const leerClientes = () =>
-    pedir('/clients?select=id,full_name,fiscal_name,rfc,email&order=full_name') as Promise<any[]>;
+export const leerClientes = async (): Promise<any[]> =>
+    mapear(await pedir('/clients?select=id,full_name,fiscal_name,rfc,email&order=full_name'), ['id']);
 
 export async function leerAjustes(): Promise<Record<string, any>> {
     try {
@@ -134,7 +158,7 @@ export interface FilaCotizacion {
  * filtrar aquí: con doscientas cotizaciones, traerlas completas para descartar
  * ciento noventa es tráfico y memoria por nada.
  */
-export function leerCotizaciones(opts: {
+export async function leerCotizaciones(opts: {
     cliente?: string; estado?: string; limite?: number;
 } = {}): Promise<FilaCotizacion[]> {
     const q = new URLSearchParams({
@@ -144,16 +168,131 @@ export function leerCotizaciones(opts: {
     });
     if (opts.cliente) q.set('client_name', `ilike.*${opts.cliente}*`);
     if (opts.estado) q.set('status', `eq.${opts.estado}`);
-    return pedir(`/quotes?${q}`) as Promise<FilaCotizacion[]>;
+    return mapear(await pedir(`/quotes?${q}`), ['id']);
+}
+
+/**
+ * Cotizaciones para medir un periodo: todas, sin límite, con lo mínimo.
+ *
+ * No filtra por fecha en el servidor y no es descuido: hay cotizaciones con
+ * `date` vacío, y en PostgREST un `date=gte.X` las deja fuera en silencio.
+ * Quedarían invisibles justo en el reporte que debería contarlas. Aquí se
+ * traen todas —son cientos, no millones, es un taller— y el filtro cae del
+ * lado del servidor MCP, que puede usar `created_at` cuando `date` falta.
+ */
+export async function leerCotizacionesTodas(): Promise<FilaCotizacion[]> {
+    return mapear(await pedir(
+        '/quotes?select=id,project_name,client_name,date,total_amount,status,created_at'
+        + '&order=date.desc'), ['id']);
 }
 
 /** Una cotización por id exacto. */
 export async function leerCotizacion(id: string): Promise<FilaCotizacion | null> {
     const filas = await pedir(`/quotes?select=*&id=eq.${encodeURIComponent(id)}&limit=1`);
-    return filas?.[0] ?? null;
+    return filas?.[0] ? idsDeTexto(filas[0], ['id']) : null;
 }
 
 // ── Escritura ────────────────────────────────────────────────────────────
+
+// ── Datos de venta (sólo lectura) ────────────────────────────────────────
+
+export interface FilaProyecto {
+    id: string; name: string | null; client_id: string | null;
+    status: string | null; budget: number | null; live_cost: number | null;
+    start_date: string | null; due_date: string | null;
+    sold_at: string | null; quote_id: string | null; created_at: string | null;
+}
+
+export interface FilaFactura {
+    id: string; series: string | null; folio: number | null; date: string | null;
+    client_name: string | null; client_rfc: string | null;
+    subtotal: number | null; total: number | null; status: string | null;
+    uuid: string | null; modo: string | null; created_at: string | null;
+}
+
+/**
+ * Proyectos en un rango, por FECHA DE VENTA.
+ *
+ * Se filtra por `sold_at` y no por `start_date` ni `due_date` a propósito: una
+ * cotización de septiembre que se cierra en noviembre y arranca en enero
+ * aparece en tres meses distintos según con cuál se mida. La venta entró en
+ * noviembre. Ver migración 20260925_fecha_de_venta.
+ */
+export async function leerProyectos(desde?: string, hasta?: string): Promise<FilaProyecto[]> {
+    const q = new URLSearchParams({ select: '*', order: 'sold_at.desc' });
+    if (desde) q.append('sold_at', `gte.${desde}`);
+    if (hasta) q.append('sold_at', `lte.${hasta}`);
+    return mapear(await pedir(`/projects?${q}`), ['id', 'client_id', 'quote_id']);
+}
+
+/**
+ * Proyectos SIN fecha de venta.
+ *
+ * Va aparte a propósito: `leerProyectos` filtra por `sold_at` en el servidor,
+ * así que un proyecto sin esa fecha no vuelve en NINGÚN rango. Si no se
+ * preguntara por ellos explícitamente, no saldrían en ningún mes y tampoco en
+ * ninguna advertencia — desaparecerían del reporte sin ruido, que es
+ * exactamente el problema que esta migración vino a arreglar.
+ */
+export async function leerProyectosSinFechaDeVenta(): Promise<FilaProyecto[]> {
+    return mapear(
+        await pedir('/projects?select=*&sold_at=is.null&order=created_at.desc'),
+        ['id', 'client_id', 'quote_id']);
+}
+
+/**
+ * Ids de las cotizaciones que sí se volvieron proyecto. TODAS, sin rango.
+ *
+ * La conversión hay que medirla por cohorte: de lo cotizado en septiembre,
+ * cuánto se cerró — sin importar si se cerró en noviembre o en marzo. Dividir
+ * lo vendido de un mes entre lo cotizado del mismo mes compara dos grupos
+ * distintos y da cosas como "300% de conversión".
+ */
+export async function leerCotizacionesVendidas(): Promise<Set<string>> {
+    const filas = await pedir('/projects?select=quote_id&quote_id=not.is.null');
+    return new Set<string>((filas ?? []).map((f: any) => String(f.quote_id)));
+}
+
+/** Facturas timbradas en un rango. Sólo las reales: las de sandbox no se cuentan. */
+export async function leerFacturas(desde?: string, hasta?: string): Promise<FilaFactura[]> {
+    const q = new URLSearchParams({ select: '*', order: 'date.desc' });
+    if (desde) q.append('date', `gte.${desde}`);
+    if (hasta) q.append('date', `lte.${hasta}`);
+    return mapear(await pedir(`/invoices?${q}`), ['id']);
+}
+
+export const leerClientesMin = async (): Promise<any[]> =>
+    mapear(await pedir('/clients?select=id,full_name,fiscal_name'), ['id']);
+
+/**
+ * Da de alta un servicio en la lista maestra.
+ *
+ * Sella `price_updated_at` con la fecha de hoy: un precio recién capturado y
+ * uno de hace dos años se ven idénticos si nadie anota cuándo se revisó.
+ */
+export async function crearServicio(s: {
+    name: string; category?: string | null; description?: string | null;
+    base_price: number; cost?: number | null; units?: string | null;
+    sku?: string | null; notes?: string | null;
+}): Promise<FilaServicio> {
+    const filas = await pedir('/services', {
+        method: 'POST',
+        headers: { Prefer: 'return=representation' },
+        body: JSON.stringify([{
+            name: s.name,
+            category: s.category ?? null,
+            description: s.description ?? null,
+            base_price: s.base_price,
+            cost: s.cost ?? null,
+            units: s.units ?? null,
+            sku: s.sku || null,
+            notes: s.notes ?? null,
+            active: true,
+            price_updated_at: new Date().toISOString().slice(0, 10),
+        }]),
+    });
+    return idsDeTexto(filas?.[0] ?? {}, ['id']);
+}
 
 export async function guardarCotizacion(c: {
     projectName: string; clientName: string; deliveryTime: string; date: string;
@@ -174,5 +313,5 @@ export async function guardarCotizacion(c: {
             status: c.status,
         }]),
     });
-    return filas?.[0];
+    return idsDeTexto(filas?.[0] ?? {}, ['id']);
 }

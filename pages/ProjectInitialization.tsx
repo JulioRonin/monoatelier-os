@@ -130,6 +130,9 @@ const ProjectInitialization: React.FC<InitProps> = ({ onCancel, initialData }) =
         try {
             setSaving(true);
             await api.createProject({
+                // vienen de la cotización cuando el proyecto nace de una
+                quoteId: initialData?.quoteId,
+                soldAt: initialData?.soldAt,
                 name,
                 clientId: selectedClientId,
                 status,

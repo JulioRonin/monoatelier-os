@@ -8,7 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "build:agente": "tsc -p tsconfig.agente.json",
-    "doctor:agente": "npm run build:agente && node agente-cotizador/dist/agente-cotizador/doctor.js"
+    "doctor:agente": "npm run build:agente && node agente-cotizador/dist/agente-cotizador/doctor.js",
+    "calibrar:pdf": "npm run build:agente && node calibrar.mjs"
   },
   "dependencies": {
     "@google/model-viewer": "^4.3.1",

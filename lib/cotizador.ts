@@ -148,6 +148,82 @@ export function redondear(n: number, decimales = 2): number {
 }
 
 // ---------------------------------------------------------------------------
+// Cantidad a partir de medidas
+// ---------------------------------------------------------------------------
+
+/**
+ * Medidas de un concepto, en metros.
+ *
+ * `ancho` y `alto` son el MISMO hueco: la segunda dimensión. Se llaman
+ * distinto porque un piso se describe "largo por ancho" y un muro "largo por
+ * alto", y obligar a usar una sola palabra hace que uno la teclee mal.
+ */
+export interface Medidas {
+    largo?: number;
+    ancho?: number;
+    alto?: number;
+    piezas?: number;
+}
+
+export interface CantidadCalculada {
+    cantidad: number;
+    unidad: 'ml' | 'm²';
+    /** La operación, para enseñarla. Un número sin su cuenta no se puede revisar. */
+    explicacion: string;
+}
+
+export class MedidasInvalidas extends Error {}
+
+/**
+ * Convierte medidas en cantidad.
+ *
+ * Esta cuenta la hace el sistema y no el modelo a propósito: 6 × 3 es trivial
+ * hasta que son 3.4 × 2.85 × 7 piezas, y ese resultado se vuelve dinero. Es la
+ * misma regla que en mono-forge — el modelo decide qué cotizar, el motor
+ * calcula cuánto.
+ */
+export function cantidadDeMedidas(m: Medidas): CantidadCalculada {
+    const { largo, ancho, alto } = m;
+    const piezas = m.piezas ?? 1;
+
+    if (!largo || largo <= 0) {
+        throw new MedidasInvalidas('Falta el largo (en metros) para calcular la cantidad.');
+    }
+    if (piezas <= 0) {
+        throw new MedidasInvalidas('Las piezas deben ser un número positivo.');
+    }
+    if (ancho != null && alto != null) {
+        throw new MedidasInvalidas(
+            'Mandaste ancho y alto a la vez y son la misma dimensión: la segunda. ' +
+            'Usa "ancho" para superficies horizontales y "alto" para muros, pero sólo uno.');
+    }
+
+    const segunda = ancho ?? alto;
+    if (segunda != null && segunda <= 0) {
+        throw new MedidasInvalidas('La segunda dimensión debe ser mayor a cero.');
+    }
+
+    if (segunda == null) {
+        const cantidad = redondear(largo * piezas);
+        return {
+            cantidad, unidad: 'ml',
+            explicacion: piezas > 1
+                ? `${largo} m × ${piezas} piezas = ${cantidad} ml`
+                : `${largo} ml`,
+        };
+    }
+
+    const area = redondear(largo * segunda);
+    const cantidad = redondear(area * piezas);
+    return {
+        cantidad, unidad: 'm²',
+        explicacion: piezas > 1
+            ? `${largo} × ${segunda} = ${area} m² × ${piezas} piezas = ${cantidad} m²`
+            : `${largo} × ${segunda} = ${cantidad} m²`,
+    };
+}
+
+// ---------------------------------------------------------------------------
 // Precio desde costo
 // ---------------------------------------------------------------------------
 
@@ -180,6 +256,22 @@ const normalizar = (s: string) =>
     s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
 
 /**
+ * Palabras que no distinguen nada en español y ensucian la búsqueda.
+ *
+ * Sin esto, "Lambrín **de** madera **en** muro" encontraba "Cocina" como
+ * parecido: la palabra "de" hace match dentro de "**De**sign", su categoría.
+ * Un falso parecido no es inocuo — hace que el agente avise de un duplicado
+ * que no existe, o que elija el servicio equivocado.
+ */
+const IRRELEVANTES = new Set([
+    'de', 'del', 'la', 'el', 'los', 'las', 'un', 'una', 'unos', 'unas',
+    'y', 'o', 'a', 'al', 'en', 'con', 'por', 'para', 'sin', 'sobre', 'tipo',
+]);
+
+const significativas = (q: string) =>
+    q.split(/\s+/).filter(p => p.length >= 3 && !IRRELEVANTES.has(p));
+
+/**
  * Busca servicios por nombre aproximado.
  *
  * El agente recibe "cocina" o "cubierta de cuarzo" en lenguaje natural; esto
@@ -189,7 +281,7 @@ const normalizar = (s: string) =>
 export function buscarServicios(servicios: Service[], texto: string): Service[] {
     const q = normalizar(texto);
     if (!q) return [];
-    const palabras = q.split(/\s+/);
+    const palabras = significativas(q);
     return servicios
         .filter(s => s.active !== false)
         .map(s => {

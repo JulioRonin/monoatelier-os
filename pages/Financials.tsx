@@ -90,15 +90,26 @@ const Financials: React.FC = () => {
     const [selectedMonth, setSelectedMonth] = useState<string>('All');
     const [selectedStatus, setSelectedStatus] = useState<string>('All');
 
+    /**
+     * El mes de un proyecto es el mes en que se VENDIÓ, no en que arranca obra.
+     *
+     * Antes se filtraba por `startDate` y eso movía la venta de mes: una
+     * cocina cerrada en noviembre que arranca en enero aparecía en enero, y el
+     * mes en que de verdad entró el dinero salía vacío. `soldAt` se llena al
+     * convertir la cotización en proyecto (ver App.tsx). Cae de vuelta en
+     * `startDate` para los proyectos anteriores a la migración
+     * 20260925_fecha_de_venta, que no la traen.
+     */
+    const mesDeVenta = (p: typeof projects[number]) =>
+        (p.soldAt ?? p.startDate ?? '').substring(0, 7); // YYYY-MM
+
     // Get unique months from projects
-    const availableMonths = Array.from(new Set(projects.map(p => {
-        if (!p.startDate) return '';
-        return p.startDate.substring(0, 7); // YYYY-MM
-    }))).filter(Boolean).sort().reverse();
+    const availableMonths = Array.from(new Set(projects.map(mesDeVenta)))
+        .filter(Boolean).sort().reverse();
 
     // Filter Logic
     const filteredProjects = projects.filter(p => {
-        const matchesMonth = selectedMonth === 'All' || (p.startDate && p.startDate.startsWith(selectedMonth));
+        const matchesMonth = selectedMonth === 'All' || mesDeVenta(p) === selectedMonth;
         const matchesStatus = selectedStatus === 'All' || p.status === selectedStatus;
         return matchesMonth && matchesStatus;
     });
@@ -261,10 +272,14 @@ const Financials: React.FC = () => {
                                 onChange={(e) => setSelectedMonth(e.target.value)}
                                 className="appearance-none bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 px-4 py-3 pr-10 rounded-lg text-xs uppercase tracking-widest font-bold text-gray-500 focus:outline-none focus:border-primary transition-colors cursor-pointer"
                             >
+                                {/* "Sold" y no sólo el mes: el filtro cambió de
+                                    significado —antes agrupaba por arranque de
+                                    obra— y un filtro que mide otra cosa sin
+                                    decirlo hace dudar de los números. */}
                                 <option value="All">All Time</option>
                                 {availableMonths.map(month => (
                                     <option key={month as string} value={month as string}>
-                                        {formatMonth(month as string)}
+                                        Sold {formatMonth(month as string)}
                                     </option>
                                 ))}
                             </select>

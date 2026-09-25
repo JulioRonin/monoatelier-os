@@ -221,6 +221,11 @@ export interface Project {
   team: string[]; // Stores TeamMember IDs
   projectOverview?: string;
   responsibleId?: string; // ID of the user responsible for the project
+  /** Cotización que originó el proyecto, si vino de una. */
+  quoteId?: string;
+  /** Cuándo la cotización se volvió venta. No es la fecha de la cotización
+   *  (ofertar) ni la de inicio (producir): es la que dice en qué mes entró. */
+  soldAt?: string;
 }
 
 // Financial Reporting Types

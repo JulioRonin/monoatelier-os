@@ -18,12 +18,32 @@ import type { Quote } from '../types';
 // worker del agente, que es justo el escenario que se quería evitar.
 import { totalesDe } from './cotizador.js';
 
-// ── Coordenadas de la plantilla (calibradas, no adivinadas) ──────────────
-const ENCABEZADO = { proyecto: [220, 195], cliente: [220, 220], fecha: [450, 220] };
+// ── Coordenadas de la plantilla ─────────────────────────────────────────
+//
+// Medidas con `pdftotext -bbox` sobre la plantilla real, no a ojo: ahí están
+// las posiciones exactas de cada rótulo impreso, y los valores se alinean
+// contra ellas. Si algún día se cambia la plantilla, hay que volver a medir
+// (ver calibrar.mjs), no mover números hasta que "se vea bien".
+//
+// Rótulos de referencia (x0–x1, y0–y1 desde arriba):
+//   PROYECTO  83.9–160.1  197.7–212.7      Descripción 114.0–184.0  257.6–271.2
+//   CLIENTE   83.1–136.0  216.6–230.1      #           266.1–272.9
+//   Fecha:   393.9–439.9  213.2–227.3      Costo       352.2–386.2
+//   NOTAS:    82.0–131.4  447.2–460.8      Total       460.4–490.3
+//   Sub Total 370.4–426.0 445.4–459.0
+// anchoNombre: los nombres arrancan en 220 y "Fecha:" empieza en 393.9. Un
+// nombre fiscal largo ("…SERVICIOS INDUSTRIALES SA DE CV") lo atravesaba
+// entero, escribiendo encima del rótulo y de la fecha.
+const ENCABEZADO = { proyecto: [220, 203], cliente: [220, 220], fecha: [450, 217],
+                     anchoNombre: 168 };
 // anchoDescripcion: hasta dónde puede llegar el texto antes de invadir la
 // columna de cantidad, que va centrada en 280.
-const TABLA = { inicioY: 300, paso: 20, descripcionX: 65, anchoDescripcion: 195,
-                cantidadCentro: 280, precioDer: 415, totalDer: 495 };
+// cantidadCentro va al centro del rótulo "#" (266.1–272.9), y las cifras
+// terminan 4pt después del borde derecho de su encabezado. Antes la cantidad
+// caía 10pt a la derecha de su columna y el costo 29pt: las cifras no
+// colgaban de su título.
+const TABLA = { inicioY: 300, paso: 20, descripcionX: 65, anchoDescripcion: 190,
+                cantidadCentro: 269.5, precioDer: 390, totalDer: 494 };
 
 /**
  * La tabla arranca en 300 y los totales viven en 450: caben 7 partidas.
@@ -32,7 +52,11 @@ const TABLA = { inicioY: 300, paso: 20, descripcionX: 65, anchoDescripcion: 195,
  */
 const Y_TOPE = 435;
 
-const FINANZAS = { derecha: 495, inicioY: 450 };
+// anchoCifra: los rótulos impresos "Sub Total", "IVA (8%)" y "Total" terminan
+// cerca de x=430. Una cifra de siete dígitos a 10pt mide ~77pt y desde 495
+// hacia la izquierda llegaba hasta 418, encima del rótulo. Se encoge para
+// caber en lugar de montarse.
+const FINANZAS = { derecha: 495, inicioY: 450, anchoCifra: 62 };
 
 /**
  * Las notas van en la columna de la izquierda, bajo "NOTAS:".
@@ -45,7 +69,25 @@ const FINANZAS = { derecha: 495, inicioY: 450 };
  */
 const NOTAS = { x: 140, y: 450, ancho: 225, alto: 10, maxLineas: 4 };
 
-const ENTREGA = { x: 210, y: 540 };
+/**
+ * Los días de entrega van en el hueco que la plantilla dejó entre "ENTREGA"
+ * (termina en 207.7) y "DÍAS" (empieza en 219.5): once puntos y ocho décimas.
+ *
+ * Un número de dos cifras a 9pt mide ~10pt y quedaba pegado a "DÍAS". Se
+ * centra en el hueco y se encoge la fuente hasta que quepa con aire a los
+ * lados — un "120" no cabría a 9pt y saldría montado sobre el rótulo.
+ *
+ * Queda más pequeño que el texto de la plantilla y no se puede evitar desde
+ * aquí: para igualar su altura (10pt de caja) harían falta ~12pt de fuente,
+ * que miden 13.6pt de ancho y no entran en un hueco de 11.8. Eso se arregla
+ * ensanchando el hueco en el archivo de diseño de la plantilla, no en código.
+ */
+// La línea "TIEMPO DE ENTREGA ... DÍAS" de la plantilla ocupa 540.6–550.6.
+// Se ancla por el BORDE INFERIOR (yMaxObjetivo) y no por una coordenada fija,
+// porque al encoger la fuente el texto se movería de renglón: a 548 el número
+// se caía al renglón siguiente y quedaba encima de "DE ORDEN DE COMPRA".
+const ENTREGA = { hueco: [207.7, 219.5], yLinea: 540.0,
+                  sizeMax: 9, sizeMin: 6, margen: 1.2 };
 
 export interface OpcionesPdf {
     /** Bytes de la plantilla. El que llama decide de dónde salen. */
@@ -158,10 +200,19 @@ export async function generarCotizacionPdf(
     const derecha = (t: string, xDer: number, y: number, font: PDFFont = normal, size = 10) => {
         texto(t, xDer - font.widthOfTextAtSize(t, size), y, font, size);
     };
+    /** Como `derecha`, pero encoge la fuente hasta que la cifra quepa en `ancho`. */
+    const derechaAjustada = (t: string, xDer: number, y: number, ancho: number,
+                             font: PDFFont = normal, size = 10) => {
+        let s = size;
+        while (s > 6 && font.widthOfTextAtSize(t, s) > ancho) s -= 0.25;
+        texto(t, xDer - font.widthOfTextAtSize(t, s), y, font, s);
+    };
 
     // ── Encabezado ───────────────────────────────────────────────────────
-    texto(quote.projectName ?? '', ENCABEZADO.proyecto[0], ENCABEZADO.proyecto[1], negrita);
-    texto(quote.clientName ?? '', ENCABEZADO.cliente[0], ENCABEZADO.cliente[1], negrita);
+    texto(recortar(quote.projectName ?? '', negrita, 10, ENCABEZADO.anchoNombre),
+          ENCABEZADO.proyecto[0], ENCABEZADO.proyecto[1], negrita);
+    texto(recortar(quote.clientName ?? '', negrita, 10, ENCABEZADO.anchoNombre),
+          ENCABEZADO.cliente[0], ENCABEZADO.cliente[1], negrita);
     texto(quote.date ?? '', ENCABEZADO.fecha[0], ENCABEZADO.fecha[1]);
 
     // ── Partidas ─────────────────────────────────────────────────────────
@@ -180,10 +231,14 @@ export async function generarCotizacionPdf(
         const cant = Number(item.quantity) || 0;
         const unitario = Number(item.unitPrice) || 0;
 
-        texto(recortar(item.description ?? '', normal, 10, TABLA.anchoDescripcion),
-              TABLA.descripcionX, y);
+        // El ancho de la descripción se calcula contra la cantidad de ESTE
+        // renglón: "1234.56" centrado ocupa más a la izquierda que "4", y con
+        // un ancho fijo la descripción le caía encima.
         const tCant = String(cant);
-        texto(tCant, TABLA.cantidadCentro - normal.widthOfTextAtSize(tCant, 10) / 2, y);
+        const xCant = TABLA.cantidadCentro - normal.widthOfTextAtSize(tCant, 10) / 2;
+        const anchoDesc = Math.min(TABLA.anchoDescripcion, xCant - TABLA.descripcionX - 6);
+        texto(recortar(item.description ?? '', normal, 10, anchoDesc), TABLA.descripcionX, y);
+        texto(tCant, xCant, y);
         derecha(pesos(unitario, 0), TABLA.precioDer, y);
         derecha(pesos(cant * unitario, 0), TABLA.totalDer, y);
 
@@ -201,9 +256,9 @@ export async function generarCotizacionPdf(
     // subtotal no cuadre con los renglones que tiene arriba es un documento que
     // el cliente va a objetar. Manda lo que está impreso.
     const t = totalesDe(quote.items ?? [], iva);
-    derecha(pesos(t.subtotal), FINANZAS.derecha, FINANZAS.inicioY, negrita);
-    derecha(pesos(t.iva), FINANZAS.derecha, FINANZAS.inicioY + 15, negrita);
-    derecha(pesos(t.total), FINANZAS.derecha, FINANZAS.inicioY + 35, negrita, 12);
+    derechaAjustada(pesos(t.subtotal), FINANZAS.derecha, FINANZAS.inicioY, FINANZAS.anchoCifra, negrita);
+    derechaAjustada(pesos(t.iva), FINANZAS.derecha, FINANZAS.inicioY + 15, FINANZAS.anchoCifra, negrita);
+    derechaAjustada(pesos(t.total), FINANZAS.derecha, FINANZAS.inicioY + 35, FINANZAS.anchoCifra, negrita, 12);
 
     if (quote.notes) {
         const lineas = envolver(quote.notes, normal, 8, NOTAS.ancho);
@@ -218,7 +273,15 @@ export async function generarCotizacionPdf(
     }
 
     const habiles = diasHabiles(quote.date, quote.deliveryTime);
-    if (habiles > 0) texto(String(habiles), ENTREGA.x, ENTREGA.y, negrita, 9);
+    if (habiles > 0) {
+        const t = String(habiles);
+        const disponible = ENTREGA.hueco[1] - ENTREGA.hueco[0] - ENTREGA.margen * 2;
+        let size = ENTREGA.sizeMax;
+        while (size > ENTREGA.sizeMin && negrita.widthOfTextAtSize(t, size) > disponible) size -= 0.5;
+        const ancho = negrita.widthOfTextAtSize(t, size);
+        const centro = (ENTREGA.hueco[0] + ENTREGA.hueco[1]) / 2;
+        texto(t, centro - ancho / 2, ENTREGA.yLinea, negrita, size);
+    }
 
     return pdfDoc.save();
 }

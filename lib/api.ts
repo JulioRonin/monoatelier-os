@@ -80,7 +80,9 @@ const mapProject = (data: any): Project => {
         docsUrl: data.docs_url || [],
         team: data.team || [],
         projectOverview: data.project_overview,
-        responsibleId: data.responsible_id
+        responsibleId: data.responsible_id,
+        quoteId: data.quote_id ?? undefined,
+        soldAt: data.sold_at ?? undefined
     };
 };
 
@@ -266,7 +268,10 @@ export const api = {
                 progress: project.progress,
                 phase: project.phase,
                 project_overview: project.projectOverview,
-                team: project.team
+                team: project.team,
+                // Trazabilidad de la venta. Ver migración 20260925_fecha_de_venta.
+                quote_id: (project as any).quoteId ?? null,
+                sold_at: (project as any).soldAt ?? new Date().toISOString().slice(0, 10)
             }])
             .select()
             .single();

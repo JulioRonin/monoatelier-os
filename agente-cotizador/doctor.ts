@@ -83,6 +83,7 @@ async function main() {
         ['service_variables', 'supabase/migrations/20260808_master_list.sql'],
         ['ajustes', 'supabase/migrations/20260924_tarifas.sql'],
         ['quotes', 'la tabla de cotizaciones de la plataforma'],
+        ['projects', 'la tabla de proyectos de la plataforma'],
     ];
     for (const [tabla, migracion] of TABLAS) {
         const r = await rest(`/${tabla}?select=*&limit=1`);
@@ -113,6 +114,8 @@ async function main() {
          'supabase/migrations/20260808_master_list.sql'],
         ['service_variables', ['kind', 'sort_order', 'cost', 'units', 'active'],
          'supabase/migrations/20260808_master_list.sql'],
+        ['projects', ['sold_at', 'quote_id'],
+         'supabase/migrations/20260925_fecha_de_venta.sql'],
     ];
     for (const [tabla, columnas, migracion] of COLUMNAS) {
         const faltan: string[] = [];
@@ -125,10 +128,15 @@ async function main() {
                 `Corre ${migracion}\n` +
                 (faltan.includes('kind')
                     ? 'Sin "kind" no se distingue una sustitución de un adicional,\n' +
-                      'que es lo que hace que una cotización salga de menos.'
+                      'que es lo que hace que una cotización salga de menos.\n'
+                    : '') +
+                (faltan.includes('sold_at')
+                    ? 'Sin "sold_at" el reporte de ventas no sabe en qué mes entró\n' +
+                      'cada venta y tiene que medir con la fecha de arranque de obra,\n' +
+                      'que puede caer meses después.'
                     : ''));
         } else {
-            linea(OK, `${tabla} tiene las columnas de la lista maestra`);
+            linea(OK, `${tabla} tiene las columnas que el agente necesita`);
         }
     }
 
