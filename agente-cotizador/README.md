@@ -50,12 +50,53 @@ Y para consultar lo ya cotizado:
 | `ver_cotizacion` | El detalle de una: partidas y totales |
 | `pdf_de_cotizacion` | Vuelve a generar su PDF para reenviarlo, sin modificarla |
 
+Y para preguntar por las ventas:
+
+| Herramienta | Qué hace |
+|---|---|
+| `resumen_ventas` | Cotizado, vendido y facturado mes por mes, con margen y conversión |
+| `ventas_por_cliente` | Quién compra más y cuál deja más margen |
+| `reporte_ventas` | Lo mismo en PDF, con el formato de la plataforma, para guardar o imprimir |
+
+Estas tres llevan **costos y márgenes**, y las respuestas vienen marcadas como
+información interna. El PDF sale sellado `USO INTERNO — NO ENVIAR AL CLIENTE`
+en cada página: no impide reenviarlo, pero sí reenviarlo sin darse cuenta.
+
 Cada cotización se identifica con una **referencia corta** (los primeros ocho
 caracteres del id) para poder decir "mándame el PDF de la 7c8d4400". Si la
 referencia coincide con más de una, el agente pregunta en vez de adivinar:
 mandarle al cliente el PDF equivocado es peor que pedir que lo aclare.
 
 El PDF **sólo se genera al cerrar**, después de que apruebes los totales.
+
+### Con qué fecha se mide cada cifra
+
+Un proyecto tiene tres fechas distintas y dan tres meses distintos:
+
+| Cifra | Fecha que usa | Qué contesta |
+|---|---|---|
+| Cotizado | `quotes.date` | cuándo se **ofertó** |
+| Vendido | `projects.sold_at` | cuándo **entró la venta** |
+| Facturado | `invoices.date` | cuándo se **timbró** |
+
+Una cocina ofertada en septiembre, cerrada en noviembre y que arranca obra en
+enero aparecía en septiembre, en noviembre o en enero según la pantalla:
+Financials agrupaba por `start_date` y el Dashboard por `due_date`. La venta
+entró en noviembre. Por eso la migración `20260925_fecha_de_venta.sql` agrega
+`projects.sold_at` —que se llena sola al convertir una cotización en
+proyecto— y `projects.quote_id`, que dice de qué cotización salió.
+
+La **conversión** se mide por cohorte: de lo cotizado en un mes, cuánto acabó
+cerrándose, aunque se cerrara meses después. Dividir lo vendido entre lo
+cotizado del mismo mes compara dos grupos distintos y llega a dar más de 100%.
+Necesita `quote_id`, que sólo tienen las cotizaciones convertidas después de
+esa migración; antes de eso la columna sale en blanco en vez de en cero.
+
+Lo facturado cuenta **sólo lo timbrado de verdad**: las facturas de sandbox
+(`modo = 'test'`) y las canceladas quedan fuera.
+
+Los proyectos **sin fecha de venta** no caen en ningún mes, así que el resumen
+los lista aparte en vez de dejarlos desaparecer sin ruido.
 
 ### Conceptos fuera de catálogo
 
@@ -221,7 +262,7 @@ Hermes lanza el servidor compilado; sin reconstruir sigue usando el anterior.
 
 ## Qué verificar la primera vez
 
-1. Que Hermes liste las seis herramientas.
+1. Que Hermes liste las catorce herramientas.
 2. Que `ver_catalogo` traiga tus servicios reales (si no, es `SUPABASE_KEY`).
 3. Que al cerrar, el PDF quede en `COTIZADOR_SALIDA` y Hermes lo adjunte en el
    chat. El servidor devuelve la ruta; **queda por confirmar si Hermes la
@@ -231,7 +272,14 @@ Hermes lanza el servidor compilado; sin reconstruir sigue usando el anterior.
 
 ```bash
 node prueba-flujo.mjs     # levanta un Supabase falso con los CSV y cotiza
+node prueba-ventas.mjs    # comprueba que cada cifra use su fecha, y el PDF
 ```
+
+`prueba-ventas.mjs` arma a propósito el caso que se rompía: una cotización de
+septiembre, cerrada en noviembre, con arranque de obra en enero. Falla si la
+venta cae en un mes que no es noviembre, si una factura de sandbox o cancelada
+se cuenta como ingreso, si un proyecto sin fecha de venta desaparece sin aviso,
+o si la conversión pasa del 100% por cruzar cohortes.
 
 Recorre el flujo completo —catálogo, borrador, las tres rutas de precio, PDF—
 sin tocar la base real. Útil para ver si un cambio rompió algo.

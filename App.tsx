@@ -75,7 +75,12 @@ const App: React.FC = () => {
       name: quote.projectName,
       clientName: quote.clientName,
       budget: quote.totalAmount,
-      projectOverview: quote.notes
+      projectOverview: quote.notes,
+      // De dónde salió y CUÁNDO se cerró. Sin esto no hay forma de saber en
+      // qué mes entró la venta: la fecha de la cotización es cuándo se ofertó
+      // y la de inicio es cuándo arranca la obra, que pueden ser otros meses.
+      quoteId: quote.id,
+      soldAt: new Date().toISOString().slice(0, 10),
     });
     setCurrentPage(Page.ProjectInit);
   };

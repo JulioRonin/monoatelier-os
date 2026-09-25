@@ -147,6 +147,21 @@ export function leerCotizaciones(opts: {
     return pedir(`/quotes?${q}`) as Promise<FilaCotizacion[]>;
 }
 
+/**
+ * Cotizaciones para medir un periodo: todas, sin límite, con lo mínimo.
+ *
+ * No filtra por fecha en el servidor y no es descuido: hay cotizaciones con
+ * `date` vacío, y en PostgREST un `date=gte.X` las deja fuera en silencio.
+ * Quedarían invisibles justo en el reporte que debería contarlas. Aquí se
+ * traen todas —son cientos, no millones, es un taller— y el filtro cae del
+ * lado del servidor MCP, que puede usar `created_at` cuando `date` falta.
+ */
+export function leerCotizacionesTodas(): Promise<FilaCotizacion[]> {
+    return pedir(
+        '/quotes?select=id,project_name,client_name,date,total_amount,status,created_at'
+        + '&order=date.desc') as Promise<FilaCotizacion[]>;
+}
+
 /** Una cotización por id exacto. */
 export async function leerCotizacion(id: string): Promise<FilaCotizacion | null> {
     const filas = await pedir(`/quotes?select=*&id=eq.${encodeURIComponent(id)}&limit=1`);
@@ -154,6 +169,74 @@ export async function leerCotizacion(id: string): Promise<FilaCotizacion | null>
 }
 
 // ── Escritura ────────────────────────────────────────────────────────────
+
+// ── Datos de venta (sólo lectura) ────────────────────────────────────────
+
+export interface FilaProyecto {
+    id: string; name: string | null; client_id: string | null;
+    status: string | null; budget: number | null; live_cost: number | null;
+    start_date: string | null; due_date: string | null;
+    sold_at: string | null; quote_id: string | null; created_at: string | null;
+}
+
+export interface FilaFactura {
+    id: string; series: string | null; folio: number | null; date: string | null;
+    client_name: string | null; client_rfc: string | null;
+    subtotal: number | null; total: number | null; status: string | null;
+    uuid: string | null; modo: string | null; created_at: string | null;
+}
+
+/**
+ * Proyectos en un rango, por FECHA DE VENTA.
+ *
+ * Se filtra por `sold_at` y no por `start_date` ni `due_date` a propósito: una
+ * cotización de septiembre que se cierra en noviembre y arranca en enero
+ * aparece en tres meses distintos según con cuál se mida. La venta entró en
+ * noviembre. Ver migración 20260925_fecha_de_venta.
+ */
+export function leerProyectos(desde?: string, hasta?: string): Promise<FilaProyecto[]> {
+    const q = new URLSearchParams({ select: '*', order: 'sold_at.desc' });
+    if (desde) q.append('sold_at', `gte.${desde}`);
+    if (hasta) q.append('sold_at', `lte.${hasta}`);
+    return pedir(`/projects?${q}`) as Promise<FilaProyecto[]>;
+}
+
+/**
+ * Proyectos SIN fecha de venta.
+ *
+ * Va aparte a propósito: `leerProyectos` filtra por `sold_at` en el servidor,
+ * así que un proyecto sin esa fecha no vuelve en NINGÚN rango. Si no se
+ * preguntara por ellos explícitamente, no saldrían en ningún mes y tampoco en
+ * ninguna advertencia — desaparecerían del reporte sin ruido, que es
+ * exactamente el problema que esta migración vino a arreglar.
+ */
+export function leerProyectosSinFechaDeVenta(): Promise<FilaProyecto[]> {
+    return pedir('/projects?select=*&sold_at=is.null&order=created_at.desc') as Promise<FilaProyecto[]>;
+}
+
+/**
+ * Ids de las cotizaciones que sí se volvieron proyecto. TODAS, sin rango.
+ *
+ * La conversión hay que medirla por cohorte: de lo cotizado en septiembre,
+ * cuánto se cerró — sin importar si se cerró en noviembre o en marzo. Dividir
+ * lo vendido de un mes entre lo cotizado del mismo mes compara dos grupos
+ * distintos y da cosas como "300% de conversión".
+ */
+export async function leerCotizacionesVendidas(): Promise<Set<string>> {
+    const filas = await pedir('/projects?select=quote_id&quote_id=not.is.null');
+    return new Set<string>((filas ?? []).map((f: any) => String(f.quote_id)));
+}
+
+/** Facturas timbradas en un rango. Sólo las reales: las de sandbox no se cuentan. */
+export function leerFacturas(desde?: string, hasta?: string): Promise<FilaFactura[]> {
+    const q = new URLSearchParams({ select: '*', order: 'date.desc' });
+    if (desde) q.append('date', `gte.${desde}`);
+    if (hasta) q.append('date', `lte.${hasta}`);
+    return pedir(`/invoices?${q}`) as Promise<FilaFactura[]>;
+}
+
+export const leerClientesMin = () =>
+    pedir('/clients?select=id,full_name,fiscal_name') as Promise<any[]>;
 
 /**
  * Da de alta un servicio en la lista maestra.

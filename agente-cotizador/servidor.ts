@@ -35,11 +35,17 @@ import {
     importeDe, redondear, cantidadDeMedidas, MedidasInvalidas, margenDe,
 } from '../lib/cotizador.js';
 import { generarCotizacionPdf } from '../lib/cotizacionPdf.js';
+import {
+    generarReporteVentasPdf, type ClienteDeVentas,
+} from '../lib/reporteVentasPdf.js';
 import type { Service, ServiceVariable, QuoteItem, Quote } from '../types.js';
 import {
     leerServicios, leerVariantes, leerAjustes, guardarCotizacion,
     leerCotizaciones, leerCotizacion, crearServicio,
+    leerProyectos, leerProyectosSinFechaDeVenta, leerFacturas, leerClientesMin,
+    leerCotizacionesTodas, leerCotizacionesVendidas,
     type FilaServicio, type FilaVariante, type FilaCotizacion,
+    type FilaProyecto, type FilaFactura,
 } from './supabase.js';
 
 const IVA_DEFAULT = 0.08;   // franja fronteriza norte
@@ -602,6 +608,301 @@ server.registerTool('guardar_en_catalogo', {
         (costo == null
             ? 'Sin costo no se puede saber si ese precio deja margen. Conviene capturarlo en la pantalla de Precios.'
             : 'Ya se puede cotizar con agregar_partida usando ese nombre.'));
+});
+
+// ── Datos de venta ───────────────────────────────────────────────────────
+
+/**
+ * El margen y el costo NO son información de cliente.
+ *
+ * Es la misma regla que en mono-forge, donde hay un test que abre los PDF en
+ * binario y falla si el margen se filtró a un documento del cliente. Aquí no
+ * hay cómo impedirlo por código —el agente redacta texto libre— así que se
+ * dice en cada respuesta que los lleva.
+ */
+const SOLO_INTERNO =
+    '\n\n⚠ INTERNO: los costos y márgenes de arriba son para Julio, NUNCA para ' +
+    'un cliente. No los copies a una cotización, a un correo ni a un mensaje ' +
+    'dirigido a un cliente.';
+
+const mes = (f?: string | null) => (f ?? '').slice(0, 7);
+
+const nombreMes = (m: string) => {
+    const [a, n] = m.split('-');
+    const d = new Date(Number(a), Number(n) - 1, 1);
+    return isNaN(d.getTime()) ? m
+        : d.toLocaleDateString('es-MX', { month: 'long', year: 'numeric' });
+};
+
+/** Rango por omisión: los últimos 12 meses completos más el corriente. */
+function rango(desde?: string, hasta?: string) {
+    const hoy = new Date();
+    const fin = hasta ?? hoy.toISOString().slice(0, 10);
+    const ini = desde ?? new Date(hoy.getFullYear(), hoy.getMonth() - 11, 1)
+        .toISOString().slice(0, 10);
+    return { desde: ini, hasta: fin };
+}
+
+interface MesVentas {
+    mes: string; cotizado: number; vendido: number;
+    costo: number; facturado: number; n: number;
+    /** De lo cotizado ESE mes, cuánto acabó cerrándose — en cualquier mes
+     *  posterior. Así se mide la conversión sin cruzar cohortes. */
+    convertido: number;
+}
+
+interface Ventas {
+    desde: string; hasta: string;
+    meses: MesVentas[];
+    total: MesVentas;
+    /** Proyectos que no dicen en qué mes entró la venta. */
+    sinFecha: FilaProyecto[];
+    /** Si NINGUNA cotización del periodo trae proyecto ligado, la conversión no
+     *  es 0%: es que todavía no se sabe. El enlace existe desde la migración
+     *  20260925 y lo viejo no lo tiene. */
+    conversionMedible: boolean;
+}
+
+/**
+ * Los números del periodo, una sola vez.
+ *
+ * El texto del chat y el PDF del reporte salen de aquí los dos. Si cada uno
+ * sumara por su cuenta, el día que cambie una regla —qué factura cuenta, con
+ * qué fecha— quedaría cambiada en uno y no en el otro, y el PDF diría una cosa
+ * y el chat otra sobre el mismo mes.
+ */
+async function juntarVentas(desde?: string, hasta?: string): Promise<Ventas> {
+    const r = rango(desde, hasta);
+    const [proyectos, huerfanos, facturas, cotizaciones, vendidas] = await Promise.all([
+        leerProyectos(r.desde, r.hasta),
+        leerProyectosSinFechaDeVenta().catch(() => [] as FilaProyecto[]),
+        leerFacturas(r.desde, r.hasta).catch(() => [] as FilaFactura[]),
+        leerCotizacionesTodas().catch(() => [] as FilaCotizacion[]),
+        leerCotizacionesVendidas().catch(() => new Set<string>()),
+    ]);
+
+    const mapa = new Map<string, MesVentas>();
+    const fila = (m: string) => {
+        if (!mapa.has(m)) mapa.set(m, {
+            mes: m, cotizado: 0, vendido: 0, costo: 0, facturado: 0, n: 0, convertido: 0,
+        });
+        return mapa.get(m)!;
+    };
+    const dentro = (m: string) => !!m && m >= mes(r.desde) && m <= mes(r.hasta);
+
+    let algunaLigada = false;
+    for (const c of cotizaciones) {
+        const m = mes(c.date ?? c.created_at);
+        if (!dentro(m)) continue;
+        const f = fila(m);
+        f.cotizado += Number(c.total_amount) || 0;
+        if (vendidas.has(c.id)) {
+            f.convertido += Number(c.total_amount) || 0;
+            algunaLigada = true;
+        }
+    }
+    for (const p of proyectos) {
+        if (!p.sold_at) continue;   // el filtro del servidor ya los excluyó
+        const f = fila(mes(p.sold_at));
+        f.vendido += Number(p.budget) || 0;
+        f.costo += Number(p.live_cost) || 0;
+        f.n++;
+    }
+    // Las de sandbox nunca llegaron al SAT y las canceladas ya no existen:
+    // ninguna de las dos es ingreso.
+    for (const f of facturas) {
+        if (f.modo === 'test' || f.status === 'canceled') continue;
+        const m = mes(f.date ?? f.created_at);
+        if (!dentro(m)) continue;
+        fila(m).facturado += Number(f.total) || 0;
+    }
+
+    const meses = [...mapa.values()].sort((a, b) => a.mes.localeCompare(b.mes));
+    const total = meses.reduce<MesVentas>((a, v) => ({
+        mes: 'total', cotizado: a.cotizado + v.cotizado, vendido: a.vendido + v.vendido,
+        costo: a.costo + v.costo, facturado: a.facturado + v.facturado, n: a.n + v.n,
+        convertido: a.convertido + v.convertido,
+    }), { mes: 'total', cotizado: 0, vendido: 0, costo: 0, facturado: 0, n: 0, convertido: 0 });
+
+    return {
+        desde: r.desde, hasta: r.hasta, meses, total,
+        sinFecha: huerfanos, conversionMedible: algunaLigada,
+    };
+}
+
+const porcentaje = (parte: number, sobre: number, dec = 0) =>
+    sobre > 0 ? `${((parte / sobre) * 100).toFixed(dec)}%` : '—';
+
+/** Margen del periodo. Devuelve null cuando no hay costo capturado: un 100%
+ *  por falta de datos se lee como negocio redondo y es un dato que no existe. */
+const margenDelMes = (v: { vendido: number; costo: number }) =>
+    v.vendido > 0 && v.costo > 0 ? (v.vendido - v.costo) / v.vendido : null;
+
+server.registerTool('resumen_ventas', {
+    title: 'Resumen de ventas por mes',
+    description:
+        'Qué se ofertó, qué se vendió y qué se facturó, mes por mes. Responde preguntas como ' +
+        '"¿cuánto vendimos este trimestre?" o "¿cómo vamos contra el mes pasado?".\n' +
+        'Cada cifra usa SU fecha: lo cotizado por fecha de cotización, lo vendido por la fecha ' +
+        'en que la cotización se volvió proyecto, y lo facturado por la fecha de la factura. ' +
+        'Son tres momentos distintos y mezclarlos da números que no cuadran.\n' +
+        'Incluye margen, que es información INTERNA.',
+    inputSchema: {
+        desde: z.string().optional().describe('Fecha inicial AAAA-MM-DD. Por omisión, hace 12 meses.'),
+        hasta: z.string().optional().describe('Fecha final AAAA-MM-DD. Por omisión, hoy.'),
+    },
+}, async ({ desde, hasta }) => {
+    const v = await juntarVentas(desde, hasta);
+    if (!v.meses.length) return texto(`No hay movimientos entre ${v.desde} y ${v.hasta}.`);
+
+    const lineas = v.meses.map(m => {
+        const mg = margenDelMes(m);
+        return `${nombreMes(m.mes).padEnd(18)} cotizado ${pesos(m.cotizado).padStart(14)} · ` +
+               `vendido ${pesos(m.vendido).padStart(14)} (${m.n}) · ` +
+               `facturado ${pesos(m.facturado).padStart(14)}` +
+               (mg == null ? '' : ` · margen ${porcentaje(mg, 1)}`);
+    });
+    const mgTotal = margenDelMes(v.total);
+
+    // Ojo: no se filtra por Boolean. Los renglones vacíos de aquí son la
+    // separación visual, y filtrarlos pega los totales a la tabla.
+    const partes = [
+        `Ventas de ${v.desde} a ${v.hasta}`,
+        '',
+        ...lineas,
+        '',
+        `TOTAL  cotizado ${pesos(v.total.cotizado)} · vendido ${pesos(v.total.vendido)} ` +
+        `(${v.total.n} proyectos) · facturado ${pesos(v.total.facturado)}`,
+        mgTotal == null
+            ? 'Margen no calculable: falta capturar el costo real de los proyectos.'
+            : `Margen del periodo: ${porcentaje(mgTotal, 1, 1)}`,
+    ];
+    // Conversión por cohorte: de lo COTIZADO en el periodo, cuánto se cerró.
+    // No es lo vendido entre lo cotizado del mismo mes — eso compara la venta
+    // de noviembre contra la oferta de noviembre, cuando la que se cerró era
+    // la de septiembre, y sale un 300%.
+    if (!v.conversionMedible) {
+        partes.push(
+            'Conversión: no medible todavía. Se calcula ligando cada cotización con el ' +
+            'proyecto en que se convirtió, y ese enlace se guarda desde ahora; las ' +
+            'cotizaciones anteriores no lo traen.');
+    } else if (v.total.cotizado > 0) {
+        partes.push(
+            `Conversión: ${porcentaje(v.total.convertido, v.total.cotizado)} de lo cotizado ` +
+            `en el periodo acabó cerrándose (${pesos(v.total.convertido)} de ${pesos(v.total.cotizado)}).`);
+    }
+    if (v.sinFecha.length) {
+        partes.push(
+            '',
+            `⚠ ${v.sinFecha.length} proyecto(s) sin fecha de venta — no entran en ningún mes:`,
+            ...v.sinFecha.slice(0, 8).map(p => `   · ${p.name ?? p.id} (${pesos(Number(p.budget) || 0)})`),
+            'Se arregla asignándoles su fecha de venta en la pantalla de Proyectos.');
+    }
+    return texto(partes.join('\n') + SOLO_INTERNO);
+});
+
+server.registerTool('ventas_por_cliente', {
+    title: 'Ventas y margen por cliente',
+    description:
+        'Cuánto se le ha vendido y facturado a cada cliente, y con qué margen. Responde ' +
+        '"¿quién es mi mejor cliente?" o "¿cuál me deja más margen?". Información INTERNA.',
+    inputSchema: {
+        desde: z.string().optional().describe('Fecha inicial AAAA-MM-DD.'),
+        hasta: z.string().optional().describe('Fecha final AAAA-MM-DD.'),
+        limite: z.number().int().min(1).max(50).optional().describe('Cuántos clientes mostrar. Por omisión 10.'),
+    },
+}, async ({ desde, hasta, limite }) => {
+    const r = rango(desde, hasta);
+    const clientes = await juntarClientes(r.desde, r.hasta, limite ?? 10);
+    if (!clientes.length) return texto(`Sin movimientos entre ${r.desde} y ${r.hasta}.`);
+
+    return texto(
+        `Clientes de ${r.desde} a ${r.hasta} (por venta)\n\n` +
+        clientes.map(v => {
+            const mg = margenDelMes(v);
+            return `${v.nombre.slice(0, 30).padEnd(31)} vendido ${pesos(v.vendido).padStart(14)} ` +
+                   `(${v.n}) · facturado ${pesos(v.facturado).padStart(14)}` +
+                   (mg == null ? ' · sin costo capturado' : ` · margen ${porcentaje(mg, 1)}`);
+        }).join('\n') + SOLO_INTERNO);
+});
+
+/**
+ * Ventas por cliente, de mayor a menor.
+ *
+ * El nombre viene de `clients` por `client_id` para los proyectos, y del
+ * nombre impreso en la factura para lo facturado. No siempre coinciden —el
+ * CFDI lleva la razón social y el proyecto puede estar a nombre de la persona—
+ * y forzarlos a cuadrar aquí sería inventar una relación que la base no tiene.
+ */
+async function juntarClientes(desde: string, hasta: string, limite: number): Promise<ClienteDeVentas[]> {
+    const [proyectos, facturas, clientes] = await Promise.all([
+        leerProyectos(desde, hasta),
+        leerFacturas(desde, hasta).catch(() => [] as FilaFactura[]),
+        leerClientesMin().catch(() => [] as any[]),
+    ]);
+    const nombreDe = new Map<string, string>(
+        clientes.map(c => [String(c.id), String(c.fiscal_name || c.full_name || c.id)]));
+
+    const acc = new Map<string, ClienteDeVentas>();
+    const f = (nombre: string) => {
+        if (!acc.has(nombre)) acc.set(nombre, { nombre, vendido: 0, costo: 0, facturado: 0, n: 0 });
+        return acc.get(nombre)!;
+    };
+    for (const p of proyectos) {
+        const x = f(nombreDe.get(p.client_id ?? '') ?? 'sin cliente');
+        x.vendido += Number(p.budget) || 0;
+        x.costo += Number(p.live_cost) || 0;
+        x.n++;
+    }
+    for (const fa of facturas) {
+        if (fa.modo === 'test' || fa.status === 'canceled') continue;
+        f(fa.client_name ?? 'sin cliente').facturado += Number(fa.total) || 0;
+    }
+    return [...acc.values()].sort((a, b) => b.vendido - a.vendido).slice(0, limite);
+}
+
+server.registerTool('reporte_ventas', {
+    title: 'Reporte de ventas en PDF',
+    description:
+        'El mismo resumen de ventas, pero como PDF con el formato de la plataforma: A4 ' +
+        'horizontal, encabezado, tarjetas de resumen y tabla por mes, más el detalle por ' +
+        'cliente. Úsalo cuando pidan "un reporte", "mándame el PDF" o algo para guardar o ' +
+        'imprimir; para responder una cifra suelta basta resumen_ventas.\n' +
+        'El documento lleva costos y márgenes y sale marcado de USO INTERNO. Es para Julio, ' +
+        'NO se le manda a un cliente.',
+    inputSchema: {
+        desde: z.string().optional().describe('Fecha inicial AAAA-MM-DD. Por omisión, hace 12 meses.'),
+        hasta: z.string().optional().describe('Fecha final AAAA-MM-DD. Por omisión, hoy.'),
+        clientes: z.boolean().optional().describe('Incluir el desglose por cliente. Por omisión sí.'),
+    },
+}, async ({ desde, hasta, clientes }) => {
+    const v = await juntarVentas(desde, hasta);
+    if (!v.meses.length) return texto(`No hay movimientos entre ${v.desde} y ${v.hasta}: no hay qué reportar.`);
+
+    const porCliente = clientes === false ? undefined
+        : await juntarClientes(v.desde, v.hasta, 15);
+
+    const bytes = await generarReporteVentasPdf({
+        desde: v.desde, hasta: v.hasta,
+        meses: v.meses,
+        clientes: porCliente,
+        conversionMedible: v.conversionMedible,
+        sinFechaDeVenta: v.sinFecha.map(p => ({
+            nombre: p.name ?? p.id, monto: Number(p.budget) || 0,
+        })),
+    });
+
+    mkdirSync(SALIDA(), { recursive: true });
+    const archivo = `Reporte-ventas-${v.desde}-a-${v.hasta}.pdf`;
+    const ruta = join(SALIDA(), archivo);
+    writeFileSync(ruta, bytes);
+
+    const mg = margenDelMes(v.total);
+    return texto(
+        `Reporte listo: ${v.meses.length} mes(es), ${v.desde} a ${v.hasta}.\n` +
+        `Vendido ${pesos(v.total.vendido)} · facturado ${pesos(v.total.facturado)}` +
+        (mg == null ? '' : ` · margen ${porcentaje(mg, 1, 1)}`) + '\n\n' +
+        comoEntregar(ruta) + SOLO_INTERNO);
 });
 
 // ── Consultar lo ya cotizado ─────────────────────────────────────────────
