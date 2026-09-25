@@ -24,49 +24,53 @@ import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js'
 
 // ── Datos de mentiras, con las fechas peleadas a propósito ───────────────
 
+// Los ids van como NÚMEROS a propósito: quotes.id en la base real es bigint y
+// PostgREST lo devuelve como número de JSON, no como cadena. Con ids de texto
+// la prueba pasaba y el servidor fallaba contra la base de verdad —los
+// clientes salían todos como "sin cliente" y corto(id) tronaba.
 const clients = [
-  { id: 'c1', full_name: 'EMDICO', fiscal_name: 'EMDICO SA DE CV' },
-  { id: 'c2', full_name: 'Casa Ríos', fiscal_name: null },
+  { id: 1, full_name: 'EMDICO', fiscal_name: 'EMDICO SA DE CV' },
+  { id: 2, full_name: 'Casa Ríos', fiscal_name: null },
 ];
 
 const quotes = [
   // Se ofertó en septiembre. Se cerró en noviembre (ver projects).
-  { id: 'q1', project_name: 'Cocina Planta 2', client_name: 'EMDICO SA DE CV',
+  { id: 101, project_name: 'Cocina Planta 2', client_name: 'EMDICO SA DE CV',
     date: '2026-09-03', total_amount: 180000, status: 'Approved',
     items: [], notes: null, delivery_time: '30', created_at: '2026-09-03T10:00:00Z' },
   // Ofertada en noviembre y nunca cerrada: sube lo cotizado, no lo vendido.
-  { id: 'q2', project_name: 'Closets recámara', client_name: 'Casa Ríos',
+  { id: 102, project_name: 'Closets recámara', client_name: 'Casa Ríos',
     date: '2026-11-11', total_amount: 60000, status: 'Sent',
     items: [], notes: null, delivery_time: '20', created_at: '2026-11-11T10:00:00Z' },
 ];
 
 const projects = [
   // El caso del pleito: cotizada en sept, VENDIDA en nov, arranca en enero.
-  { id: 'p1', name: 'Cocina Planta 2', client_id: 'c1', status: 'In Progress',
+  { id: 201, name: 'Cocina Planta 2', client_id: 1, status: 'In Progress',
     budget: 180000, live_cost: 117000, start_date: '2027-01-08', due_date: '2027-03-01',
-    sold_at: '2026-11-19', quote_id: 'q1', created_at: '2026-11-19T18:00:00Z' },
-  { id: 'p2', name: 'Lambrín oficina', client_id: 'c2', status: 'Completed',
+    sold_at: '2026-11-19', quote_id: 101, created_at: '2026-11-19T18:00:00Z' },
+  { id: 202, name: 'Lambrín oficina', client_id: 2, status: 'Completed',
     budget: 42000, live_cost: 25000, start_date: '2026-11-02', due_date: '2026-11-28',
     sold_at: '2026-10-30', quote_id: null, created_at: '2026-10-30T12:00:00Z' },
   // Sin fecha de venta: no debe caer en ningún mes, pero sí avisarse.
-  { id: 'p3', name: 'Barra bar', client_id: 'c1', status: 'In Progress',
+  { id: 203, name: 'Barra bar', client_id: 1, status: 'In Progress',
     budget: 30000, live_cost: 0, start_date: '2026-11-15', due_date: '2026-12-20',
     sold_at: null, quote_id: null, created_at: '2026-11-15T09:00:00Z' },
 ];
 
 const invoices = [
-  { id: 'f1', series: 'A', folio: 8, date: '2026-11-20', client_name: 'EMDICO SA DE CV',
+  { id: 301, series: 'A', folio: 8, date: '2026-11-20', client_name: 'EMDICO SA DE CV',
     client_rfc: 'EMD000101AAA', subtotal: 90000, total: 97200, status: 'valid',
     uuid: 'u-1', modo: 'live', created_at: '2026-11-20T10:00:00Z' },
   // Sandbox: NO es ingreso, nunca llegó al SAT.
-  { id: 'f2', series: 'A', folio: 9, date: '2026-11-21', client_name: 'EMDICO SA DE CV',
+  { id: 302, series: 'A', folio: 9, date: '2026-11-21', client_name: 'EMDICO SA DE CV',
     client_rfc: 'EMD000101AAA', subtotal: 500000, total: 540000, status: 'valid',
     uuid: 'u-2', modo: 'test', created_at: '2026-11-21T10:00:00Z' },
   // Cancelada: tampoco.
-  { id: 'f3', series: 'A', folio: 7, date: '2026-10-31', client_name: 'Casa Ríos',
+  { id: 303, series: 'A', folio: 7, date: '2026-10-31', client_name: 'Casa Ríos',
     client_rfc: 'RIOS800101AAA', subtotal: 100000, total: 108000, status: 'canceled',
     uuid: 'u-3', modo: 'live', created_at: '2026-10-31T10:00:00Z' },
-  { id: 'f4', series: 'A', folio: 6, date: '2026-10-15', client_name: 'Casa Ríos',
+  { id: 304, series: 'A', folio: 6, date: '2026-10-15', client_name: 'Casa Ríos',
     client_rfc: 'RIOS800101AAA', subtotal: 40000, total: 43200, status: 'valid',
     uuid: 'u-4', modo: 'live', created_at: '2026-10-15T10:00:00Z' },
 ];
@@ -127,6 +131,13 @@ const reporte = await call('reporte_ventas', { desde: '2026-09-01', hasta: '2026
   .catch(e => 'reporte_ventas no disponible: ' + e.message);
 paso('reporte_ventas', reporte);
 
+// Estas dos son las que tronaban con un id numérico: corto(id) hace
+// id.slice(0, 8) y un número no tiene slice.
+const listado = await call('listar_cotizaciones', {}).catch(e => 'ERROR: ' + e.message);
+paso('listar_cotizaciones (ids bigint)', listado);
+const detalle = await call('ver_cotizacion', { referencia: '101' }).catch(e => 'ERROR: ' + e.message);
+paso('ver_cotizacion 101', detalle);
+
 // ── Verificaciones ──────────────────────────────────────────────────────
 
 const fallas = [];
@@ -161,6 +172,10 @@ ok(/INTERNO/.test(resumen) && /INTERNO/.test(clientes),
 ok(/EMDICO SA DE CV/.test(clientes), 'el cliente debe salir por su razón social');
 ok(pedidos.some(u => u.includes('sold_at=gte')),
    'el servidor debe filtrar proyectos por sold_at, no traerlos todos');
+ok(!/ERROR:/.test(listado) && /Cocina Planta 2/.test(listado),
+   `listar_cotizaciones debe funcionar con ids bigint. Dio: "${listado.slice(0, 120)}"`);
+ok(!/ERROR:/.test(detalle) && /Cocina Planta 2/.test(detalle),
+   `ver_cotizacion debe funcionar con ids bigint. Dio: "${detalle.slice(0, 120)}"`);
 
 // El PDF se revisa por su TEXTO, no por que el archivo exista y pese algo.
 // Así se detectó que el aviso de proyectos sin fecha quedaba escrito con la

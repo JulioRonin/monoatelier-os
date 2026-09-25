@@ -17,8 +17,43 @@
 -- distintos según a quién se le pregunte.
 
 alter table projects
-  add column if not exists quote_id uuid references quotes(id) on delete set null,
   add column if not exists sold_at date;
+
+-- quote_id tiene que ser DEL MISMO TIPO que quotes.id, y ese tipo no está en
+-- ninguna migración de este repo: las tablas quotes y projects se crearon
+-- fuera. Escribirlo a mano es adivinar —la primera versión puso uuid y la
+-- columna real es bigint, así que la migración entera reventó— de modo que se
+-- pregunta al catálogo. Así funciona tanto si es bigint como si es uuid, y
+-- sigue funcionando si algún día se migra de uno a otro.
+do $$
+declare tipo text;
+begin
+  if exists (select 1 from information_schema.columns
+              where table_schema = 'public' and table_name = 'projects'
+                and column_name = 'quote_id') then
+    return;   -- ya está puesta
+  end if;
+
+  -- to_regclass y no 'public.quotes'::regclass: el cast revienta con un error
+  -- de Postgres si la tabla no existe, antes de poder explicar qué pasa.
+  if to_regclass('public.quotes') is null then
+    raise exception 'No existe public.quotes: esta migración va después de la tabla de cotizaciones.';
+  end if;
+
+  select format_type(a.atttypid, a.atttypmod) into tipo
+    from pg_attribute a
+   where a.attrelid = to_regclass('public.quotes')
+     and a.attname = 'id' and a.attnum > 0 and not a.attisdropped;
+
+  if tipo is null then
+    raise exception 'public.quotes no tiene columna id.';
+  end if;
+
+  execute format('alter table public.projects add column quote_id %s', tipo);
+  execute 'alter table public.projects
+             add constraint projects_quote_id_fkey
+             foreign key (quote_id) references public.quotes(id) on delete set null';
+end $$;
 
 comment on column projects.quote_id is
   'Cotización que originó este proyecto. Permite rastrear qué se ofertó contra qué se vendió.';
