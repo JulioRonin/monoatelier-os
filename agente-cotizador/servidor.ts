@@ -38,7 +38,8 @@ import { generarCotizacionPdf } from '../lib/cotizacionPdf.js';
 import type { Service, ServiceVariable, QuoteItem, Quote } from '../types.js';
 import {
     leerServicios, leerVariantes, leerAjustes, guardarCotizacion,
-    type FilaServicio, type FilaVariante,
+    leerCotizaciones, leerCotizacion,
+    type FilaServicio, type FilaVariante, type FilaCotizacion,
 } from './supabase.js';
 
 const IVA_DEFAULT = 0.08;   // franja fronteriza norte
@@ -376,6 +377,151 @@ server.registerTool('cerrar_cotizacion', {
         `PDF: ${ruta}\n${guardado}\n` +
         `Adjúntaselo al usuario en el chat.`);
 });
+
+// ── Consultar lo ya cotizado ─────────────────────────────────────────────
+
+/** Las partidas llegan como JSONB; de una base vieja pueden venir como texto. */
+function partidasDeFila(f: FilaCotizacion): QuoteItem[] {
+    const crudo = typeof f.items === 'string' ? safeJson(f.items) : f.items;
+    return Array.isArray(crudo) ? crudo : [];
+}
+
+function safeJson(t: string): any {
+    try { return JSON.parse(t); } catch { return []; }
+}
+
+/** Referencia corta y estable para que el usuario pueda decir "la 3f2a". */
+const corto = (id: string) => id.slice(0, 8);
+
+const ESTADOS = ['Draft', 'Sent', 'Approved', 'Awaiting Approval', 'Rejected'] as const;
+
+server.registerTool('listar_cotizaciones', {
+    title: 'Listar cotizaciones guardadas',
+    description:
+        'Consulta las cotizaciones YA guardadas en la plataforma, de la más reciente a la más ' +
+        'vieja. Úsala cuando pregunten por cotizaciones pasadas ("mis últimas cotizaciones", ' +
+        '"qué le cotizamos a EMDICO"). No sirve para crear: para eso es iniciar_cotizacion.',
+    inputSchema: {
+        cliente: z.string().optional().describe('Filtra por nombre de cliente (coincidencia parcial).'),
+        estado: z.enum(ESTADOS).optional().describe('Filtra por estado.'),
+        limite: z.number().int().min(1).max(50).optional().describe('Cuántas traer. Por omisión 10.'),
+    },
+}, async ({ cliente, estado, limite }) => {
+    const filas = await leerCotizaciones({ cliente, estado, limite });
+    if (!filas.length) {
+        return texto(cliente
+            ? `No hay cotizaciones guardadas para "${cliente}".`
+            : 'Todavía no hay cotizaciones guardadas.');
+    }
+    const { iva } = await catalogo();
+    const lineas = filas.map(f => {
+        const items = partidasDeFila(f);
+        const t = totalesDe(items, iva);
+        const fecha = (f.date ?? f.created_at ?? '').slice(0, 10);
+        return `${corto(f.id)} · ${fecha} · ${f.client_name ?? 'sin cliente'} — ` +
+               `${f.project_name ?? 'sin proyecto'} · ${items.length} partida(s) · ` +
+               `${pesos(t.total)} con IVA · ${f.status ?? 'sin estado'}`;
+    });
+    return texto(
+        `${filas.length} cotización(es):\n\n${lineas.join('\n')}\n\n` +
+        `Para el detalle usa ver_cotizacion con la referencia de la izquierda.`);
+});
+
+server.registerTool('ver_cotizacion', {
+    title: 'Ver una cotización guardada',
+    description:
+        'Muestra el detalle completo de una cotización ya guardada: sus partidas y totales. ' +
+        'La referencia son los primeros caracteres del id, como los muestra listar_cotizaciones.',
+    inputSchema: {
+        referencia: z.string().describe('Referencia corta o id completo de la cotización.'),
+    },
+}, async ({ referencia }) => {
+    const f = await buscarCotizacion(referencia);
+    if (typeof f === 'string') return texto(f);
+
+    const items = partidasDeFila(f);
+    const { iva } = await catalogo();
+    const t = totalesDe(items, iva);
+    const lineas = items.map((i, n) =>
+        `${n + 1}. ${i.description} — ${i.quantity} × ${pesos(i.unitPrice)} = ${pesos(importeDe(i))}`);
+
+    return texto([
+        `Cotización ${corto(f.id)} — ${f.client_name ?? 'sin cliente'}`,
+        `Proyecto: ${f.project_name ?? 'sin proyecto'}`,
+        `Fecha ${(f.date ?? '').slice(0, 10)} · entrega ${(f.delivery_time ?? '').slice(0, 10)} · ${f.status ?? 'sin estado'}`,
+        '',
+        ...(lineas.length ? lineas : ['(sin partidas)']),
+        '',
+        `Subtotal:  ${pesos(t.subtotal)}`,
+        `IVA ${(iva * 100).toFixed(0)}%:   ${pesos(t.iva)}`,
+        `TOTAL:     ${pesos(t.total)}`,
+        ...(f.notes ? ['', `Notas: ${f.notes}`] : []),
+    ].join('\n'));
+});
+
+server.registerTool('pdf_de_cotizacion', {
+    title: 'Regenerar el PDF de una cotización guardada',
+    description:
+        'Vuelve a generar el PDF de una cotización ya guardada, para reenviarlo. ' +
+        'No la modifica ni crea una nueva. Devuelve la ruta del archivo.',
+    inputSchema: {
+        referencia: z.string().describe('Referencia corta o id completo de la cotización.'),
+    },
+}, async ({ referencia }) => {
+    const f = await buscarCotizacion(referencia);
+    if (typeof f === 'string') return texto(f);
+
+    const items = partidasDeFila(f);
+    if (!items.length) return texto(`La cotización ${corto(f.id)} no tiene partidas: no hay qué imprimir.`);
+
+    const { iva } = await catalogo();
+    const t = totalesDe(items, iva);
+    const quote: Quote = {
+        id: f.id, projectName: f.project_name ?? '', clientName: f.client_name ?? '',
+        deliveryTime: (f.delivery_time ?? '').slice(0, 10), date: (f.date ?? '').slice(0, 10),
+        items, notes: f.notes ?? undefined, status: (f.status as any) ?? 'Draft',
+        totalAmount: t.subtotal,
+    };
+
+    let plantilla: Buffer;
+    try { plantilla = readFileSync(PLANTILLA()); }
+    catch { return texto(`No encontré la plantilla en ${PLANTILLA()}.`); }
+
+    const bytes = await generarCotizacionPdf(quote, { plantilla, iva });
+    mkdirSync(SALIDA(), { recursive: true });
+    const limpio = `${quote.clientName}_${quote.projectName}`.replace(/[^\w\-]+/g, '_').slice(0, 60);
+    const ruta = join(SALIDA(), `Cotizacion_${limpio}_${corto(f.id)}.pdf`);
+    writeFileSync(ruta, bytes);
+
+    return texto(
+        `PDF de la cotización ${corto(f.id)} (${quote.clientName} — ${quote.projectName}, ` +
+        `${pesos(t.total)} con IVA):\n${ruta}\n\nAdjúntaselo al usuario en el chat.`);
+});
+
+/**
+ * Busca por referencia corta o id completo.
+ *
+ * Si la referencia coincide con varias, devuelve el texto para que el agente
+ * PREGUNTE: mandarle al cliente el PDF de otra cotización por adivinar cuál
+ * era es peor que pedir que lo aclare.
+ */
+async function buscarCotizacion(referencia: string): Promise<FilaCotizacion | string> {
+    const ref = referencia.trim().toLowerCase();
+    const exacta = ref.includes('-') ? await leerCotizacion(ref) : null;
+    if (exacta) return exacta;
+
+    const filas = await leerCotizaciones({ limite: 50 });
+    const coinciden = filas.filter(f => f.id.toLowerCase().startsWith(ref));
+    if (!coinciden.length) {
+        return `No encontré ninguna cotización con la referencia "${referencia}". ` +
+               `Usa listar_cotizaciones para ver las disponibles.`;
+    }
+    if (coinciden.length > 1) {
+        return `"${referencia}" coincide con varias. Pregunta al usuario cuál:\n` +
+               coinciden.map(f => `  · ${corto(f.id)} — ${f.client_name} · ${f.project_name}`).join('\n');
+    }
+    return coinciden[0];
+}
 
 // ── Arranque ─────────────────────────────────────────────────────────────
 

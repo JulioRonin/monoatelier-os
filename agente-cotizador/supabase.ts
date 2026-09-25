@@ -114,6 +114,45 @@ export async function leerAjustes(): Promise<Record<string, any>> {
     }
 }
 
+export interface FilaCotizacion {
+    id: string;
+    project_name: string | null;
+    client_name: string | null;
+    date: string | null;
+    delivery_time: string | null;
+    items: any;
+    notes: string | null;
+    status: string | null;
+    total_amount: number | null;
+    created_at: string | null;
+}
+
+/**
+ * Cotizaciones ya guardadas, de la más reciente a la más vieja.
+ *
+ * El filtro por cliente va en el servidor (`ilike`) y no trayendo todo para
+ * filtrar aquí: con doscientas cotizaciones, traerlas completas para descartar
+ * ciento noventa es tráfico y memoria por nada.
+ */
+export function leerCotizaciones(opts: {
+    cliente?: string; estado?: string; limite?: number;
+} = {}): Promise<FilaCotizacion[]> {
+    const q = new URLSearchParams({
+        select: '*',
+        order: 'created_at.desc',
+        limit: String(Math.min(Math.max(opts.limite ?? 10, 1), 50)),
+    });
+    if (opts.cliente) q.set('client_name', `ilike.*${opts.cliente}*`);
+    if (opts.estado) q.set('status', `eq.${opts.estado}`);
+    return pedir(`/quotes?${q}`) as Promise<FilaCotizacion[]>;
+}
+
+/** Una cotización por id exacto. */
+export async function leerCotizacion(id: string): Promise<FilaCotizacion | null> {
+    const filas = await pedir(`/quotes?select=*&id=eq.${encodeURIComponent(id)}&limit=1`);
+    return filas?.[0] ?? null;
+}
+
 // ── Escritura ────────────────────────────────────────────────────────────
 
 export async function guardarCotizacion(c: {
