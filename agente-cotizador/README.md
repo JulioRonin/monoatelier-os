@@ -56,35 +56,93 @@ agregar_partida(servicio="Closet", cantidad=3,
 El margen sale de `ajustes.margen_objetivo` y es **sobre precio**:
 `precio = costo / (1 − margen)`. Nunca aparece en el PDF del cliente.
 
-## Instalación
+## Instalación (Windows, paso a paso)
 
-```bash
-npm install
-npm run build:agente
+Todo se corre **dentro de la carpeta del repo**. El error más común es correr
+`npm install` en `C:\Users\TuUsuario`, donde no hay `package.json`.
+
+**1. Traer el código.** Si tienes Git:
+
+```cmd
+cd C:\Users\ORKA
+git clone https://github.com/JulioRonin/monoatelier-os.git
+cd monoatelier-os
 ```
 
-Deja compilado `agente-cotizador/dist/agente-cotizador/servidor.js`. Hay que
-volver a correrlo cada vez que cambie el código.
+Sin Git: descarga el ZIP desde GitHub (botón verde **Code → Download ZIP**),
+descomprímelo y entra a la carpeta con `cd`.
+
+**2. Las llaves, una sola vez.** Crea el archivo `.env.local` en la raíz del
+repo con las dos que ya usa la plataforma:
+
+```
+VITE_SUPABASE_URL=https://xxxxx.supabase.co
+VITE_SUPABASE_ANON_KEY=eyJhbG...
+```
+
+Están en Supabase → **Project Settings → API**. El agente las lee de ahí, así
+no hay que copiarlas al config de Hermes y arriesgarse a que un día queden
+distintas en cada lado. Ese archivo **no se sube al repositorio**.
+
+**3. Instalar y revisar:**
+
+```cmd
+npm install
+npm run doctor:agente
+```
+
+El doctor compila y revisa la cadena completa: llaves → Supabase → tablas →
+catálogo → plantilla → genera un PDF de prueba. Cada línea con ✗ dice qué
+hacer. **Termina imprimiendo la ruta exacta** que va en el config de Hermes.
 
 ## Configuración en Hermes
 
-En `~/.hermes/config.yaml`:
+En Windows el archivo es `C:\Users\TuUsuario\.hermes\config.yaml`.
 
 ```yaml
 mcp_servers:
   mono_cotizador:
     command: "node"
-    args: ["/ruta/a/monoatelier-os/agente-cotizador/dist/agente-cotizador/servidor.js"]
+    args: ["C:/Users/ORKA/monoatelier-os/agente-cotizador/dist/agente-cotizador/servidor.js"]
+```
+
+Usa **diagonales normales** (`/`) aunque sea Windows: en YAML la barra
+invertida escapa el siguiente carácter y la ruta queda rota sin avisar.
+
+No hace falta la sección `env` si pusiste el `.env.local` del paso 2. Si
+prefieres las llaves aquí:
+
+```yaml
     env:
       SUPABASE_URL: "https://xxxxx.supabase.co"
       SUPABASE_KEY: "***"
-      COTIZADOR_PLANTILLA: "/ruta/a/monoatelier-os/public/TEMPLATE Mono Atelier  (1).pdf"
-      COTIZADOR_SALIDA: "/ruta/donde/guardar/cotizaciones"
 ```
 
-Hermes las registra como `mcp_mono_cotizador_ver_catalogo`, etc.
+Hermes registra las herramientas como `mcp_mono_cotizador_ver_catalogo`, etc.
 
-Las llaves van **sólo** en ese archivo, nunca en el código ni en el repositorio.
+La plantilla del PDF **no se configura**: el servidor la busca solo en
+`public/`. Sólo define `COTIZADOR_PLANTILLA` si la mueves de ahí.
+
+## Probarlo en Discord
+
+En el canal donde esté el bot:
+
+1. *"muéstrame el catálogo de cocinas"* → debe listar tus servicios reales
+2. *"cotiza 4 metros de cocina con cubierta de cuarzo para EMDICO, entrega el 22 de octubre"*
+3. *"enséñame el total"* → revisa los números
+4. *"genérala"* → PDF
+
+Si el paso 1 no trae nada, el problema es la llave o la tabla: corre
+`npm run doctor:agente`.
+
+## Cada vez que cambie el código
+
+```cmd
+git pull
+npm run build:agente
+```
+
+Hermes lanza el servidor compilado; sin reconstruir sigue usando el anterior.
 
 ## Qué verificar la primera vez
 

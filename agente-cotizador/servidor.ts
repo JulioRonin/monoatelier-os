@@ -26,7 +26,8 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { join } from 'node:path';
+import { rutaPlantilla, rutaSalida } from './rutas.js';
 
 import {
     buscarServicios, clasificarVariantes, partidasDe, totalesDe,
@@ -42,9 +43,10 @@ import {
 
 const IVA_DEFAULT = 0.08;   // franja fronteriza norte
 
-const PLANTILLA = () => process.env.COTIZADOR_PLANTILLA
-    ?? resolve(process.cwd(), 'public/TEMPLATE Mono Atelier  (1).pdf');
-const SALIDA = () => process.env.COTIZADOR_SALIDA ?? resolve(process.cwd(), 'cotizaciones');
+// Las rutas se resuelven contra el repo, no contra el directorio donde Hermes
+// lanzó el proceso. Ver rutas.ts.
+const PLANTILLA = rutaPlantilla;
+const SALIDA = rutaSalida;
 
 // ── Mapeo de filas ───────────────────────────────────────────────────────
 

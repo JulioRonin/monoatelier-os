@@ -8,15 +8,56 @@
  * Nunca se escriben llaves en el código.
  */
 
+import { raizRepo } from './rutas.js';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
+/**
+ * Llaves del entorno, y si no están, del .env.local del repo.
+ *
+ * La plataforma ya guarda ahí VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY.
+ * Obligar a copiarlas también al config de Hermes es pedir que el día que
+ * roten una, quede a medias en un lado y nadie sepa por qué.
+ */
+let cacheEnv: Record<string, string> | null = null;
+
+function delEnvLocal(clave: string): string | undefined {
+    if (cacheEnv === null) {
+        cacheEnv = {};
+        try {
+            const txt = readFileSync(join(raizRepo(), '.env.local'), 'utf8');
+            for (const linea of txt.split(/\r?\n/)) {
+                const m = linea.match(/^\s*([\w.]+)\s*=\s*(.*)\s*$/);
+                if (m && !linea.trimStart().startsWith('#')) {
+                    cacheEnv[m[1]] = m[2].replace(/^["']|["']$/g, '');
+                }
+            }
+        } catch { /* sin .env.local: se usa sólo el entorno */ }
+    }
+    return cacheEnv[clave];
+}
+
+export const urlSupabase = (): string | undefined =>
+    (process.env.SUPABASE_URL ?? delEnvLocal('VITE_SUPABASE_URL'))?.replace(/\/$/, '');
+
+export const llaveSupabase = (): string | undefined =>
+    process.env.SUPABASE_KEY
+    ?? delEnvLocal('SUPABASE_KEY')
+    ?? delEnvLocal('VITE_SUPABASE_ANON_KEY');
+
 const URL_BASE = () => {
-    const u = process.env.SUPABASE_URL?.replace(/\/$/, '');
-    if (!u) throw new Error('Falta SUPABASE_URL en el entorno.');
+    const u = urlSupabase();
+    if (!u) throw new Error(
+        'Falta SUPABASE_URL. Ponla en el config de Hermes, o deja VITE_SUPABASE_URL ' +
+        'en el .env.local del repo.');
     return u;
 };
 
 const LLAVE = () => {
-    const k = process.env.SUPABASE_KEY;
-    if (!k) throw new Error('Falta SUPABASE_KEY en el entorno (service_role o anon).');
+    const k = llaveSupabase();
+    if (!k) throw new Error(
+        'Falta SUPABASE_KEY. Ponla en el config de Hermes, o deja ' +
+        'VITE_SUPABASE_ANON_KEY en el .env.local del repo.');
     return k;
 };
 
