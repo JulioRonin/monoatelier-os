@@ -147,6 +147,38 @@ misma parcialidad, que es un error fiscal y no una preferencia.
 El asiento se hace **antes** de descargar el PDF y el XML: si la descarga
 falla, el REP ya está timbrado y el saldo tiene que reflejarlo de todos modos.
 
+## Sandbox y producción no se mezclan
+
+El modo lo decide el prefijo de la llave (`sk_test_…` / `sk_live_…`) y la
+pantalla lo muestra en un distintivo junto al título. Cada renglón de
+`rep_pagos` lleva su `modo`, y **el saldo de una factura sólo suma los pagos
+del modo activo**: un REP de sandbox no llegó al SAT y no puede dejar la
+factura real como "liquidada" — que es exactamente lo que pasó con la 46
+después de la prueba. La migración `20260818_rep_pagos_modo.sql` marca como
+`test` todo lo asentado antes de ella (la llave de producción no existía
+todavía) y libera esos saldos.
+
+En producción, el botón pide una confirmación con los datos a la vista antes
+de timbrar; en sandbox no, para probar sin fricción. Y si el timbre salió del
+sandbox, la pantalla de éxito lo dice con un aviso: ese PDF/XML no se le manda
+al cliente.
+
+## Pasar a producción — la lista
+
+1. **Correr la migración** `20260818_rep_pagos_modo.sql` (libera el saldo que
+   se comió la prueba).
+2. **La llave en `.env.local`**: `VITE_FACTURAPI_KEY=sk_live_…`. Vite hornea
+   las variables al arrancar: hay que **reiniciar `npm run dev`** (o rehacer
+   el build si está desplegada). El distintivo del título dice qué llave está
+   leyendo de verdad.
+3. **La organización de producción en Facturapi debe estar completa**: datos
+   fiscales y los **CSD del SAT subidos** (.cer, .key y su contraseña). El
+   sandbox timbra sin certificados; producción no — sin CSD el timbre falla.
+4. Volver a subir la factura externa **no hace falta**: `facturas_externas`
+   no depende del modo (la factura es real en los dos).
+5. Al timbrar, poner la **fecha real del pago** — de esa fecha se cuenta el
+   plazo del día 5 del mes siguiente.
+
 ## Lo que queda pendiente de confirmar con el contador
 
 La factura 46 lleva **ISR retenido sin IVA retenido**. Para servicios

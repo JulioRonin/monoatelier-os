@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
+import BannerFacturacion from './components/BannerFacturacion';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Projects from './pages/Projects';
@@ -9,6 +10,7 @@ import ClientPortal from './pages/ClientPortal';
 import ProjectInitialization from './pages/ProjectInitialization';
 import ProjectDetails from './pages/ProjectDetails';
 import Quotes from './pages/Quotes';
+import Precios from './pages/Precios'; // New: lista maestra de precios y tarifas
 import Clients from './pages/Clients';
 import TeamManagement from './pages/TeamManagement';
 import UserManagement from './pages/UserManagement'; // New
@@ -30,6 +32,7 @@ export enum Page {
   ProjectInit,
   ProjectDetails,
   Quotes,
+  Precios, // New
   Team,
   UserManagement, // New
   Invoicing, // New
@@ -123,6 +126,10 @@ const App: React.FC = () => {
           onNotificationClick={handleNotificationClick}
         />
 
+        {/* Va aquí, fuera del <main> y sin poder cerrarse: si el aviso vive
+            dentro de una página, sólo se ve cuando ya entraste a facturar. */}
+        <BannerFacturacion />
+
         <main className="flex-1 overflow-y-auto p-8 scrollbar-hide">
           {currentPage === Page.Dashboard && <Dashboard />}
           {currentPage === Page.UserDashboard && <UserDashboard />}
@@ -136,6 +143,7 @@ const App: React.FC = () => {
               onAssignQuote={handleAssignQuote}
             />
           )}
+          {currentPage === Page.Precios && <Precios />}
           {currentPage === Page.Financials && <Financials />}
           {currentPage === Page.ClientPortal && <ClientPortal />}
           {currentPage === Page.ProjectInit && (

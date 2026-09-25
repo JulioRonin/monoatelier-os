@@ -32,6 +32,10 @@ const mapRepPago = (d: any): RepPago => ({
     id: d.id,
     facturaUuid: d.factura_uuid,
     facturaOrigen: d.factura_origen,
+    // Sin la migración del modo, todo lo que existe salió del sandbox: la
+    // llave de producción no existía cuando se asentó. Igual que hace la
+    // migración, se asume 'test' para no descontar saldo real con pruebas.
+    modo: d.modo === 'live' ? 'live' : 'test',
     facturaFolio: d.factura_folio || undefined,
     repUuid: d.rep_uuid || undefined,
     repFacturapiId: d.rep_facturapi_id || undefined,
@@ -603,6 +607,38 @@ export const api = {
         return Object.fromEntries((data || []).map((r: any) => [r.clave, r.valor]));
     },
 
+    /**
+     * Guarda un ajuste del negocio (IVA, tarifas, margen).
+     *
+     * Se guarda el valor como JSON para que un número siga siendo número: si el
+     * IVA o el margen se guardan como texto, el día que alguien escriba "0,08"
+     * la aritmética se rompe en silencio.
+     */
+    async setAjuste(clave: string, valor: any, quien?: string) {
+        if (!supabase) throw new Error("Supabase not configured");
+        const { error } = await supabase.from('ajustes').upsert([{
+            clave,
+            valor,
+            updated_at: new Date().toISOString(),
+            actualizado_por: quien ?? null,
+        }], { onConflict: 'clave' });
+        if (error) throw error;
+    },
+
+    /** Desactiva un servicio o una variante sin borrarlos: lo ya cotizado con
+     *  ellos debe seguir teniendo sentido al releerlo. */
+    async archivarServicio(id: string, activo: boolean) {
+        if (!supabase) throw new Error("Supabase not configured");
+        const { error } = await supabase.from('services').update({ active: activo }).eq('id', id);
+        if (error) throw error;
+    },
+
+    async archivarVariante(id: string, activo: boolean) {
+        if (!supabase) throw new Error("Supabase not configured");
+        const { error } = await supabase.from('service_variables').update({ active: activo }).eq('id', id);
+        if (error) throw error;
+    },
+
     // AUTH
     auth: {
         async login(email: string, password: string) {
@@ -780,6 +816,9 @@ export const api = {
                 total_taxes_retained: invoice.totalTaxesRetained,
                 total: invoice.total,
                 status: invoice.status,
+                // Sandbox o producción. Sin esto, una factura de prueba y una
+                // real se ven idénticas en el historial propio.
+                modo: invoice.modo || 'live',
                 // El UUID llegaba desde Invoicing.tsx y se tiraba aquí: toda
                 // factura timbrada quedaba guardada sin folio fiscal, y sin él
                 // no hay cómo ligarle su REP ni encontrarla ante una aclaración.
@@ -1069,6 +1108,7 @@ export const api = {
         const { error } = await supabase.from('rep_pagos').insert([{
             factura_uuid: p.facturaUuid,
             factura_origen: p.facturaOrigen,
+            modo: p.modo,
             factura_folio: p.facturaFolio || null,
             rep_uuid: p.repUuid || null,
             rep_facturapi_id: p.repFacturapiId || null,

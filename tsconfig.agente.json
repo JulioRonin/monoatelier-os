@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ES2022",
+    "moduleResolution": "bundler",
+    "outDir": "agente-cotizador/dist",
+    "rootDir": ".",
+    "strict": false,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "resolveJsonModule": true,
+    "types": ["node"]
+  },
+  "include": ["agente-cotizador/**/*.ts", "lib/cotizador.ts", "lib/cotizacionPdf.ts", "types.ts"],
+  "exclude": ["agente-cotizador/dist"]
+}

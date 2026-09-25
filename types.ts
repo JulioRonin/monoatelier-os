@@ -365,6 +365,8 @@ export interface RepPago {
   id: string;
   facturaUuid: string;
   facturaOrigen: 'facturapi' | 'externa';
+  /** live = timbrado real ante el SAT | test = sandbox. Sólo los live descuentan saldo real. */
+  modo: 'live' | 'test';
   facturaFolio?: string;
   repUuid?: string;
   repFacturapiId?: string;
