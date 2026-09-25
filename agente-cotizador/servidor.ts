@@ -123,6 +123,7 @@ function resumen(b: Borrador, iva: number): string {
         `Subtotal:  ${pesos(t.subtotal)}`,
         `IVA ${(iva * 100).toFixed(0)}%:   ${pesos(t.iva)}`,
         `TOTAL:     ${pesos(t.total)}`,
+        ...(b.notas ? ['', `Notas: ${b.notas}`] : []),
         ...(b.avisos.length ? ['', 'Avisos:', ...b.avisos.map(a => `  · ${a}`)] : []),
     ].join('\n');
 }
@@ -293,6 +294,79 @@ server.registerTool('agregar_partida', {
         (costo_directo != null ? `\n(precio derivado del costo con margen ${(margen! * 100).toFixed(0)}%)` : ''));
 });
 
+server.registerTool('agregar_concepto', {
+    title: 'Agregar un concepto fuera de catálogo',
+    description:
+        'Agrega una partida que NO existe en el catálogo: tú dictas la descripción, la cantidad, ' +
+        'la unidad y el precio. Para proyectos específicos, trabajos únicos o cualquier cosa que ' +
+        'no esté en la lista de servicios.\n' +
+        'El precio se puede dar de dos formas: `precio_unitario` (lo que se le cobra al cliente) ' +
+        'o `costo_directo` (lo que cuesta producirlo, al que se le aplica el margen objetivo).\n' +
+        'Si el concepto SÍ está en el catálogo, usa agregar_partida: así el precio sale de la ' +
+        'lista y no de lo que alguien recuerde.',
+    inputSchema: {
+        descripcion: z.string().min(1).describe('Qué es, como debe salir impreso en la cotización.'),
+        cantidad: z.number().positive().describe('Cuántas unidades.'),
+        unidad: z.string().optional().describe('Unidad de medida (m², ml, pieza, servicio…). Se imprime junto a la descripción.'),
+        precio_unitario: z.number().nonnegative().optional().describe('Precio por unidad que se le cobra al cliente.'),
+        costo_directo: z.number().nonnegative().optional().describe('Costo por unidad; el precio sale de aplicarle el margen objetivo.'),
+        notas: z.string().optional().describe('Nota que acompaña a la cotización (condiciones, alcances, exclusiones).'),
+        sesion: z.string().optional(),
+    },
+}, async ({ descripcion, cantidad, unidad, precio_unitario, costo_directo, notas, sesion }) => {
+    const b = tomar(sesion ?? 'default');
+    const { iva, margen } = await catalogo();
+
+    // Uno de los dos, no los dos ni ninguno: si el modelo manda ambos habría
+    // que elegir por él, y elegir precio por alguien más es justo lo que este
+    // servidor no hace.
+    if (precio_unitario == null && costo_directo == null) {
+        return texto('Falta el precio: manda `precio_unitario` (lo que se cobra) o ' +
+                     '`costo_directo` (lo que cuesta, para aplicarle el margen). ' +
+                     'Si no lo sabes, pregúntaselo al usuario.');
+    }
+    if (precio_unitario != null && costo_directo != null) {
+        return texto('Mandaste `precio_unitario` y `costo_directo` a la vez y no sé cuál quiere ' +
+                     'el usuario. Pregúntale y manda sólo uno.');
+    }
+
+    let unitario: number;
+    let comoSeCalculo = '';
+    if (precio_unitario != null) {
+        unitario = redondear(precio_unitario);
+    } else {
+        if (margen == null || margen <= 0) {
+            return texto('No hay margen objetivo configurado en ajustes, así que no puedo sacar ' +
+                         'el precio desde el costo. Captúralo en la pantalla de Precios ' +
+                         '(margen_objetivo) o dime el precio directo.');
+        }
+        unitario = precioDesdeCosto(costo_directo!, margen);
+        comoSeCalculo = ` (de un costo de ${pesos(costo_directo!)} con margen ${(margen * 100).toFixed(0)}%)`;
+    }
+
+    // La unidad va pegada a la descripción porque la plantilla sólo tiene
+    // columnas de Descripción, Cantidad, Costo e Importe: no hay dónde
+    // imprimirla aparte, y perderla dejaría "4 × Lambrín" sin decir 4 de qué.
+    const linea: QuoteItem = {
+        description: unidad ? `${descripcion.trim()} (${unidad.trim()})` : descripcion.trim(),
+        quantity: cantidad,
+        unitPrice: unitario,
+    };
+    b.items.push(linea);
+
+    if (notas?.trim()) {
+        b.notas = [b.notas, notas.trim()].filter(Boolean).join(' · ');
+    }
+
+    const t = totalesDe(b.items, iva);
+    return texto(
+        `Agregado:\n  ${linea.quantity} × ${linea.description} @ ${pesos(linea.unitPrice)} = ` +
+        `${pesos(importeDe(linea))}${comoSeCalculo}\n` +
+        (notas?.trim() ? `Nota registrada: "${notas.trim()}"\n` : '') +
+        `\nSubtotal de la cotización: ${pesos(t.subtotal)} · ` +
+        `con IVA ${(iva * 100).toFixed(0)}%: ${pesos(t.total)}`);
+});
+
 server.registerTool('ver_borrador', {
     title: 'Ver la cotización en curso',
     description:
@@ -338,7 +412,9 @@ server.registerTool('cerrar_cotizacion', {
     if (!b.items.length) return texto('La cotización no tiene partidas. Agrega al menos una.');
 
     const { iva } = await catalogo();
-    if (notas) b.notas = notas;
+    // Se acumulan: si agregar_concepto ya dejó notas, reemplazarlas aquí
+    // borraría condiciones que el usuario ya dictó.
+    if (notas?.trim()) b.notas = [b.notas, notas.trim()].filter(Boolean).join(' · ');
     const t = totalesDe(b.items, iva);
 
     const quote: Quote = {
