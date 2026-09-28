@@ -41,7 +41,7 @@ import {
 } from '../lib/reporteVentasPdf.js';
 import type { Service, ServiceVariable, QuoteItem, Quote } from '../types.js';
 import {
-    leerServicios, leerVariantes, leerAjustes, guardarCotizacion,
+    leerServicios, leerVariantes, leerAjustes, guardarCotizacion, guardarPago,
     leerCotizaciones, leerCotizacion, crearServicio,
     leerProyectos, leerProyectosSinFechaDeVenta, leerFacturas, leerClientesMin,
     leerCotizacionesTodas, leerCotizacionesVendidas, leerProyectosTodos, leerPagos,
@@ -1250,6 +1250,111 @@ server.registerTool('estado_de_cuenta', {
             : 'Sin facturas timbradas a su nombre. Se cruzan por el nombre impreso en el CFDI, ' +
               'así que si la razón social difiere puede no encontrarlas.'),
     ]) + COPIA_TAL_CUAL);
+});
+
+// ── Registrar pagos ──────────────────────────────────────────────────────
+
+server.registerTool('registrar_pago', {
+    title: 'Registrar un pago recibido',
+    description:
+        'Guarda un nuevo abono en la tabla de pagos. Usa esta herramienta cuando se ' +
+        'reciba dinero de un cliente por un proyecto: el pago se suma al saldo y ' +
+        'actualiza automáticamente lo que el cliente todavía debe.\n' +
+        'Responde a "regístrame un pago de $5000 para la Cocina Anáhuac" o ' +
+        '"anotá $10,000 de abono por el Closet recámara de Iván Díaz".',
+    inputSchema: {
+        cliente: z.string().describe('Nombre del cliente (se busca por aproximación).'),
+        monto: z.number().positive().describe('Monto del pago en pesos.'),
+        fecha: z.string().optional()
+            .describe('Fecha del pago en AAAA-MM-DD. Por omisión, hoy.'),
+        metodo: z.enum(['Transferencia', 'Efectivo', 'Tarjeta', 'Otro']).optional()
+            .describe('Cómo se pagó.'),
+        notas: z.string().optional()
+            .describe('Notas internas (referencia de banco, cheque, etc).'),
+    },
+}, async ({ cliente, monto, fecha, metodo, notas }) => {
+    const hoy = new Date().toISOString().slice(0, 10);
+    const f = fecha ?? hoy;
+
+    // Validar fecha
+    if (f > hoy) {
+        return texto(`La fecha no puede ser en el futuro (hoy es ${hoy}).`);
+    }
+
+    // Buscar proyectos del cliente
+    const todos = await juntarProyectos();
+    const candidatos = todos.filter(p => puntajeDeNombre(p.cliente, cliente) > 0);
+
+    if (!candidatos.length) {
+        const nombres = [...new Set(todos.map(p => p.cliente))].slice(0, 12);
+        return texto(
+            `No encuentro proyectos de "${cliente}".\n\nClientes con proyectos:\n` +
+            nombres.map(n => `  · ${n}`).join('\n'));
+    }
+
+    // Si hay múltiples clientes que coinciden, pedir clarificación
+    const nombresClientes = [...new Set(candidatos.map(p => p.cliente))];
+    if (nombresClientes.length > 1) {
+        return texto(
+            `"${cliente}" coincide con ${nombresClientes.length} clientes. ¿Cuál?\n` +
+            nombresClientes.map(n => `  · ${n}`).join('\n'));
+    }
+    const nombreCliente = nombresClientes[0];
+
+    // Filtrar a proyectos activos del cliente (los que deben dinero)
+    const conDeuda = candidatos.filter(p => !liquidado(p));
+    if (!conDeuda.length) {
+        return texto(`${nombreCliente} no tiene proyectos con saldo pendiente.`);
+    }
+
+    // Si hay un solo proyecto con deuda, registrar el pago ahí
+    // Si hay múltiples, mostrar opciones
+    if (conDeuda.length === 1) {
+        const proyecto = conDeuda[0];
+        const proyectoId = proyecto.id;
+        try {
+            await guardarPago({
+                projectId: proyectoId,
+                amount: monto,
+                date: f,
+                method: metodo,
+                notes: notas,
+            });
+
+            // Recalcular el estado
+            const proyectosActualizados = await juntarProyectos();
+            const pActualizado = proyectosActualizados.find(p => p.id === proyectoId);
+            if (!pActualizado) {
+                return texto(`✓ Pago registrado, pero no pude actualizar el estado del proyecto.`);
+            }
+
+            const nuevoSaldo = pActualizado.saldo;
+            const pagado = pActualizado.pagado;
+            const contratado = pActualizado.contratado;
+            const porcentaje = Math.round((pagado / contratado) * 100);
+
+            return texto(bloque([
+                `✓ Pago registrado — ${nombreCliente}`,
+                `${proyecto.nombre}`,
+                '',
+                `Monto: ${pesos(monto)}`,
+                `Fecha: ${f}${metodo ? ` · ${metodo}` : ''}`,
+                '',
+                `Contratado:  ${pesos(contratado)}`,
+                `Pagado:      ${pesos(pagado)} (${porcentaje}%)`,
+                liquidado(pActualizado)
+                    ? '✓ PROYECTO LIQUIDADO — no debe nada.'
+                    : `Falta:       ${pesos(nuevoSaldo)}`,
+            ]));
+        } catch (e: any) {
+            return texto(`Error al registrar el pago: ${e.message?.slice(0, 100) ?? e}`);
+        }
+    } else {
+        // Múltiples proyectos con deuda
+        return texto(
+            `${nombreCliente} tiene ${conDeuda.length} proyecto(s) con saldo. ¿Cuál?\n` +
+            conDeuda.map(p => `  · ${p.nombre} (debe ${pesos(p.saldo)})`).join('\n'));
+    }
 });
 
 // ── Consultar lo ya cotizado ─────────────────────────────────────────────

@@ -341,3 +341,21 @@ export async function guardarCotizacion(c: {
     });
     return idsDeTexto(filas?.[0] ?? {}, ['id']);
 }
+
+export async function guardarPago(p: {
+    projectId: string | number; amount: number; date: string;
+    method?: string; notes?: string;
+}): Promise<{ id: string }> {
+    const filas = await pedir('/payments', {
+        method: 'POST',
+        headers: { Prefer: 'return=representation' },
+        body: JSON.stringify([{
+            project_id: p.projectId,
+            amount: p.amount,
+            date: p.date,
+            method: p.method ?? null,
+            notes: p.notes ?? null,
+        }]),
+    });
+    return idsDeTexto(filas?.[0] ?? {}, ['id', 'project_id']);
+}

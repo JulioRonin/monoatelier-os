@@ -56,10 +56,12 @@ Y para la cobranza:
 |---|---|
 | `proyectos_activos` | Qué traes en marcha, cuánto te han pagado y cuánto falta |
 | `estado_de_cuenta` | La relación de un cliente: proyectos, abonos, saldo y lo facturado |
+| `registrar_pago` | Guarda un nuevo abono recibido: actualiza automáticamente el saldo |
 
-Estas dos **no llevan costo ni margen**, a propósito: un estado de cuenta es
+Estas tres **no llevan costo ni margen**, a propósito: un estado de cuenta es
 justo lo que uno acaba leyendo con el cliente enfrente. Lo que se cobra y lo
-que se debe el cliente ya lo sabe; lo que costó hacerlo, no.
+que se debe el cliente ya lo sabe; lo que costó hacerlo, no. Y registrar un
+pago es simplemente anotar que el dinero llegó.
 
 Un proyecto **ya entregado que todavía debe sigue apareciendo**: el saldo no se
 cierra al entregar la cocina. El saldo sale de la tabla `payments`, sumando
