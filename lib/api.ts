@@ -1,6 +1,6 @@
 
 import { supabase } from './supabaseClient';
-import { Project, Client, Quote, ProjectStatus, PriorityLevel, PhaseEnum, User, ForgeModel, ForgeJob, Service, ServiceVariable, TipoVariante, FacturaExterna, RepPago } from '../types';
+import { Project, Client, Quote, ProjectStatus, PriorityLevel, PhaseEnum, User, ForgeModel, ForgeJob, FichaLectura, Service, ServiceVariable, TipoVariante, FacturaExterna, RepPago } from '../types';
 import type { CfdiExterno } from './cfdi';
 
 // --- MAPPING HELPERS ---
@@ -134,6 +134,8 @@ const mapForgeJob = (data: any): ForgeJob => ({
     baseModelId: data.base_model_id,
     imagenes: data.imagenes || [],
     status: data.status,
+    tipo: data.tipo || 'diseno',
+    ficha: data.ficha || null,
     resultModelId: data.result_model_id,
     log: data.log,
     error: data.error,
@@ -952,7 +954,8 @@ export const api = {
     },
 
     async createForgeJob(prompt: string, base?: { modelId: string; projectJson: any },
-                         imagenes: string[] = []) {
+                         imagenes: string[] = [],
+                         extra?: { tipo: 'lectura' | 'diseno'; ficha?: FichaLectura }) {
         if (!supabase) throw new Error("Supabase not configured");
         const fila: Record<string, any> = {
             prompt,
@@ -961,6 +964,18 @@ export const api = {
             status: 'pending'
         };
         if (imagenes.length) fila.imagenes = imagenes;
+
+        // Una lectura o una construcción desde ficha NO se puede encolar sin
+        // sus columnas: sin `tipo`, el worker tomaría la lectura por un diseño
+        // normal y construiría a ciegas. Aquí no hay reintento silencioso.
+        if (extra) {
+            fila.tipo = extra.tipo;
+            if (extra.ficha) fila.ficha = extra.ficha;
+            const { data, error } = await supabase
+                .from('forge_jobs').insert([fila]).select().single();
+            if (error) throw error;
+            return mapForgeJob(data);
+        }
 
         let { data, error } = await supabase
             .from('forge_jobs').insert([fila]).select().single();

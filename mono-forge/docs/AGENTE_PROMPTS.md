@@ -85,13 +85,68 @@ python -m forge_agent.worker --prompt "cocina de 3m con tarja y torre de horno"
 
 Escribe todo en `projects/<id>/` y, si hay Supabase configurado, lo publica.
 
+## Diseñar desde una foto
+
+Muchas referencias de clientes están hechas con IA: se ven bien y mienten
+(repisas que flotan, proporciones imposibles, sin escala). Por eso la foto no
+va directo a construir: pasa por una **ficha** que tú revisas.
+
+1. En Forge sube la foto con **Referencias** y pulsa **Leer foto**. Puedes
+   escribir indicaciones en el cuadro (cliente, altura del plafón, lo que ya
+   sepas).
+2. Claude lee la foto y deja la ficha: elementos de izquierda a derecha por
+   muro, acabados, lo que **no se fabrica** como se ve (con su propuesta) y las
+   **medidas estimadas**, cada una con el ancla que usó.
+3. Pulsa **Revisar**, corrige las medidas con la cinta en la mano, agrega
+   indicaciones y pulsa **Construir diseño**. Lo que apruebas es lo que se
+   construye: el constructor recibe la ficha, no la foto.
+
+Qué se puede construir lo decide el código, no el modelo: hoy el motor tiene
+generadores de **cocina**. Una cocina con isla se construye sin la isla y lo
+dice. Un **closet** queda como levantamiento (ficha completa) hasta que exista
+su generador; el botón de construir aparece deshabilitado con el motivo.
+
+Requiere la migración `supabase/migrations/20260928_forge_lectura.sql`.
+
+### Claude lee, Nemotron construye
+
+La lectura necesita un modelo que vea imágenes. Nemotron 3 Super sólo recibe
+texto, pero construir desde la ficha sólo necesita texto — y ahí están las
+15–25 llamadas de herramientas, que es lo caro. La combinación:
+
+```powershell
+$env:ANTHROPIC_API_KEY = "sk-ant-..."                         # lee la foto
+$env:FORGE_PROVEEDOR   = "nvidia"                             # construye
+$env:NVIDIA_API_KEY    = "nvapi-..."
+$env:FORGE_MODEL       = "nvidia/nemotron-3-super-120b-a12b"
+```
+
+Confirma el id exacto con `python -m forge_agent.probar_modelo --listar` y
+pásalo por las tres pruebas antes de confiarle una cocina en L:
+`python -m forge_agent.probar_modelo nvidia/nemotron-3-super-120b-a12b`.
+
+La lectura usa `claude-opus-5-5`; se cambia con `FORGE_MODELO_LECTURA`. Si
+Claude declina una imagen, la API reintenta sola con otro modelo
+(`fallbacks: "default"`).
+
+**Probar la lectura desde la terminal**, con la foto tal como te llegó (no
+sube ni construye nada; imprime la ficha y lo que recibiría el constructor):
+
+```powershell
+python -m forge_agent.worker --leer C:\Users\ORKA\Downloads\vestidor.webp --indicaciones "plafón a 2.45"
+```
+
+Formatos: JPG, PNG, WEBP y GIF. Las fotos HEIC del iPhone no se pueden leer;
+la plataforma las rechaza al subirlas y dice cómo exportarlas.
+
 ## Qué hace cada pieza
 
 | Archivo | Qué es |
 |---|---|
 | `forge_agent/herramientas.py` | Las herramientas que Claude puede llamar: agregar módulos, tramos, LED, consultar el catálogo. Cada una invoca un generador del motor. |
-| `forge_agent/agente.py` | El prompt de sistema con las reglas del taller y el ciclo de tool use (modelo `claude-opus-5`). |
-| `forge_agent/worker.py` | La cola: toma trabajos, corre el agente, llama a Blender, genera entregables, sube todo. |
+| `forge_agent/agente.py` | El prompt de sistema con las reglas del taller y el ciclo de tool use (modelo `claude-opus-5-5`). |
+| `forge_agent/lectura.py` | Foto → ficha: el esquema, el prompt de lectura, qué se puede construir y las instrucciones para el constructor. |
+| `forge_agent/worker.py` | La cola: toma trabajos (lectura o diseño), corre el agente, llama a Blender, genera entregables, sube todo. |
 | `forge_agent/test_herramientas.py` | 9 tests que ejercitan la secuencia completa sin llamar a la API. |
 
 ## Lo que decide el modelo vs. lo que decide el motor
@@ -117,7 +172,12 @@ vigentes en <https://platform.claude.com/docs/en/pricing>.
 - **"No se pudo encolar el diseño"** → falta la migración `20260806_forge_jobs.sql`.
 - **El diseño sale sin modelo 3D** → `BLENDER_PATH` sin definir. No es grave:
   publica en AR desde la plataforma y el navegador genera el GLB.
-- **`ANTHROPIC_API_KEY` no definida** → el worker lo dice y sale antes de tomar trabajos.
+- **`ANTHROPIC_API_KEY` no definida** → el worker lo dice al arrancar. Con
+  constructor NVIDIA sigue trabajando, pero las lecturas de foto fallan.
+- **`No module named 'mono_forge'`** → versiones anteriores lo pedían instalado;
+  ahora basta correr desde la raíz del repo. Si falta otro paquete:
+  `pip install -r forge_agent/requirements.txt`.
+- **"No se pudo encolar la lectura"** → falta `20260928_forge_lectura.sql`.
 - **El agente diseñó algo raro** → sé más específico en el prompt (medidas del
   muro, dónde va la tarja, cuántas puertas). Todo lo que no especifiques lo
   decide él y lo anota en las notas del proyecto.

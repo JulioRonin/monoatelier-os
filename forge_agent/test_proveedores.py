@@ -220,7 +220,7 @@ def test_anthropic_sigue_siendo_el_default(monkeypatch):
     monkeypatch.delenv("FORGE_MODEL", raising=False)
     cfg = proveedores.configurar()
     assert cfg["proveedor"] == "anthropic"
-    assert cfg["modelo"] == "claude-opus-5"
+    assert cfg["modelo"] == "claude-opus-5-5"
 
 
 def test_proveedor_desconocido_falla_claro():

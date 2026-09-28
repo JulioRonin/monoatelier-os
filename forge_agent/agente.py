@@ -17,7 +17,7 @@ from .herramientas import HERRAMIENTAS, finalizar, reiniciar
 
 #: sólo aplica al backend de Anthropic; los demás resuelven su modelo en
 #: proveedores.configurar()
-MODELO = os.environ.get("FORGE_MODEL", "claude-opus-5")
+MODELO = os.environ.get("FORGE_MODEL", "claude-opus-5-5")
 
 SISTEMA = """Eres el diseñador de Mono Atelier. Conviertes lo que pide el cliente en
 un proyecto de muebles usando las herramientas del motor mono-forge.
@@ -107,9 +107,21 @@ def _contexto(prompt: str, base: dict | None) -> str:
             "Petición del cliente: " + prompt)
 
 
-def _con_anthropic(contexto: str, modelo: str, api_key: str | None) -> dict:
-    """El SDK corre el bucle de herramientas (tool_runner)."""
+def _con_anthropic(contexto: str, modelo: str, api_key: str | None,
+                   imagenes: list[str] | None = None) -> dict:
+    """El SDK corre el bucle de herramientas (tool_runner).
+
+    Las imágenes van en el primer turno. Antes este camino las ignoraba y
+    Claude diseñaba sólo con el texto aunque subieras la foto.
+    """
     from anthropic import Anthropic
+
+    from .lectura import bloque_imagen
+
+    contenido: str | list = contexto
+    if imagenes:
+        contenido = [bloque_imagen(u) for u in imagenes] + \
+                    [{"type": "text", "text": contexto}]
 
     cliente = Anthropic(api_key=api_key) if api_key else Anthropic()
     runner = cliente.beta.messages.tool_runner(
@@ -117,9 +129,11 @@ def _con_anthropic(contexto: str, modelo: str, api_key: str | None) -> dict:
         max_tokens=16000,
         system=SISTEMA,
         tools=HERRAMIENTAS,
-        messages=[{"role": "user", "content": contexto}],
+        messages=[{"role": "user", "content": contenido}],
         thinking={"type": "adaptive"},
         output_config={"effort": "high"},
+        betas=["server-side-fallback-2026-07-01"],
+        fallbacks="default",
     )
     final = runner.until_done()
     if final.stop_reason == "refusal":
@@ -142,7 +156,8 @@ def disenar(prompt: str, base: dict | None = None,
         base: project.json existente para iterar sobre él (opcional).
         api_key: llave explícita. Vacío = la del entorno (lo normal).
         proveedor: anthropic | nvidia | openai_compat. Vacío = FORGE_PROVEEDOR.
-        imagenes: URLs de referencias. Se ignoran si el modelo no ve imágenes.
+        imagenes: URLs o rutas de referencias. Se ignoran si el modelo no ve
+            imágenes (los de NVIDIA de texto, como Nemotron Super).
     """
     reiniciar(base)
     cfg = proveedores.configurar(proveedor)
@@ -150,7 +165,7 @@ def disenar(prompt: str, base: dict | None = None,
     llave = api_key or cfg["api_key"]
 
     if cfg["proveedor"] == "anthropic":
-        r = _con_anthropic(contexto, cfg["modelo"], llave)
+        r = _con_anthropic(contexto, cfg["modelo"], llave, imagenes)
     else:
         r = proveedores.correr_openai_compat(
             SISTEMA, contexto, modelo=cfg["modelo"],

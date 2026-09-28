@@ -325,11 +325,49 @@ export interface ForgeJob {
   /** URLs de imágenes de referencia adjuntas al prompt */
   imagenes?: string[];
   status: 'pending' | 'running' | 'done' | 'error';
+  /** lectura: foto → ficha para revisar · diseno: prompt o ficha → proyecto */
+  tipo?: 'lectura' | 'diseno';
+  ficha?: FichaLectura | null;
   resultModelId?: string | null;
   log?: string | null;
   error?: string | null;
   createdAt?: string;
   updatedAt?: string;
+}
+
+/** Lo que el modelo leyó de una foto de referencia (forge_agent/lectura.py). */
+export interface FichaLectura {
+  nombre_proyecto: string;
+  cliente: string;
+  tipo: 'cocina' | 'closet' | 'bano' | 'mueble_tv' | 'otro';
+  resumen: string;
+  distribucion: string;
+  muros: {
+    id: string;
+    descripcion: string;
+    elementos: {
+      tipo: string;
+      fraccion_ancho: number;
+      ancho_estimado_mm: number;
+      alto_estimado_mm: number;
+      puertas: number;
+      cajones: number;
+      entrepanos: number;
+      led: boolean;
+      detalle: string;
+    }[];
+  }[];
+  acabados: { zona: string; descripcion: string; sku_sugerido: string }[];
+  apertura: string;
+  led: { lleva: boolean; zonas: string[] };
+  no_fabricable: { elemento: string; por_que: string; propuesta: string }[];
+  /** valor_mm lo captura Julio al revisar; si falta, se usa estimado_mm */
+  medidas: { clave: string; pregunta: string; estimado_mm: number; base: string; valor_mm?: number | null }[];
+  supuestos: string[];
+  /** los calcula el worker, no el modelo */
+  construible: boolean;
+  omitidos: string[];
+  indicaciones?: string;
 }
 
 // --- CFDI: facturas externas y libro de pagos del REP ---

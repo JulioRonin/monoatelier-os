@@ -178,7 +178,10 @@ Los renders SIEMPRE usan blender/render_presets.py — nunca inventes iluminaci�
   herramienta calcula una medida por su cuenta, está mal escrita.
 - Los errores se devuelven al modelo como texto ("ERROR: ...") para que corrija,
   nunca como excepción que mate el trabajo.
-- Modelo: claude-opus-5, adaptive thinking, effort high. Sin temperature.
+- Modelo: claude-opus-5-5, adaptive thinking, effort high. Sin temperature.
+- Lectura de fotos (forge_agent/lectura.py): Claude con visión llena una ficha
+  con esquema fijo; evaluar() decide en código qué se puede construir. El
+  constructor puede ser otro proveedor (Nemotron) porque sólo lee la ficha.
 - El PROVEEDOR es intercambiable (forge_agent/proveedores.py): anthropic
   (tool_runner del SDK) | nvidia | openai_compat (bucle manual sobre
   chat.completions — NIM, vLLM, Ollama). Las herramientas se declaran UNA vez

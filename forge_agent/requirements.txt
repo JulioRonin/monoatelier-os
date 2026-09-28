@@ -1,4 +1,7 @@
-anthropic>=0.60
-# sólo para FORGE_PROVEEDOR=nvidia u openai_compat (NIM, vLLM, Ollama).
-# El backend de Anthropic no lo usa.
+# pip install -r forge_agent/requirements.txt   (desde la raíz del repo)
+anthropic>=1.9
+# para FORGE_PROVEEDOR=nvidia u openai_compat (Nemotron, NIM, vLLM, Ollama)
 openai>=1.40
+# los entregables: cutlist.xlsx, herrajes.xlsx y los PDF
+openpyxl>=3.1
+reportlab>=4.0

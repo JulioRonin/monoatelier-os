@@ -3,7 +3,8 @@
     python -m forge_agent.doctor
 
 Va en orden, de lo más básico a lo más caro, y para en el primer error grave:
-paquetes → llaves → el modelo → Supabase → migraciones → la cola → Blender.
+paquetes → modelos y llaves → Supabase → migraciones → Blender → prueba del
+constructor → la cola.
 Cada línea dice qué hacer si falla, no sólo que falló.
 
 No modifica nada. Es seguro correrlo cuantas veces quieras.
@@ -46,31 +47,47 @@ def _supabase(ruta: str, metodo: str = "GET", cuerpo: bytes | None = None):
 
 # ── 1. paquetes ─────────────────────────────────────────────────────────
 
+INSTALAR = "pip install -r forge_agent/requirements.txt"
+
+
 def revisar_paquetes(proveedor: str) -> bool:
+    """Antes de importar nada del agente: si falta un paquete, el import de
+    las herramientas truena con un traceback que no dice qué instalar."""
     ok = True
     try:
         import mono_forge  # noqa: F401
         _linea(OK, "mono-forge importable")
     except ImportError:
         _linea(MAL, "no encuentro mono-forge",
-               "Corre desde la raíz del repo, o: pip install -e mono-forge")
+               "Corre los comandos desde la raíz del repo (la carpeta que tiene\n"
+               "mono-forge/ y forge_agent/).")
         ok = False
 
-    if proveedor == "anthropic":
+    # anthropic siempre: las herramientas se declaran con su @beta_tool y la
+    # lectura de fotos usa Claude aunque el constructor sea NVIDIA
+    requeridos = [("anthropic", "anthropic"), ("openpyxl", "openpyxl"),
+                  ("reportlab", "reportlab")]
+    if proveedor != "anthropic":
+        requeridos.append(("openai", "openai"))
+    for modulo, paquete in requeridos:
         try:
-            import anthropic  # noqa: F401
-            _linea(OK, "paquete anthropic instalado")
+            __import__(modulo)
+            _linea(OK, f"paquete {paquete} instalado")
         except ImportError:
-            _linea(MAL, "falta el paquete anthropic", "pip install anthropic")
-            ok = False
-    else:
-        try:
-            import openai  # noqa: F401
-            _linea(OK, "paquete openai instalado")
-        except ImportError:
-            _linea(MAL, "falta el paquete openai", "pip install openai")
+            _linea(MAL, f"falta el paquete {paquete}", INSTALAR)
             ok = False
     return ok
+
+
+def revisar_lectura() -> bool:
+    modelo = os.environ.get("FORGE_MODELO_LECTURA") or "claude-opus-5-5"
+    if os.environ.get("ANTHROPIC_API_KEY"):
+        _linea(OK, f"lectura de fotos con {modelo}")
+        return True
+        _linea(MAL, "sin ANTHROPIC_API_KEY: la lectura de fotos no va a funcionar",
+               "La foto la lee Claude aunque construyas con NVIDIA.\n"
+               "Genera la llave en console.anthropic.com.")
+    return False
 
 
 # ── 2. el modelo responde y llama herramientas ──────────────────────────
@@ -119,7 +136,9 @@ def revisar_modelo(cfg: dict) -> bool:
 # ── 3. Supabase, migraciones y cola ─────────────────────────────────────
 
 COLUMNAS = {
-    "forge_jobs": [("imagenes", "20260807_forge_job_imagenes.sql")],
+    "forge_jobs": [("imagenes", "20260807_forge_job_imagenes.sql"),
+                   ("tipo", "20260928_forge_lectura.sql"),
+                   ("ficha", "20260928_forge_lectura.sql")],
     "forge_models": [("documentos", "20260807_forge_documentos.sql"),
                      ("costos_path", "20260807_forge_documentos.sql")],
 }
@@ -207,21 +226,27 @@ def revisar_blender() -> None:
 # ── ─────────────────────────────────────────────────────────────────────
 
 def main() -> int:
-    from . import proveedores
-
     print("\nDIAGNÓSTICO DE FORGE\n" + "─" * 62)
 
+    proveedor = (os.environ.get("FORGE_PROVEEDOR") or "anthropic").strip().lower()
+    print("\nPaquetes")
+    paquetes_ok = revisar_paquetes(proveedor)
+    if not paquetes_ok:
+        print("\n" + "─" * 62)
+        print(f"Instala lo que falta y vuelve a correr esto:\n  {INSTALAR}\n")
+        return 1
+
+    from . import proveedores
+    print("\nModelos")
     try:
         cfg = proveedores.configurar()
-        _linea(OK, f"proveedor {cfg['proveedor']} · modelo {cfg['modelo']}")
+        _linea(OK, f"constructor: {cfg['proveedor']} · {cfg['modelo']}")
     except RuntimeError as e:
         _linea(MAL, "configuración incompleta", str(e))
         print("\n" + "─" * 62)
         print("Arregla eso primero; lo demás depende de ello.\n")
         return 1
-
-    print("\nPaquetes")
-    paquetes_ok = revisar_paquetes(cfg["proveedor"])
+    lectura_ok = revisar_lectura()
 
     print("\nPlataforma")
     supa_ok = revisar_supabase()
@@ -229,16 +254,14 @@ def main() -> int:
     print("\nBlender")
     revisar_blender()
 
-    modelo_ok = True
-    if paquetes_ok:
-        print("\nModelo (esto sí gasta tokens)")
-        modelo_ok = revisar_modelo(cfg)
+    print("\nModelo (esto sí gasta tokens)")
+    modelo_ok = revisar_modelo(cfg)
 
     print("\nCola")
     revisar_cola()
 
     print("\n" + "─" * 62)
-    if paquetes_ok and supa_ok and modelo_ok:
+    if supa_ok and modelo_ok and lectura_ok:
         print("Todo en orden. Si aun así no pasa nada, es que el worker no está\n"
               "corriendo: déjalo abierto con  python -m forge_agent.worker\n")
         return 0

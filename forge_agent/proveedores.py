@@ -200,7 +200,7 @@ def configurar(proveedor: str | None = None) -> dict:
 
     if proveedor == "anthropic":
         return {"proveedor": "anthropic",
-                "modelo": os.environ.get("FORGE_MODEL", "claude-opus-5"),
+                "modelo": os.environ.get("FORGE_MODEL", "claude-opus-5-5"),
                 "base_url": None,
                 "api_key": os.environ.get("ANTHROPIC_API_KEY")}
 

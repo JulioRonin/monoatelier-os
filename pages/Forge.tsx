@@ -10,12 +10,13 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
     Hammer, Upload, Smartphone, Trash2, Loader2, Box, QrCode,
     CheckCircle2, RefreshCw, FlaskConical, X, Sparkles, SendHorizonal,
-    AlertTriangle, Clock, FileSpreadsheet, FileText, Download, Lock, ImagePlus
+    AlertTriangle, Clock, FileSpreadsheet, FileText, Download, Lock, ImagePlus, ScanEye
 } from 'lucide-react';
 import QRCode from 'qrcode';
 import { api } from '../lib/api';
-import { ForgeModel, ForgeJob } from '../types';
+import { ForgeModel, ForgeJob, FichaLectura as Ficha } from '../types';
 import ForgeViewer from '../components/ForgeViewer';
+import FichaLectura from '../components/FichaLectura';
 import {
     ForgeProjectData, construirProyecto, exportarGLB, exportarUSDZ,
     resumenProyecto, tieneColocacion
@@ -84,6 +85,7 @@ const Forge: React.FC = () => {
     const [abriendoCostos, setAbriendoCostos] = useState(false);
     const [refs, setRefs] = useState<{ url: string; nombre: string }[]>([]);
     const [subiendoRef, setSubiendoRef] = useState(false);
+    const [fichaAbierta, setFichaAbierta] = useState<string | null>(null);
     const refInput = useRef<HTMLInputElement>(null);
     const taRef = useRef<HTMLTextAreaElement>(null);
     const fileRef = useRef<HTMLInputElement>(null);
@@ -132,11 +134,23 @@ const Forge: React.FC = () => {
 
     const agregarReferencias = async (files: FileList | null) => {
         if (!files?.length) return;
+        // Claude lee JPG, PNG, WEBP y GIF. Una foto HEIC del iPhone se subiría
+        // bien y fallaría hasta que el worker la mande a leer.
+        const aceptadas = Array.from(files).filter(f => !/hei[cf]$/i.test(f.type || f.name));
+        if (aceptadas.length < files.length) {
+            setError('Las fotos HEIC del iPhone no se pueden leer. Expórtalas como JPG '
+                + '(o en el iPhone: Ajustes → Cámara → Formatos → Más compatible).');
+            if (!aceptadas.length) {
+                if (refInput.current) refInput.current.value = '';
+                return;
+            }
+        } else {
+            setError(null);
+        }
         setSubiendoRef(true);
-        setError(null);
         try {
             const nuevas = await Promise.all(
-                Array.from(files).slice(0, 6).map(async f => ({
+                aceptadas.slice(0, 6).map(async f => ({
                     url: await api.subirImagenReferencia(f), nombre: f.name,
                 })));
             setRefs(prev => [...prev, ...nuevas].slice(0, 6));
@@ -181,6 +195,39 @@ const Forge: React.FC = () => {
             setSending(false);
         }
     };
+
+    /** Paso 1: la foto se lee y queda una ficha para revisar. No construye. */
+    const leerFoto = async () => {
+        if (!refs.length) return;
+        setSending(true);
+        setError(null);
+        try {
+            await api.createForgeJob(prompt.trim(), undefined, refs.map(r => r.url),
+                { tipo: 'lectura' });
+            setPrompt('');
+            setRefs([]);
+            await loadJobs();
+        } catch (e: any) {
+            setError('No se pudo encolar la lectura. ' + explicarFallo(e, '20260928_forge_lectura.sql'));
+        } finally {
+            setSending(false);
+        }
+    };
+
+    /** Paso 2: con la ficha revisada se encola la construcción. */
+    const construirDesdeFicha = async (job: ForgeJob, ficha: Ficha) => {
+        setError(null);
+        try {
+            await api.createForgeJob(`Construir: ${ficha.nombre_proyecto}`, undefined,
+                job.imagenes || [], { tipo: 'diseno', ficha });
+            setFichaAbierta(null);
+            await loadJobs();
+        } catch (e: any) {
+            setError('No se pudo encolar la construcción. ' + explicarFallo(e, '20260928_forge_lectura.sql'));
+        }
+    };
+
+    const jobFicha = jobs.find(j => j.id === fichaAbierta && j.ficha);
 
     // QR del visor AR público del diseño seleccionado
     useEffect(() => {
@@ -406,13 +453,27 @@ const Forge: React.FC = () => {
                         {subiendoRef ? <Loader2 size={16} className="animate-spin" /> : <ImagePlus size={16} />}
                         Referencias{refs.length ? ` (${refs.length})` : ''}
                     </button>
+                    {refs.length > 0 && !(selected && !importData) && (
+                        <button
+                            onClick={leerFoto}
+                            disabled={sending}
+                            title="Lee la foto y te deja revisar la ficha y las medidas antes de construir"
+                            className="bg-primary text-white px-6 py-3 flex items-center gap-2 text-xs uppercase tracking-widest disabled:opacity-40"
+                        >
+                            {sending ? <Loader2 size={16} className="animate-spin" /> : <ScanEye size={16} />}
+                            Leer foto
+                        </button>
+                    )}
                     <button
                         onClick={enviarPrompt}
                         disabled={sending || !prompt.trim()}
-                        className="bg-primary text-white px-6 py-3 flex items-center gap-2 text-xs uppercase tracking-widest disabled:opacity-40"
+                        className={(refs.length > 0 && !(selected && !importData)
+                            ? 'border border-primary text-primary dark:text-white dark:border-gray-600'
+                            : 'bg-primary text-white')
+                            + ' px-6 py-3 flex items-center gap-2 text-xs uppercase tracking-widest disabled:opacity-40'}
                     >
                         {sending ? <Loader2 size={16} className="animate-spin" /> : <SendHorizonal size={16} />}
-                        Diseñar
+                        {refs.length > 0 && !(selected && !importData) ? 'Diseñar directo' : 'Diseñar'}
                     </button>
                     <span className="text-[10px] font-mono uppercase tracking-widest text-gray-400">
                         Ctrl + Enter
@@ -422,6 +483,8 @@ const Forge: React.FC = () => {
                     Requiere el <b>Forge Agent</b> corriendo en tu computadora
                     (<code>python -m forge_agent.worker</code>). Él traduce el prompt a
                     parámetros del motor, construye en tu Blender y publica el resultado aquí.
+                    Con una foto, <b>Leer foto</b> te muestra primero lo que entendió y las
+                    medidas que estimó, para que las corrijas antes de construir.
                     {selected && !importData && ' Deselecciona el diseño para empezar uno nuevo.'}
                 </p>
 
@@ -436,7 +499,14 @@ const Forge: React.FC = () => {
                                                 : <Clock size={15} className="text-gray-400" />}
                                 </span>
                                 <div className="flex-1 min-w-0">
-                                    <p className="text-gray-700 dark:text-gray-200 truncate">{j.prompt}</p>
+                                    <p className="text-gray-700 dark:text-gray-200 truncate">
+                                        {j.tipo === 'lectura' && (
+                                            <span className="text-[10px] font-mono uppercase tracking-widest text-gray-400 mr-2">
+                                                Lectura
+                                            </span>
+                                        )}
+                                        {j.prompt || (j.tipo === 'lectura' ? 'Foto de referencia' : '')}
+                                    </p>
                                     {j.status === 'pending' && (
                                         <p className="text-[11px] text-gray-400">
                                             En cola — esperando al Forge Agent.
@@ -449,7 +519,9 @@ const Forge: React.FC = () => {
                                         </p>
                                     )}
                                     {j.status === 'running' && (
-                                        <p className="text-[11px] text-gray-400">Diseñando…</p>
+                                        <p className="text-[11px] text-gray-400">
+                                            {j.tipo === 'lectura' ? 'Leyendo la foto…' : 'Diseñando…'}
+                                        </p>
                                     )}
                                     {j.status === 'error' && (
                                         <p className="text-[11px] text-danger">{j.error}</p>
@@ -469,6 +541,14 @@ const Forge: React.FC = () => {
                                         <X size={14} />
                                     </button>
                                 )}
+                                {j.status === 'done' && j.ficha && j.tipo === 'lectura' && (
+                                    <button
+                                        onClick={() => setFichaAbierta(fichaAbierta === j.id ? null : j.id)}
+                                        className="text-[10px] font-mono uppercase tracking-widest text-primary hover:underline shrink-0"
+                                    >
+                                        {fichaAbierta === j.id ? 'Ocultar' : 'Revisar'}
+                                    </button>
+                                )}
                                 {j.status === 'done' && j.resultModelId && (
                                     <button
                                         onClick={() => {
@@ -480,16 +560,27 @@ const Forge: React.FC = () => {
                                         Ver
                                     </button>
                                 )}
-                                <button
-                                    onClick={async () => { await api.deleteForgeJob(j.id); loadJobs(); }}
-                                    className="text-gray-300 hover:text-danger shrink-0"
-                                    title="Quitar del historial"
-                                >
-                                    <X size={13} />
-                                </button>
+                                {(j.status === 'done' || j.status === 'running') && (
+                                    <button
+                                        onClick={async () => { await api.deleteForgeJob(j.id); loadJobs(); }}
+                                        className="text-gray-300 hover:text-danger shrink-0 p-1"
+                                        title="Quitar del historial"
+                                    >
+                                        <X size={13} />
+                                    </button>
+                                )}
                             </div>
                         ))}
                     </div>
+                )}
+
+                {jobFicha && (
+                    <FichaLectura
+                        key={jobFicha.id}
+                        job={jobFicha}
+                        onConstruir={f => construirDesdeFicha(jobFicha, f)}
+                        onCerrar={() => setFichaAbierta(null)}
+                    />
                 )}
             </div>
 

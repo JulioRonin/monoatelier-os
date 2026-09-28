@@ -7,12 +7,15 @@ entregables y sube todo de vuelta a la plataforma.
     python -m forge_agent.worker              # escucha trabajos en bucle
     python -m forge_agent.worker --una-vez    # procesa uno y sale
     python -m forge_agent.worker --prompt "cocina de 3m con tarja y torre de horno"
+    python -m forge_agent.worker --leer foto.jpg [otra.png] [--indicaciones "..."]
 
 Variables de entorno:
     FORGE_PROVEEDOR     anthropic (default) | nvidia | openai_compat
     ANTHROPIC_API_KEY   con FORGE_PROVEEDOR=anthropic — console.anthropic.com
     NVIDIA_API_KEY      con FORGE_PROVEEDOR=nvidia — build.nvidia.com
-    FORGE_MODEL         id del modelo (obligatorio fuera de Anthropic)
+    FORGE_MODEL         id del modelo constructor (obligatorio fuera de Anthropic)
+    FORGE_MODELO_LECTURA  quién lee las fotos (default claude-opus-5-5). Usa
+                        ANTHROPIC_API_KEY aunque el constructor sea NVIDIA.
     FORGE_BASE_URL      endpoint OpenAI-compatible (NIM local, vLLM, Ollama)
     SUPABASE_URL        obligatoria para el modo escucha
     SUPABASE_KEY        service_role (recomendado) o anon key
@@ -43,6 +46,7 @@ from mono_forge.models import Project
 
 from . import proveedores
 from .agente import disenar
+from .lectura import ficha_a_prompt, leer_foto, resumen_de_ficha
 
 INTERVALO = float(os.environ.get("FORGE_POLL_SECONDS", "5"))
 PROJECTS_DIR = os.environ.get("FORGE_PROJECTS_DIR", "projects")
@@ -236,25 +240,81 @@ def procesar(prompt: str, base: dict | None = None,
 def atender(job: dict) -> None:
     print(f"\n═ Trabajo {job['id']}")
     try:
-        res = procesar(job["prompt"], job.get("base_project_json"),
-                       imagenes=job.get("imagenes") or [])
-        log = res["resumen"]
-        for aviso in res["bitacora"]:
-            if aviso.startswith("AVISO"):
-                log += f"\n\n{aviso}"
-        if res["verificacion"]["problemas"]:
-            log += "\n\nAvisos de verificación:\n" + \
-                "\n".join(f"— {p}" for p in res["verificacion"]["problemas"])
-        cerrar_trabajo(job["id"], status="done", result_model_id=res["model_id"],
-                       log=log, error=None)
-        print("  ✓ trabajo completado")
+        if (job.get("tipo") or "diseno") == "lectura":
+            _atender_lectura(job)
+        else:
+            _atender_diseno(job)
     except Exception as e:
         traceback.print_exc()
         cerrar_trabajo(job["id"], status="error", error=str(e)[:2000])
         print(f"  ✗ trabajo fallido: {e}")
 
 
+def _atender_lectura(job: dict) -> None:
+    """Foto → ficha. No construye nada: la ficha espera la revisión de Julio."""
+    imagenes = job.get("imagenes") or []
+    print(f"▸ Leyendo {len(imagenes)} foto(s)")
+    r = leer_foto(imagenes, job.get("prompt") or "")
+    ficha = r["ficha"]
+    print(f"  · {ficha.get('nombre_proyecto')} — "
+          f"{'construible' if ficha['construible'] else 'sin generador'}")
+    cerrar_trabajo(job["id"], status="done", ficha=ficha,
+                   log=resumen_de_ficha(ficha), error=None)
+    print("  ✓ ficha lista para revisar")
+
+
+def _atender_diseno(job: dict) -> None:
+    ficha = job.get("ficha")
+    prompt, imagenes = job["prompt"], job.get("imagenes") or []
+    if ficha:
+        if not ficha.get("construible"):
+            raise RuntimeError(
+                "El motor todavía no tiene generador para esto ("
+                + ", ".join(ficha.get("omitidos") or []) + "). "
+                "La ficha quedó guardada para cuando exista.")
+        # lo que Julio aprobó es lo que se construye: la ficha es la fuente,
+        # no la foto. Además el constructor puede no ver imágenes.
+        prompt, imagenes = ficha_a_prompt(ficha), []
+
+    res = procesar(prompt, job.get("base_project_json"), imagenes=imagenes)
+    log = res["resumen"]
+    for aviso in res["bitacora"]:
+        if aviso.startswith("AVISO"):
+            log += f"\n\n{aviso}"
+    if res["verificacion"]["problemas"]:
+        log += "\n\nAvisos de verificación:\n" + \
+            "\n".join(f"— {p}" for p in res["verificacion"]["problemas"])
+    cerrar_trabajo(job["id"], status="done", result_model_id=res["model_id"],
+                   log=log, error=None)
+    print("  ✓ trabajo completado")
+
+
+def _leer_desde_terminal(argv: list[str]) -> int:
+    """--leer foto.jpg [...] [--indicaciones "..."]: imprime la ficha y las
+    instrucciones que recibiría el constructor. No sube ni construye nada."""
+    i = argv.index("--leer") + 1
+    fotos = []
+    while i < len(argv) and not argv[i].startswith("--"):
+        fotos.append(argv[i])
+        i += 1
+    indicaciones = ""
+    if "--indicaciones" in argv:
+        indicaciones = argv[argv.index("--indicaciones") + 1]
+    r = leer_foto(fotos, indicaciones)
+    print(json.dumps(r["ficha"], ensure_ascii=False, indent=2))
+    print("\n" + "─" * 62 + "\n" + resumen_de_ficha(r["ficha"]))
+    print("\nLo que recibiría el constructor:\n" + ficha_a_prompt(r["ficha"]))
+    print(f"\n({r['modelo']} · {r['uso']['output_tokens']} tokens de salida)")
+    return 0
+
+
 def main(argv: list[str]) -> int:
+    if "--leer" in argv:
+        if not os.environ.get("ANTHROPIC_API_KEY"):
+            print("ERROR: la lectura de fotos usa Claude: define ANTHROPIC_API_KEY.")
+            return 1
+        return _leer_desde_terminal(argv)
+
     # falla aquí, con un mensaje claro, y no a media hora de trabajo
     try:
         cfg = proveedores.configurar()
@@ -265,7 +325,12 @@ def main(argv: list[str]) -> int:
         print("ERROR: define ANTHROPIC_API_KEY (console.anthropic.com), o usa "
               "FORGE_PROVEEDOR=nvidia con NVIDIA_API_KEY.")
         return 1
-    print(f"Modelo: {cfg['proveedor']}/{cfg['modelo']}")
+    print(f"Constructor: {cfg['proveedor']}/{cfg['modelo']}")
+    if os.environ.get("ANTHROPIC_API_KEY"):
+        print("Lectura de fotos: "
+              + (os.environ.get("FORGE_MODELO_LECTURA") or "claude-opus-5-5"))
+    else:
+        print("AVISO: sin ANTHROPIC_API_KEY — las lecturas de foto van a fallar.")
 
     if "--prompt" in argv:
         prompt = argv[argv.index("--prompt") + 1]
