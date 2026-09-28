@@ -1261,9 +1261,11 @@ server.registerTool('registrar_pago', {
         'reciba dinero de un cliente por un proyecto: el pago se suma al saldo y ' +
         'actualiza automáticamente lo que el cliente todavía debe.\n' +
         'Responde a "regístrame un pago de $5000 para la Cocina Anáhuac" o ' +
-        '"anotá $10,000 de abono por el Closet recámara de Iván Díaz".',
+        '"anota $10,000 de abono por el Closet recámara de Iván Díaz".',
     inputSchema: {
         cliente: z.string().describe('Nombre del cliente (se busca por aproximación).'),
+        proyecto: z.string().optional()
+            .describe('Nombre del proyecto, aproximado. Necesario si el cliente tiene varios con saldo.'),
         monto: z.number().positive().describe('Monto del pago en pesos.'),
         fecha: z.string().optional()
             .describe('Fecha del pago en AAAA-MM-DD. Por omisión, hoy.'),
@@ -1272,7 +1274,7 @@ server.registerTool('registrar_pago', {
         notas: z.string().optional()
             .describe('Notas internas (referencia de banco, cheque, etc).'),
     },
-}, async ({ cliente, monto, fecha, metodo, notas }) => {
+}, async ({ cliente, proyecto: nombreProyecto, monto, fecha, metodo, notas }) => {
     const hoy = new Date().toISOString().slice(0, 10);
     const f = fecha ?? hoy;
 
@@ -1302,9 +1304,18 @@ server.registerTool('registrar_pago', {
     const nombreCliente = nombresClientes[0];
 
     // Filtrar a proyectos activos del cliente (los que deben dinero)
-    const conDeuda = candidatos.filter(p => !liquidado(p));
+    let conDeuda = candidatos.filter(p => !liquidado(p));
     if (!conDeuda.length) {
         return texto(`${nombreCliente} no tiene proyectos con saldo pendiente.`);
+    }
+    if (nombreProyecto) {
+        const elegidos = conDeuda.filter(p => puntajeDeNombre(p.nombre, nombreProyecto) > 0);
+        if (!elegidos.length) {
+            return texto(
+                `"${nombreProyecto}" no coincide con ningún proyecto con saldo de ${nombreCliente}:\n` +
+                conDeuda.map(p => `  · ${p.nombre} (debe ${pesos(p.saldo)})`).join('\n'));
+        }
+        conDeuda = elegidos;
     }
 
     // Si hay un solo proyecto con deuda, registrar el pago ahí
@@ -1352,7 +1363,8 @@ server.registerTool('registrar_pago', {
     } else {
         // Múltiples proyectos con deuda
         return texto(
-            `${nombreCliente} tiene ${conDeuda.length} proyecto(s) con saldo. ¿Cuál?\n` +
+            `${nombreCliente} tiene ${conDeuda.length} proyecto(s) con saldo. ¿Cuál? ` +
+            `(vuelve a llamar con \`proyecto\`)\n` +
             conDeuda.map(p => `  · ${p.nombre} (debe ${pesos(p.saldo)})`).join('\n'));
     }
 });
