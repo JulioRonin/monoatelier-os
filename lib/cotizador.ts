@@ -272,6 +272,29 @@ const significativas = (q: string) =>
     q.split(/\s+/).filter(p => p.length >= 3 && !IRRELEVANTES.has(p));
 
 /**
+ * Qué tanto se parece un nombre a lo que escribió el usuario.
+ *
+ * Sirve para cualquier cosa que se busque por nombre —un servicio, un
+ * cliente— porque el problema es el mismo: el usuario escribe "Ivan Diaz" y
+ * en la base dice "Iván Díaz Construcciones". `normalizar` quita los acentos
+ * y las palabras cortas o vacías no suman, para que "de" no haga match dentro
+ * de cualquier cosa.
+ *
+ * Devuelve 0 cuando no se parece. Quien llama decide si con un solo candidato
+ * actúa o pregunta.
+ */
+export function puntajeDeNombre(nombre: string, consulta: string): number {
+    const q = normalizar(consulta);
+    if (!q) return 0;
+    const n = normalizar(nombre);
+    let puntos = 0;
+    if (n === q) puntos += 100;
+    if (n.includes(q)) puntos += 50;
+    for (const p of significativas(q)) if (n.includes(p)) puntos += 10;
+    return puntos;
+}
+
+/**
  * Busca servicios por nombre aproximado.
  *
  * El agente recibe "cocina" o "cubierta de cuarzo" en lenguaje natural; esto
@@ -285,15 +308,11 @@ export function buscarServicios(servicios: Service[], texto: string): Service[] 
     return servicios
         .filter(s => s.active !== false)
         .map(s => {
-            const n = normalizar(s.name);
+            // El nombre pesa lo que diga puntajeDeNombre; la categoría suma
+            // poco, sólo para desempatar entre nombres igual de parecidos.
             const c = normalizar(s.category ?? '');
-            let puntos = 0;
-            if (n === q) puntos += 100;
-            if (n.includes(q)) puntos += 50;
-            for (const p of palabras) {
-                if (n.includes(p)) puntos += 10;
-                if (c.includes(p)) puntos += 3;
-            }
+            let puntos = puntajeDeNombre(s.name, texto);
+            for (const p of palabras) if (c.includes(p)) puntos += 3;
             return { s, puntos };
         })
         .filter(x => x.puntos > 0)

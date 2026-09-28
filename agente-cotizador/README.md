@@ -50,6 +50,21 @@ Y para consultar lo ya cotizado:
 | `ver_cotizacion` | El detalle de una: partidas y totales |
 | `pdf_de_cotizacion` | Vuelve a generar su PDF para reenviarlo, sin modificarla |
 
+Y para la cobranza:
+
+| Herramienta | Qué hace |
+|---|---|
+| `proyectos_activos` | Qué traes en marcha, cuánto te han pagado y cuánto falta |
+| `estado_de_cuenta` | La relación de un cliente: proyectos, abonos, saldo y lo facturado |
+
+Estas dos **no llevan costo ni margen**, a propósito: un estado de cuenta es
+justo lo que uno acaba leyendo con el cliente enfrente. Lo que se cobra y lo
+que se debe el cliente ya lo sabe; lo que costó hacerlo, no.
+
+Un proyecto **ya entregado que todavía debe sigue apareciendo**: el saldo no se
+cierra al entregar la cocina. El saldo sale de la tabla `payments`, sumando
+abonos — no de `downpayment`, que es el anticipo pactado y no lo que entró.
+
 Y para preguntar por las ventas:
 
 | Herramienta | Qué hace |
@@ -262,7 +277,7 @@ Hermes lanza el servidor compilado; sin reconstruir sigue usando el anterior.
 
 ## Qué verificar la primera vez
 
-1. Que Hermes liste las catorce herramientas.
+1. Que Hermes liste las dieciséis herramientas.
 2. Que `ver_catalogo` traiga tus servicios reales (si no, es `SUPABASE_KEY`).
 3. Que al cerrar, el PDF quede en `COTIZADOR_SALIDA` y Hermes lo adjunte en el
    chat. El servidor devuelve la ruta; **queda por confirmar si Hermes la
@@ -273,7 +288,13 @@ Hermes lanza el servidor compilado; sin reconstruir sigue usando el anterior.
 ```bash
 node prueba-flujo.mjs     # levanta un Supabase falso con los CSV y cotiza
 node prueba-ventas.mjs    # comprueba que cada cifra use su fecha, y el PDF
+node prueba-cobranza.mjs  # saldos por proyecto y estado de cuenta por cliente
 ```
+
+`prueba-cobranza.mjs` arma el caso que describió Julio: un cliente con
+proyectos en marcha sin pagar, otros en marcha ya liquidados y uno entregado
+que sigue debiendo. Falla si el entregado desaparece, si el saldo sale de
+`downpayment` en vez de los abonos, o si se filtra un costo.
 
 `prueba-ventas.mjs` arma a propósito el caso que se rompía: una cotización de
 septiembre, cerrada en noviembre, con arranque de obra en enero. Falla si la

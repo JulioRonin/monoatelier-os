@@ -33,6 +33,7 @@ import {
     buscarServicios, clasificarVariantes, partidasDe, totalesDe,
     precioUnitario, cantidadDe, sospechaDeClasificacion, precioDesdeCosto,
     importeDe, redondear, cantidadDeMedidas, MedidasInvalidas, margenDe,
+    puntajeDeNombre,
 } from '../lib/cotizador.js';
 import { generarCotizacionPdf } from '../lib/cotizacionPdf.js';
 import {
@@ -43,9 +44,9 @@ import {
     leerServicios, leerVariantes, leerAjustes, guardarCotizacion,
     leerCotizaciones, leerCotizacion, crearServicio,
     leerProyectos, leerProyectosSinFechaDeVenta, leerFacturas, leerClientesMin,
-    leerCotizacionesTodas, leerCotizacionesVendidas,
+    leerCotizacionesTodas, leerCotizacionesVendidas, leerProyectosTodos, leerPagos,
     type FilaServicio, type FilaVariante, type FilaCotizacion,
-    type FilaProyecto, type FilaFactura,
+    type FilaProyecto, type FilaFactura, type FilaPago,
 } from './supabase.js';
 
 const IVA_DEFAULT = 0.08;   // franja fronteriza norte
@@ -903,6 +904,267 @@ server.registerTool('reporte_ventas', {
         `Vendido ${pesos(v.total.vendido)} · facturado ${pesos(v.total.facturado)}` +
         (mg == null ? '' : ` · margen ${porcentaje(mg, 1, 1)}`) + '\n\n' +
         comoEntregar(ruta) + SOLO_INTERNO);
+});
+
+// ── Proyectos y cobranza ─────────────────────────────────────────────────
+
+/**
+ * Nada de lo que sale de aquí lleva costo ni margen, a propósito.
+ *
+ * Un estado de cuenta es justo el documento que uno acaba reenviándole al
+ * cliente —"te debo esto", "ya te pagué aquello"— y si trajera el margen, el
+ * descuido sería cuestión de tiempo. Lo que se cobra y lo que se debe son
+ * cifras que el cliente ya conoce; lo que costó hacerlo, no. Para margen está
+ * `resumen_ventas`, que sí va marcado como interno.
+ */
+
+/** Los estados vienen como "In Progress" o "In_Progress" según quién escribió. */
+const estadoNormal = (s?: string | null) => (s ?? '').replace(/_/g, ' ').trim();
+const MUERTOS = ['Cancelled', 'No Achieve'];
+const vivo = (s?: string | null) => !MUERTOS.includes(estadoNormal(s));
+const enMarcha = (s?: string | null) => estadoNormal(s) === 'In Progress';
+
+interface ProyectoConSaldo {
+    id: string; nombre: string; cliente: string; estado: string;
+    contratado: number; pagado: number; saldo: number;
+    inicio: string; entrega: string; vendido: string;
+    ultimoAbono: string | null;
+}
+
+/**
+ * Proyectos con su cobranza al día.
+ *
+ * El saldo sale de la tabla `payments`, sumando abonos por proyecto, igual que
+ * lo calcula la pantalla de Financials. No se usa `downpayment`: ése es el
+ * anticipo pactado, no lo que entró.
+ */
+async function juntarProyectos(): Promise<ProyectoConSaldo[]> {
+    const [proyectos, clientes] = await Promise.all([
+        leerProyectosTodos(),
+        leerClientesMin().catch(() => [] as any[]),
+    ]);
+    const pagos = await leerPagos(proyectos.map(p => p.id)).catch(() => [] as FilaPago[]);
+
+    const nombreDe = new Map<string, string>(
+        clientes.map(c => [String(c.id), String(c.fiscal_name || c.full_name || c.id)]));
+
+    const abonos = new Map<string, { suma: number; ultimo: string | null }>();
+    for (const g of pagos) {
+        const k = g.project_id ?? '';
+        if (!abonos.has(k)) abonos.set(k, { suma: 0, ultimo: null });
+        const a = abonos.get(k)!;
+        a.suma += Number(g.amount) || 0;
+        const f = (g.date ?? '').slice(0, 10);
+        if (f && (!a.ultimo || f > a.ultimo)) a.ultimo = f;
+    }
+
+    return proyectos.map(p => {
+        const a = abonos.get(p.id) ?? { suma: 0, ultimo: null };
+        const contratado = Number(p.budget) || 0;
+        const pagado = redondear(a.suma);
+        return {
+            id: p.id,
+            nombre: p.name ?? `proyecto ${p.id}`,
+            cliente: nombreDe.get(p.client_id ?? '') ?? 'sin cliente',
+            estado: estadoNormal(p.status) || 'sin estado',
+            contratado, pagado, saldo: redondear(contratado - pagado),
+            inicio: (p.start_date ?? '').slice(0, 10),
+            entrega: (p.due_date ?? '').slice(0, 10),
+            vendido: (p.sold_at ?? '').slice(0, 10),
+            ultimoAbono: a.ultimo,
+        };
+    });
+}
+
+/** Un peso de tolerancia: un saldo de $0.004 no es una deuda. */
+const DEBE = 1;
+const liquidado = (p: ProyectoConSaldo) => p.saldo < DEBE;
+
+/**
+ * ¿Estaba vivo el proyecto en ese mes?
+ *
+ * Arrancó en ese mes o antes, y su entrega no fue antes. Sin fecha de entrega
+ * se toma como abierto: un proyecto sin cierre sigue en la mesa.
+ */
+function vigenteEn(p: ProyectoConSaldo, mes: string): boolean {
+    const ini = (p.inicio || p.vendido).slice(0, 7);
+    const fin = p.entrega.slice(0, 7);
+    if (!ini) return false;
+    if (ini > mes) return false;
+    if (fin && fin < mes) return false;
+    return true;
+}
+
+const hoyISO = () => new Date().toISOString().slice(0, 10);
+
+/** Marca de cobranza: vencido, debe, o liquidado. */
+function marca(p: ProyectoConSaldo): string {
+    if (liquidado(p)) return '✓ PAGADO ';
+    if (p.entrega && p.entrega < hoyISO()) return '⚠ VENCIDO';
+    return '· DEBE   ';
+}
+
+const conPorcentaje = (p: ProyectoConSaldo) =>
+    p.contratado > 0 ? `${((p.pagado / p.contratado) * 100).toFixed(0)}%` : '—';
+
+server.registerTool('proyectos_activos', {
+    title: 'Proyectos en marcha y su cobranza',
+    description:
+        'Los proyectos en curso con lo que se ha cobrado y lo que falta. Responde ' +
+        '"¿qué traigo activo?", "¿quién me debe?", "¿cuáles ya me pagaron completo?".\n' +
+        'Con `mes` se limita a los que estaban vivos ese mes (arrancaron en él o antes y ' +
+        'su entrega no fue antes). Con `cliente` se filtra por nombre aproximado.\n' +
+        'No lleva costos ni márgenes: son cifras de cobranza.',
+    inputSchema: {
+        cliente: z.string().optional().describe('Nombre del cliente, aproximado.'),
+        mes: z.string().optional().describe('AAAA-MM. Por omisión, todos los que estén en marcha.'),
+        pago: z.enum(['pendiente', 'pagado', 'todos']).optional()
+            .describe('Filtra por estado de pago. Por omisión, todos.'),
+        incluir_terminados: z.boolean().optional()
+            .describe('Incluir los ya entregados. Por omisión no, salvo que deban dinero.'),
+    },
+}, async ({ cliente, mes, pago, incluir_terminados }) => {
+    const todos = await juntarProyectos();
+    let lista = todos.filter(p => vivo(p.estado));
+
+    if (cliente) {
+        const filtrados = lista.filter(p => puntajeDeNombre(p.cliente, cliente) > 0);
+        if (!filtrados.length) {
+            const nombres = [...new Set(todos.map(p => p.cliente))].slice(0, 12);
+            return texto(
+                `No encuentro proyectos de "${cliente}".\n\nClientes con proyectos:\n` +
+                nombres.map(n => `  · ${n}`).join('\n'));
+        }
+        lista = filtrados;
+    }
+
+    // Un proyecto entregado que todavía debe dinero SÍ sale: el saldo no se
+    // cierra cuando se entrega la cocina, y esconderlo es perder la cobranza.
+    if (!incluir_terminados) lista = lista.filter(p => enMarcha(p.estado) || !liquidado(p));
+    if (mes) lista = lista.filter(p => vigenteEn(p, mes));
+    if (pago === 'pendiente') lista = lista.filter(p => !liquidado(p));
+    if (pago === 'pagado') lista = lista.filter(p => liquidado(p));
+
+    if (!lista.length) {
+        return texto(`No hay proyectos que cumplan eso${mes ? ` en ${nombreMes(mes)}` : ''}.`);
+    }
+
+    lista.sort((a, b) => b.saldo - a.saldo || a.entrega.localeCompare(b.entrega));
+    const anchoNombre = Math.min(28, Math.max(...lista.map(p => p.nombre.length)));
+
+    const lineas = lista.map(p =>
+        `${marca(p)} ${p.nombre.slice(0, anchoNombre).padEnd(anchoNombre + 1)}` +
+        `${p.cliente.slice(0, 22).padEnd(23)}` +
+        `${pesos(p.contratado).padStart(13)} · pagado ${pesos(p.pagado).padStart(13)} (${conPorcentaje(p).padStart(4)})` +
+        (liquidado(p) ? '' : ` · falta ${pesos(p.saldo)}`) +
+        (p.entrega ? ` · entrega ${p.entrega}` : ''));
+
+    const porCobrar = redondear(lista.reduce((s, p) => s + Math.max(p.saldo, 0), 0));
+    const contratado = redondear(lista.reduce((s, p) => s + p.contratado, 0));
+    const vencidos = lista.filter(p => !liquidado(p) && p.entrega && p.entrega < hoyISO());
+
+    // El encabezado dice lo que la lista trae de verdad: si incluye uno ya
+    // entregado que sigue debiendo, llamarla "en marcha" es mentir en la
+    // primera línea.
+    const soloEnMarcha = lista.every(p => enMarcha(p.estado));
+    const deQuien = [...new Set(lista.map(p => p.cliente))];
+    const encabezado =
+        `${lista.length} proyecto(s) ${soloEnMarcha ? 'en marcha' : 'en marcha o con saldo pendiente'}` +
+        (mes ? `, vivos en ${nombreMes(mes)}` : '') +
+        (deQuien.length === 1 ? ` — ${deQuien[0]}` : '');
+
+    const partes = [
+        encabezado, '',
+        ...lineas, '',
+        `Contratado ${pesos(contratado)} · cobrado ${pesos(redondear(contratado - porCobrar))} · ` +
+        `POR COBRAR ${pesos(porCobrar)}`,
+    ];
+    if (vencidos.length) {
+        partes.push(
+            `⚠ ${vencidos.length} con fecha de entrega pasada y saldo pendiente: ` +
+            vencidos.map(p => p.nombre).join(', '));
+    }
+    return texto(partes.join('\n'));
+});
+
+server.registerTool('estado_de_cuenta', {
+    title: 'Relación de un cliente: qué debe y qué pagó',
+    description:
+        'La relación completa de un cliente: todos sus proyectos, cuánto se contrató, cuánto ' +
+        'abonó y cuánto falta, más lo facturado. Responde "¿cómo voy con Iván Díaz?" o ' +
+        '"¿cuánto me debe?".\n' +
+        'Incluye los proyectos terminados que todavía deben: un saldo no se cierra al ' +
+        'entregar. No lleva costos ni márgenes, así que se puede leer con el cliente enfrente.',
+    inputSchema: {
+        cliente: z.string().describe('Nombre del cliente, aproximado.'),
+        incluir_cancelados: z.boolean().optional()
+            .describe('Incluir cancelados y no ganados. Por omisión no.'),
+    },
+}, async ({ cliente, incluir_cancelados }) => {
+    const todos = await juntarProyectos();
+    const candidatos = todos.filter(p => puntajeDeNombre(p.cliente, cliente) > 0);
+
+    if (!candidatos.length) {
+        const nombres = [...new Set(todos.map(p => p.cliente))].slice(0, 15);
+        return texto(
+            `No encuentro a "${cliente}" entre los clientes con proyectos.\n\n` +
+            nombres.map(n => `  · ${n}`).join('\n'));
+    }
+
+    // Si el nombre pega con más de un cliente, se pregunta en vez de sumar dos
+    // cuentas distintas en un mismo saldo.
+    const nombres = [...new Set(candidatos.map(p => p.cliente))];
+    if (nombres.length > 1) {
+        return texto(
+            `"${cliente}" coincide con ${nombres.length} clientes. ¿Cuál?\n` +
+            nombres.map(n => `  · ${n}`).join('\n'));
+    }
+    const nombre = nombres[0];
+
+    const lista = candidatos.filter(p => incluir_cancelados || vivo(p.estado));
+    if (!lista.length) return texto(`${nombre} no tiene proyectos vigentes.`);
+
+    lista.sort((a, b) => b.saldo - a.saldo || (b.vendido || b.inicio).localeCompare(a.vendido || a.inicio));
+
+    const deben = lista.filter(p => !liquidado(p));
+    const contratado = redondear(lista.reduce((s, p) => s + p.contratado, 0));
+    const pagado = redondear(lista.reduce((s, p) => s + p.pagado, 0));
+    const saldo = redondear(contratado - pagado);
+
+    // Lo facturado se cruza por el NOMBRE impreso en el CFDI, no por client_id:
+    // la tabla de facturas no lo trae. Puede quedarse corto si la razón social
+    // difiere, así que se dice de dónde sale en vez de darlo por exacto.
+    const facturas = await leerFacturas().catch(() => [] as FilaFactura[]);
+    const suyas = facturas.filter(f =>
+        f.modo !== 'test' && f.status !== 'canceled' &&
+        puntajeDeNombre(f.client_name ?? '', nombre) > 0);
+    const facturado = redondear(suyas.reduce((s, f) => s + (Number(f.total) || 0), 0));
+
+    const lineas = lista.map(p =>
+        `${marca(p)} ${p.nombre.slice(0, 30).padEnd(31)}${p.estado.padEnd(13)}` +
+        `${pesos(p.contratado).padStart(13)} · pagado ${pesos(p.pagado).padStart(13)}` +
+        (liquidado(p) ? '' : ` · debe ${pesos(p.saldo)}`) +
+        (p.ultimoAbono ? ` · último abono ${p.ultimoAbono}` : ' · sin abonos'));
+
+    return texto([
+        `Estado de cuenta — ${nombre}`,
+        `${lista.length} proyecto(s), ${deben.length} con saldo`,
+        '',
+        ...lineas,
+        '',
+        `Contratado ${pesos(contratado)} · pagado ${pesos(pagado)} · SALDO ${pesos(saldo)}`,
+        saldo < DEBE
+            ? 'Al corriente: no debe nada.'
+            : `Debe ${pesos(saldo)} en ${deben.length} proyecto(s).`,
+        '',
+        facturado > 0
+            ? `Facturado (CFDI timbrado): ${pesos(facturado)} en ${suyas.length} factura(s).` +
+              (Math.abs(facturado - pagado) >= DEBE
+                  ? ` Ojo: facturado y cobrado no son lo mismo — hay ${pesos(Math.abs(facturado - pagado))} de diferencia.`
+                  : '')
+            : 'Sin facturas timbradas a su nombre. Se cruzan por el nombre impreso en el CFDI, ' +
+              'así que si la razón social difiere puede no encontrarlas.',
+    ].join('\n'));
 });
 
 // ── Consultar lo ya cotizado ─────────────────────────────────────────────

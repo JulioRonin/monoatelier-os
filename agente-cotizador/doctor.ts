@@ -84,6 +84,7 @@ async function main() {
         ['ajustes', 'supabase/migrations/20260924_tarifas.sql'],
         ['quotes', 'la tabla de cotizaciones de la plataforma'],
         ['projects', 'la tabla de proyectos de la plataforma'],
+        ['payments', 'la tabla de abonos de la plataforma'],
     ];
     for (const [tabla, migracion] of TABLAS) {
         const r = await rest(`/${tabla}?select=*&limit=1`);

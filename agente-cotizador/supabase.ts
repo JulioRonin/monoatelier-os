@@ -240,6 +240,32 @@ export async function leerProyectosSinFechaDeVenta(): Promise<FilaProyecto[]> {
         ['id', 'client_id', 'quote_id']);
 }
 
+export interface FilaPago {
+    id: string; project_id: string | null; amount: number | null;
+    date: string | null; method: string | null; notes: string | null;
+}
+
+/** Todos los proyectos, sin filtro de fecha: un saldo no caduca a fin de mes. */
+export async function leerProyectosTodos(): Promise<FilaProyecto[]> {
+    return mapear(
+        await pedir('/projects?select=*&order=created_at.desc'),
+        ['id', 'client_id', 'quote_id']);
+}
+
+/**
+ * Los abonos recibidos.
+ *
+ * Con `proyectoIds` se filtran en el servidor; sin ellos se traen todos, que
+ * en un taller son cientos. Es la tabla que la plataforma usa para el saldo de
+ * cada proyecto: `payments`, con project_id, amount, date y method.
+ */
+export async function leerPagos(proyectoIds?: string[]): Promise<FilaPago[]> {
+    if (proyectoIds && !proyectoIds.length) return [];
+    const q = new URLSearchParams({ select: '*', order: 'date.desc' });
+    if (proyectoIds) q.append('project_id', `in.(${proyectoIds.join(',')})`);
+    return mapear(await pedir(`/payments?${q}`), ['id', 'project_id']);
+}
+
 /**
  * Ids de las cotizaciones que sí se volvieron proyecto. TODAS, sin rango.
  *
