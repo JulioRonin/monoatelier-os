@@ -138,6 +138,28 @@ function resumen(b: Borrador, iva: number): string {
 const texto = (t: string) => ({ content: [{ type: 'text' as const, text: t }] });
 
 /**
+ * Un bloque listo para copiar, en monoespaciado.
+ *
+ * Las columnas se alinean con espacios, y fuera de un bloque de código Discord
+ * las dibuja con tipografía proporcional: la tabla sale chueca aunque el
+ * modelo la copie bien.
+ *
+ * Y hay una razón más de fondo: pedirle al modelo que REDACTE una tabla de
+ * cifras es pedirle que la reescriba, y un modelo chico la reescribe mal —
+ * cambia un número, se salta un renglón, o se le va la respuesta entera.
+ * Copiar un bloque es la operación más simple que se le puede pedir.
+ *
+ * OJO: Hermes ignora a propósito las rutas de archivo dentro de un bloque de
+ * código, así que la ruta de un PDF nunca va aquí dentro.
+ */
+const bloque = (lineas: string[]) => '```\n' + lineas.join('\n') + '\n```';
+
+const COPIA_TAL_CUAL =
+    '\n\nCopia el bloque de arriba TAL CUAL en tu respuesta, con sus comillas ' +
+    'invertidas incluidas, sin reescribirlo ni recalcular nada. Si quieres ' +
+    'comentar algo, ponlo debajo del bloque.';
+
+/**
  * Cómo pedirle al agente que entregue el archivo.
  *
  * El gateway de Hermes sube el PDF como adjunto nativo cuando detecta su ruta
@@ -628,6 +650,42 @@ const SOLO_INTERNO =
 
 const mes = (f?: string | null) => (f ?? '').slice(0, 7);
 
+/**
+ * Las tablas se leen en un chat, no en una hoja.
+ *
+ * Un renglón de 136 caracteres dentro de un bloque de código se sale del ancho
+ * de Discord y hay que arrastrarlo de lado; en un teléfono es ilegible. El
+ * tope son 76, que es lo que entra sin scroll horizontal.
+ */
+const ANCHO = 76;
+
+/**
+ * Parte un párrafo en renglones que quepan en el ancho del chat.
+ *
+ * Dentro de un bloque de código el texto NO se acomoda solo: una nota de tres
+ * líneas escrita de corrido sale como un solo renglón larguísimo que hay que
+ * arrastrar. Se parte aquí, en palabras enteras.
+ */
+function renglones(t: string, ancho = ANCHO): string[] {
+    const out: string[] = [];
+    let linea = '';
+    for (const palabra of t.split(/\s+/)) {
+        if (linea && `${linea} ${palabra}`.length > ancho) { out.push(linea); linea = palabra; }
+        else linea = linea ? `${linea} ${palabra}` : palabra;
+    }
+    if (linea) out.push(linea);
+    return out;
+}
+
+const MESES_CORTOS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun',
+                      'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+
+const mesCorto = (m: string) => {
+    const [a, n] = m.split('-');
+    const i = Number(n) - 1;
+    return MESES_CORTOS[i] ? `${MESES_CORTOS[i]} ${a}` : m;
+};
+
 const nombreMes = (m: string) => {
     const [a, n] = m.split('-');
     const d = new Date(Number(a), Number(n) - 1, 1);
@@ -756,50 +814,64 @@ server.registerTool('resumen_ventas', {
     const v = await juntarVentas(desde, hasta);
     if (!v.meses.length) return texto(`No hay movimientos entre ${v.desde} y ${v.hasta}.`);
 
-    const lineas = v.meses.map(m => {
-        const mg = margenDelMes(m);
-        return `${nombreMes(m.mes).padEnd(18)} cotizado ${pesos(m.cotizado).padStart(14)} · ` +
-               `vendido ${pesos(m.vendido).padStart(14)} (${m.n}) · ` +
-               `facturado ${pesos(m.facturado).padStart(14)}` +
-               (mg == null ? '' : ` · margen ${porcentaje(mg, 1)}`);
-    });
-    const mgTotal = margenDelMes(v.total);
+    // Tabla en columnas con encabezado, en vez de repetir "cotizado"/"vendido"
+    // en cada renglón: los rótulos repetidos gastaban 40 caracteres por línea
+    // y empujaban la tabla más allá del ancho del chat.
+    const fila = (c1: string, c2: string, c3: string, c4: string,
+                  c5: string, c6: string, c7: string) =>
+        `${c1.padEnd(9)}${c2.padStart(13)}${c3.padStart(13)}${c4.padStart(3)}` +
+        `${c5.padStart(13)}${c6.padStart(8)}${c7.padStart(6)}`;
 
-    // Ojo: no se filtra por Boolean. Los renglones vacíos de aquí son la
-    // separación visual, y filtrarlos pega los totales a la tabla.
+    const mgTotal = margenDelMes(v.total);
     const partes = [
         `Ventas de ${v.desde} a ${v.hasta}`,
         '',
-        ...lineas,
+        fila('mes', 'cotizado', 'vendido', '#', 'facturado', 'margen', 'conv'),
+        '─'.repeat(ANCHO - 11),
+        ...v.meses.map(m => {
+            const mg = margenDelMes(m);
+            return fila(
+                mesCorto(m.mes), pesos(m.cotizado), pesos(m.vendido), String(m.n),
+                pesos(m.facturado),
+                mg == null ? '—' : porcentaje(mg, 1),
+                v.conversionMedible && m.cotizado > 0
+                    ? porcentaje(m.convertido, m.cotizado) : '—');
+        }),
+        '─'.repeat(ANCHO - 11),
+        fila('TOTAL', pesos(v.total.cotizado), pesos(v.total.vendido), String(v.total.n),
+            pesos(v.total.facturado),
+            mgTotal == null ? '—' : porcentaje(mgTotal, 1, 1),
+            v.conversionMedible && v.total.cotizado > 0
+                ? porcentaje(v.total.convertido, v.total.cotizado) : '—'),
         '',
-        `TOTAL  cotizado ${pesos(v.total.cotizado)} · vendido ${pesos(v.total.vendido)} ` +
-        `(${v.total.n} proyectos) · facturado ${pesos(v.total.facturado)}`,
-        mgTotal == null
-            ? 'Margen no calculable: falta capturar el costo real de los proyectos.'
-            : `Margen del periodo: ${porcentaje(mgTotal, 1, 1)}`,
     ];
+    if (mgTotal == null) {
+        partes.push(...renglones(
+            'Margen no calculable: falta capturar el costo real de los proyectos.'));
+    }
     // Conversión por cohorte: de lo COTIZADO en el periodo, cuánto se cerró.
     // No es lo vendido entre lo cotizado del mismo mes — eso compara la venta
     // de noviembre contra la oferta de noviembre, cuando la que se cerró era
     // la de septiembre, y sale un 300%.
     if (!v.conversionMedible) {
-        partes.push(
-            'Conversión: no medible todavía. Se calcula ligando cada cotización con el ' +
+        partes.push(...renglones(
+            'conv: no medible todavía. Se calcula ligando cada cotización con el ' +
             'proyecto en que se convirtió, y ese enlace se guarda desde ahora; las ' +
-            'cotizaciones anteriores no lo traen.');
-    } else if (v.total.cotizado > 0) {
-        partes.push(
-            `Conversión: ${porcentaje(v.total.convertido, v.total.cotizado)} de lo cotizado ` +
-            `en el periodo acabó cerrándose (${pesos(v.total.convertido)} de ${pesos(v.total.cotizado)}).`);
+            'cotizaciones anteriores no lo traen.'));
+    } else {
+        partes.push(...renglones(
+            'conv: de lo cotizado en ese mes, cuánto acabó cerrándose — aunque se ' +
+            'cerrara meses después.'));
     }
     if (v.sinFecha.length) {
         partes.push(
             '',
-            `⚠ ${v.sinFecha.length} proyecto(s) sin fecha de venta — no entran en ningún mes:`,
-            ...v.sinFecha.slice(0, 8).map(p => `   · ${p.name ?? p.id} (${pesos(Number(p.budget) || 0)})`),
-            'Se arregla asignándoles su fecha de venta en la pantalla de Proyectos.');
+            ...renglones(`⚠ ${v.sinFecha.length} proyecto(s) sin fecha de venta — no entran en ningún mes:`),
+            ...v.sinFecha.slice(0, 8).map(p =>
+                `   · ${(p.name ?? p.id).slice(0, 40)} (${pesos(Number(p.budget) || 0)})`),
+            ...renglones('Se arregla asignándoles su fecha de venta en la pantalla de Proyectos.'));
     }
-    return texto(partes.join('\n') + SOLO_INTERNO);
+    return texto(bloque(partes) + COPIA_TAL_CUAL + SOLO_INTERNO);
 });
 
 server.registerTool('ventas_por_cliente', {
@@ -817,14 +889,21 @@ server.registerTool('ventas_por_cliente', {
     const clientes = await juntarClientes(r.desde, r.hasta, limite ?? 10);
     if (!clientes.length) return texto(`Sin movimientos entre ${r.desde} y ${r.hasta}.`);
 
-    return texto(
-        `Clientes de ${r.desde} a ${r.hasta} (por venta)\n\n` +
-        clientes.map(v => {
+    const fila = (c1: string, c2: string, c3: string, c4: string, c5: string) =>
+        `${c1.slice(0, 23).padEnd(24)}${c2.padStart(14)}${c3.padStart(3)}` +
+        `${c4.padStart(14)}${c5.padStart(8)}`;
+
+    return texto(bloque([
+        `Clientes de ${r.desde} a ${r.hasta} (por venta)`,
+        '',
+        fila('cliente', 'vendido', '#', 'facturado', 'margen'),
+        '─'.repeat(63),
+        ...clientes.map(v => {
             const mg = margenDelMes(v);
-            return `${v.nombre.slice(0, 30).padEnd(31)} vendido ${pesos(v.vendido).padStart(14)} ` +
-                   `(${v.n}) · facturado ${pesos(v.facturado).padStart(14)}` +
-                   (mg == null ? ' · sin costo capturado' : ` · margen ${porcentaje(mg, 1)}`);
-        }).join('\n') + SOLO_INTERNO);
+            return fila(v.nombre, pesos(v.vendido), String(v.n), pesos(v.facturado),
+                mg == null ? '—' : porcentaje(mg, 1));
+        }),
+    ]) + COPIA_TAL_CUAL + SOLO_INTERNO);
 });
 
 /**
@@ -1050,14 +1129,19 @@ server.registerTool('proyectos_activos', {
     }
 
     lista.sort((a, b) => b.saldo - a.saldo || a.entrega.localeCompare(b.entrega));
-    const anchoNombre = Math.min(28, Math.max(...lista.map(p => p.nombre.length)));
 
-    const lineas = lista.map(p =>
-        `${marca(p)} ${p.nombre.slice(0, anchoNombre).padEnd(anchoNombre + 1)}` +
-        `${p.cliente.slice(0, 22).padEnd(23)}` +
-        `${pesos(p.contratado).padStart(13)} · pagado ${pesos(p.pagado).padStart(13)} (${conPorcentaje(p).padStart(4)})` +
-        (liquidado(p) ? '' : ` · falta ${pesos(p.saldo)}`) +
-        (p.entrega ? ` · entrega ${p.entrega}` : ''));
+    // Dos renglones por proyecto en vez de uno larguísimo: el de identidad y
+    // el de dinero. En una sola línea esto medía 136 caracteres y había que
+    // arrastrar la tabla de lado para ver el saldo, que es justo el dato.
+    const unSoloCliente = new Set(lista.map(p => p.cliente)).size === 1;
+    const lineas = lista.flatMap(p => [
+        `${marca(p)} ${p.nombre.slice(0, 38)}` +
+        (unSoloCliente ? '' : ` — ${p.cliente.slice(0, 22)}`) +
+        (p.entrega ? ` · entrega ${p.entrega}` : ''),
+        `          ${pesos(p.contratado).padStart(13)} · pagado ${pesos(p.pagado).padStart(13)}` +
+        ` (${conPorcentaje(p).padStart(4)})` +
+        (liquidado(p) ? '' : ` · falta ${pesos(p.saldo)}`),
+    ]);
 
     const porCobrar = redondear(lista.reduce((s, p) => s + Math.max(p.saldo, 0), 0));
     const contratado = redondear(lista.reduce((s, p) => s + p.contratado, 0));
@@ -1080,11 +1164,11 @@ server.registerTool('proyectos_activos', {
         `POR COBRAR ${pesos(porCobrar)}`,
     ];
     if (vencidos.length) {
-        partes.push(
+        partes.push(...renglones(
             `⚠ ${vencidos.length} con fecha de entrega pasada y saldo pendiente: ` +
-            vencidos.map(p => p.nombre).join(', '));
+            vencidos.map(p => p.nombre).join(', ')));
     }
-    return texto(partes.join('\n'));
+    return texto(bloque(partes) + COPIA_TAL_CUAL);
 });
 
 server.registerTool('estado_de_cuenta', {
@@ -1140,13 +1224,14 @@ server.registerTool('estado_de_cuenta', {
         puntajeDeNombre(f.client_name ?? '', nombre) > 0);
     const facturado = redondear(suyas.reduce((s, f) => s + (Number(f.total) || 0), 0));
 
-    const lineas = lista.map(p =>
-        `${marca(p)} ${p.nombre.slice(0, 30).padEnd(31)}${p.estado.padEnd(13)}` +
-        `${pesos(p.contratado).padStart(13)} · pagado ${pesos(p.pagado).padStart(13)}` +
-        (liquidado(p) ? '' : ` · debe ${pesos(p.saldo)}`) +
-        (p.ultimoAbono ? ` · último abono ${p.ultimoAbono}` : ' · sin abonos'));
+    const lineas = lista.flatMap(p => [
+        `${marca(p)} ${p.nombre.slice(0, 38)} · ${p.estado}`,
+        `          ${pesos(p.contratado).padStart(13)} · pagado ${pesos(p.pagado).padStart(13)}` +
+        (liquidado(p) ? '' : ` · debe ${pesos(p.saldo)}`),
+        `          ${p.ultimoAbono ? `último abono ${p.ultimoAbono}` : 'sin abonos'}`,
+    ]);
 
-    return texto([
+    return texto(bloque([
         `Estado de cuenta — ${nombre}`,
         `${lista.length} proyecto(s), ${deben.length} con saldo`,
         '',
@@ -1157,14 +1242,14 @@ server.registerTool('estado_de_cuenta', {
             ? 'Al corriente: no debe nada.'
             : `Debe ${pesos(saldo)} en ${deben.length} proyecto(s).`,
         '',
-        facturado > 0
+        ...renglones(facturado > 0
             ? `Facturado (CFDI timbrado): ${pesos(facturado)} en ${suyas.length} factura(s).` +
               (Math.abs(facturado - pagado) >= DEBE
                   ? ` Ojo: facturado y cobrado no son lo mismo — hay ${pesos(Math.abs(facturado - pagado))} de diferencia.`
                   : '')
             : 'Sin facturas timbradas a su nombre. Se cruzan por el nombre impreso en el CFDI, ' +
-              'así que si la razón social difiere puede no encontrarlas.',
-    ].join('\n'));
+              'así que si la razón social difiere puede no encontrarlas.'),
+    ]) + COPIA_TAL_CUAL);
 });
 
 // ── Consultar lo ya cotizado ─────────────────────────────────────────────
@@ -1203,17 +1288,23 @@ server.registerTool('listar_cotizaciones', {
             : 'Todavía no hay cotizaciones guardadas.');
     }
     const { iva } = await catalogo();
-    const lineas = filas.map(f => {
+    // Dos renglones: arriba la referencia y el dinero, abajo quién y qué. En
+    // uno solo esto pasaba de 90 caracteres y se salía del ancho del chat.
+    const lineas = filas.flatMap(f => {
         const items = partidasDeFila(f);
         const t = totalesDe(items, iva);
         const fecha = (f.date ?? f.created_at ?? '').slice(0, 10);
-        return `${corto(f.id)} · ${fecha} · ${f.client_name ?? 'sin cliente'} — ` +
-               `${f.project_name ?? 'sin proyecto'} · ${items.length} partida(s) · ` +
-               `${pesos(t.total)} con IVA · ${f.status ?? 'sin estado'}`;
+        return [
+            `${corto(f.id).padEnd(9)} ${fecha} · ${pesos(t.total)} con IVA · ` +
+            `${f.status ?? 'sin estado'}`,
+            `          ${(f.client_name ?? 'sin cliente').slice(0, 28)} — ` +
+            `${(f.project_name ?? 'sin proyecto').slice(0, 28)} · ${items.length} partida(s)`,
+        ];
     });
     return texto(
-        `${filas.length} cotización(es):\n\n${lineas.join('\n')}\n\n` +
-        `Para el detalle usa ver_cotizacion con la referencia de la izquierda.`);
+        bloque([`${filas.length} cotización(es):`, '', ...lineas]) +
+        '\n\nPara el detalle usa ver_cotizacion con la referencia de la izquierda.' +
+        COPIA_TAL_CUAL);
 });
 
 server.registerTool('ver_cotizacion', {

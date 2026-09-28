@@ -143,30 +143,39 @@ paso('ver_cotizacion 101', detalle);
 const fallas = [];
 const ok = (cond, msg) => { if (!cond) fallas.push(msg); };
 
-const linea = (m) => resumen.split('\n').find(l => l.toLowerCase().startsWith(m)) ?? '';
-const noviembre = linea('noviembre');
-const septiembre = linea('septiembre');
+const linea = (pre) => resumen.split('\n').find(l => l.startsWith(pre)) ?? '';
+const noviembre = linea('nov 2026');
+const septiembre = linea('sep 2026');
+const total = linea('TOTAL');
 
-ok(/vendido\s+\$180,000/.test(noviembre) || /vendido\s+\$?180,?000/.test(noviembre),
+ok(/\$180,000\.00/.test(noviembre), 
    `la venta de la cotización de septiembre debe contarse en NOVIEMBRE. Línea: "${noviembre}"`);
-ok(!/vendido\s+\$1?80,000/.test(septiembre.replace('cotizado $180,000.00', '')),
-   `septiembre no debe registrar venta, sólo lo cotizado. Línea: "${septiembre}"`);
-ok(/cotizado\s+\$180,000/.test(septiembre),
-   `septiembre debe registrar los $180,000 COTIZADOS. Línea: "${septiembre}"`);
+ok(/\$180,000\.00\s+\$0\.00\s+0/.test(septiembre),
+   `septiembre debe registrar los $180,000 COTIZADOS y cero vendido. Línea: "${septiembre}"`);
 ok(!/2027/.test(resumen), 'el mes de arranque de obra (enero 2027) no debe aparecer como venta');
-ok(/facturado\s+\$97,200/.test(noviembre),
+ok(/\$97,200\.00/.test(noviembre),
    `noviembre debe facturar sólo los $97,200 reales, no los $540,000 de sandbox. Línea: "${noviembre}"`);
-ok(!/540,000/.test(resumen), 'una factura de sandbox se colό como ingreso');
-ok(!/108,000/.test(resumen), 'una factura cancelada se colό como ingreso');
+ok(!/540,000/.test(resumen), 'una factura de sandbox se coló como ingreso');
+ok(!/108,000/.test(resumen), 'una factura cancelada se coló como ingreso');
 ok(/1 proyecto\(s\) sin fecha de venta/.test(resumen), 'no se avisó del proyecto sin sold_at');
 // La conversión se mide por cohorte. De lo cotizado en el periodo ($240,000)
 // sólo q1 ($180,000) se cerró → 75%. Dividir lo vendido entre lo cotizado del
 // mismo mes daba 300% en noviembre, que es la clase de cifra que se cree.
-ok(/Conversión: 75%/.test(resumen),
-   `la conversión debe ser por cohorte: 75% ($180k cerrados de $240k ofertados). Salió: "${
-     resumen.split('\n').find(l => l.startsWith('Conversión')) ?? '(nada)'}"`);
+ok(/\s75%\s*$/.test(total),
+   `la conversión total debe ser 75% por cohorte. Renglón TOTAL: "${total}"`);
+ok(/\s100%\s*$/.test(septiembre),
+   `septiembre cotizó $180k y todo se cerró: 100%. Línea: "${septiembre}"`);
 ok(!/300%/.test(resumen) && !/300%/.test(reporte),
    'una conversión de más de 100% significa que se cruzaron cohortes');
+// Las tablas se leen en Discord: dentro del bloque nada debe pasar de 76.
+{
+  let d = false, largas = [];
+  for (const l of resumen.split('\n')) {
+    if (l.trim() === '```') { d = !d; continue; }
+    if (d && l.length > 76) largas.push(l.length);
+  }
+  ok(!largas.length, `hay ${largas.length} renglón(es) de más de 76 caracteres: se salen del chat`);
+}
 ok(/INTERNO/.test(resumen) && /INTERNO/.test(clientes),
    'falta el aviso de que costos y márgenes son internos');
 ok(/EMDICO SA DE CV/.test(clientes), 'el cliente debe salir por su razón social');

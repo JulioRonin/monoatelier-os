@@ -159,6 +159,19 @@ ok(/Closets recámara/.test(mes) && /Cocina Anáhuac/.test(mes),
    'con mes=2026-09 deben salir los que estaban vivos ese mes');
 ok(!/margen/i.test(activos), 'proyectos_activos no debe llevar margen');
 
+// Las tablas se leen en Discord, no en una hoja: un renglón de 136 caracteres
+// obliga a arrastrar la tabla de lado para ver el saldo, que es justo el dato.
+for (const [nombre, salida] of [['proyectos_activos', activos], ['estado_de_cuenta', cuenta]]) {
+  let dentro = false, largas = 0, peor = 0;
+  for (const l of salida.split('\n')) {
+    if (l.trim() === '```') { dentro = !dentro; continue; }
+    if (dentro && l.length > 76) { largas++; peor = Math.max(peor, l.length); }
+  }
+  ok(!largas, `${nombre}: ${largas} renglón(es) de hasta ${peor} caracteres, se salen del chat`);
+  ok(/^```/m.test(salida) , `${nombre} debe venir en bloque de código: fuera de él Discord ` +
+     'usa tipografía proporcional y las columnas quedan chuecas');
+}
+
 console.log(`\n${'─'.repeat(74)}`);
 if (fallas.length) { console.log('FALLAS:'); fallas.forEach(f => console.log(' ✗ ' + f)); }
 else console.log('✓ la cobranza cuadra: nadie desaparece por estar entregado, el saldo\n  sale de los abonos, y no se filtra ni un costo.');

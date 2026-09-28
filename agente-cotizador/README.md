@@ -84,6 +84,24 @@ mandarle al cliente el PDF equivocado es peor que pedir que lo aclare.
 
 El PDF **sólo se genera al cerrar**, después de que apruebes los totales.
 
+### Por qué las respuestas vienen en bloque de código
+
+Las tablas salen dentro de ``` y con una nota que le pide al agente copiarlas
+tal cual. Por dos razones:
+
+- Fuera de un bloque, Discord dibuja el texto con tipografía proporcional y
+  las columnas alineadas con espacios quedan chuecas.
+- Pedirle al modelo que **redacte** una tabla de cifras es pedirle que la
+  reescriba, y un modelo chico la reescribe mal: cambia un número, se salta un
+  renglón, o se le va la respuesta entera. Copiar un bloque es la operación
+  más simple que se le puede pedir.
+
+Ningún renglón pasa de 76 caracteres, que es lo que entra sin tener que
+arrastrar la tabla de lado en el teléfono. Las pruebas lo verifican.
+
+La ruta de un PDF **nunca** va dentro del bloque: Hermes ignora a propósito
+las rutas dentro de bloques de código, y no adjuntaría el archivo.
+
 ### Con qué fecha se mide cada cifra
 
 Un proyecto tiene tres fechas distintas y dan tres meses distintos:
