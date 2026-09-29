@@ -189,9 +189,9 @@ vigentes en <https://platform.claude.com/docs/en/pricing>.
   `python -m pip install -r forge_agent/requirements.txt`. El worker y el
   doctor imprimen la ruta del Python en uso y el comando exacto.
 - **"Anthropic rechazó la llave" o "sin ANTHROPIC_API_KEY"** → la llave vive en
-  tu PC, no en Vercel (sus variables son para la página web). Lo más simple:
-  en la carpeta del repo corre `notepad .env.local` y deja la línea
-  `ANTHROPIC_API_KEY=` con tu llave completa pegada después del `=`. El doctor
+  tu PC, no en Vercel (sus variables son para la página web). Guárdala con
+  `python -m forge_agent.llave`: la pegas, la verifica con Anthropic y la
+  escribe en su propio renglón del `.env.local` (no se ve mientras la pegas). El doctor
   muestra la huella de la llave que ve (`sk-ant-api03…WXYZ`), de dónde la
   tomó, y la verifica sin gastar tokens. La plataforma web no usa ninguna
   llave de Anthropic: no la subas a Vercel.

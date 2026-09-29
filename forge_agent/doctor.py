@@ -98,9 +98,8 @@ def revisar_lectura(verificar: bool = True) -> bool:
         _linea(MAL, "sin ANTHROPIC_API_KEY: la lectura de fotos no va a funcionar",
                "\n".join(diagnostico_llave()) + "\n"
                "La foto la lee Claude aunque construyas con NVIDIA.\n"
-               "En la carpeta del repo corre  notepad .env.local , agrega la línea\n"
-               "  ANTHROPIC_API_KEY=  y pega tu llave completa después del =\n"
-               "(sin comillas ni espacios). Guarda y vuelve a correr esto.\n"
+               "Para guardarla sin editar archivos a mano:\n"
+               "  python -m forge_agent.llave\n"
                "(Vercel no cuenta: sus variables son para la página web.)")
         return False
 
@@ -117,8 +116,8 @@ def revisar_lectura(verificar: bool = True) -> bool:
     except anthropic.AuthenticationError:
         _linea(MAL, f"Anthropic rechazó la llave {llave_enmascarada()}",
                f"Viene de: {_origen('ANTHROPIC_API_KEY')}\n"
-               "Compárala con console.anthropic.com → API keys. Si no es la nueva,\n"
-               "corre  notepad .env.local  y corrige la línea ANTHROPIC_API_KEY=\n"
+               "Compárala con console.anthropic.com → API keys. Para cambiarla:\n"
+               "  python -m forge_agent.llave\n"
                "(Vercel no cuenta: sus variables son para la página web.)")
         return False
     except anthropic.NotFoundError:

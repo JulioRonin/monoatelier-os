@@ -325,9 +325,7 @@ def _explicar_llave_rechazada() -> None:
     for p in problemas_de_llave():
         print(f"  · {p}")
     print("  Compárala con console.anthropic.com → API keys. Si no es la nueva:")
-    print("  · Corre  notepad .env.local  en la carpeta del repo, deja la línea")
-    print("    ANTHROPIC_API_KEY=  con tu llave completa pegada después del =")
-    print("    (sin comillas), guarda y vuelve a intentar.")
+    print("  · Para cambiarla:  python -m forge_agent.llave  (la verifica y la guarda)")
     print("  · Vercel NO cuenta: sus variables son para la página web, no para tu PC.")
 
 
@@ -389,8 +387,7 @@ def main(argv: list[str]) -> int:
     if "--leer" in argv:
         if not llave_anthropic():
             print("ERROR: la lectura de fotos usa Claude y no encuentro ANTHROPIC_API_KEY.")
-            print("  Corre  notepad .env.local  en la carpeta del repo, agrega la línea")
-            print("  ANTHROPIC_API_KEY=  con tu llave completa después del =, y guarda.")
+            print("  Guárdala con:  python -m forge_agent.llave")
             return 1
         return _leer_desde_terminal(argv)
 

@@ -34,6 +34,21 @@ def _limpio(t: str) -> str:
     return t.translate(_INVISIBLES).strip().strip('"').strip("'").strip()
 
 
+def leer_texto(ruta: str) -> str | None:
+    """El Bloc de notas guarda en UTF-8, UTF-8 con BOM o "Unicode" (UTF-16)."""
+    try:
+        with open(ruta, "rb") as f:
+            crudo = f.read()
+    except OSError:
+        return None
+    if crudo[:2] in (b"\xff\xfe", b"\xfe\xff"):
+        return crudo.decode("utf-16")
+    try:
+        return crudo.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        return crudo.decode("latin-1")
+
+
 def cargar_env_local(ruta: str | None = None) -> None:
     """Lee las llaves del .env.local del repo (no se sube a git).
 
@@ -44,19 +59,9 @@ def cargar_env_local(ruta: str | None = None) -> None:
     notas. Lo que la terminal traía distinto se reporta en el doctor.
     """
     ruta = ruta or os.path.join(RAIZ, ".env.local")
-    try:
-        with open(ruta, "rb") as f:
-            crudo = f.read()
-    except OSError:
+    texto = leer_texto(ruta)
+    if texto is None:
         return
-    # el Bloc de notas puede guardar en UTF-8, UTF-8 con BOM o "Unicode" (UTF-16)
-    if crudo[:2] in (b"\xff\xfe", b"\xfe\xff"):
-        texto = crudo.decode("utf-16")
-    else:
-        try:
-            texto = crudo.decode("utf-8-sig")
-        except UnicodeDecodeError:
-            texto = crudo.decode("latin-1")
     valores = {}
     for linea in texto.splitlines():
         linea = linea.translate(_INVISIBLES).strip()
@@ -154,7 +159,12 @@ def diagnostico_llave() -> list[str]:
                 "ANTHROPIC_API_KEY", [c.upper() for c in claves], n=2, cutoff=0.75)
             lineas.append("No hay una línea ANTHROPIC_API_KEY=" + (
                 f" (¿está mal escrita? veo {', '.join(parecidas)})" if parecidas
-                else ": revisa que esté en su PROPIO renglón (Enter antes)."))
+                else " guardada en ESE archivo (¿quedó sin guardar en el Bloc "
+                     "de notas, o se guardó en otra carpeta?)."))
+            for otro in (".env.local.txt", ".env", "env.local", ".env.txt"):
+                if os.path.isfile(os.path.join(RAIZ, otro)):
+                    lineas.append(f"Ojo: también existe {otro} en el repo; "
+                                  "ése NO se lee.")
         elif _anthropic_vacia_en_archivo():
             lineas.append("La línea ANTHROPIC_API_KEY= está, pero sin nada "
                           "después del =.")
