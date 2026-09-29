@@ -90,11 +90,13 @@ def _origen(clave: str) -> str:
 def revisar_lectura(verificar: bool = True) -> bool:
     """La llave que lee las fotos: que exista, que se vea bien y que Anthropic
     la acepte. La verificación consulta el modelo: no gasta tokens."""
-    from . import llave_anthropic, llave_enmascarada, problemas_de_llave
+    from . import (diagnostico_llave, llave_anthropic, llave_enmascarada,
+                   problemas_de_llave)
 
     modelo = os.environ.get("FORGE_MODELO_LECTURA") or "claude-opus-5-5"
     if not llave_anthropic():
         _linea(MAL, "sin ANTHROPIC_API_KEY: la lectura de fotos no va a funcionar",
+               "\n".join(diagnostico_llave()) + "\n"
                "La foto la lee Claude aunque construyas con NVIDIA.\n"
                "En la carpeta del repo corre  notepad .env.local , agrega la línea\n"
                "  ANTHROPIC_API_KEY=  y pega tu llave completa después del =\n"

@@ -124,8 +124,9 @@ FORGE_MODEL=nvidia/nemotron-3-super-120b-a12b
 ```
 
 El worker lee ese archivo solo, y de ahí mismo toma `VITE_SUPABASE_URL` y
-`VITE_SUPABASE_ANON_KEY` que ya usa la plataforma. Una variable definida en
-la terminal gana sobre el archivo.
+`VITE_SUPABASE_ANON_KEY` que ya usa la plataforma. **El archivo manda**: si
+la terminal trae otro valor (un `setx` viejo, un `set` con comillas), se usa
+el del archivo y el doctor lo avisa.
 
 Confirma el id exacto con `python -m forge_agent.probar_modelo --listar` y
 pásalo por las tres pruebas antes de confiarle una cocina en L:

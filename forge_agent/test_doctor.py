@@ -80,17 +80,42 @@ def test_las_llaves_se_leen_del_env_local(monkeypatch, tmp_path):
     assert os.environ["SUPABASE_KEY"] == "eyJ.anon"
 
 
-def test_el_entorno_gana_salvo_que_sea_el_ejemplo(monkeypatch, tmp_path):
+def test_el_archivo_manda_sobre_lo_que_traia_la_terminal(monkeypatch, tmp_path):
+    # una llave vieja de setx, o un set ANTHROPIC_API_KEY="" que la deja vacía,
+    # no debe tapar la que Julio pegó en el archivo
     import os
 
     import forge_agent
     archivo = tmp_path / ".env.local"
     archivo.write_text("ANTHROPIC_API_KEY=sk-ant-api03-del-archivo\n", encoding="utf-8")
+    for anterior in ('""', "sk-ant-api03-vieja", "sk-ant-..."):
+        monkeypatch.setenv("ANTHROPIC_API_KEY", anterior)
+        forge_agent.cargar_env_local(str(archivo))
+        assert forge_agent.llave_anthropic() == "sk-ant-api03-del-archivo"
+        assert "ANTHROPIC_API_KEY" in forge_agent.TAPADAS
 
-    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-api03-del-entorno")
-    forge_agent.cargar_env_local(str(archivo))
-    assert os.environ["ANTHROPIC_API_KEY"] == "sk-ant-api03-del-entorno"
 
-    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-...")
+def test_caracteres_invisibles_y_utf16_no_esconden_la_llave(monkeypatch, tmp_path):
+    import forge_agent
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    archivo = tmp_path / ".env.local"
+    # guardado como "Unicode" en el Bloc de notas, con un espacio de ancho cero pegado
+    archivo.write_bytes("VITE_SUPABASE_URL=https://x\r\n\u200bANTHROPIC_API_KEY=sk-ant-api03-ok\u00a0\r\n"
+                        .encode("utf-16"))
     forge_agent.cargar_env_local(str(archivo))
-    assert os.environ["ANTHROPIC_API_KEY"] == "sk-ant-api03-del-archivo"
+    assert forge_agent.llave_anthropic() == "sk-ant-api03-ok"
+
+
+def test_sin_la_linea_el_doctor_dice_que_si_leyo(monkeypatch, tmp_path, capsys):
+    import forge_agent
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.setitem(forge_agent.LEIDO, "ruta", None)
+    archivo = tmp_path / ".env.local"
+    archivo.write_text("VITE_SUPABASE_URL=https://x\nANTROPIC_API_KEY=sk-ant-api03-ok\n",
+                       encoding="utf-8")
+    forge_agent.cargar_env_local(str(archivo))
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    assert doctor.revisar_lectura(verificar=False) is False
+    salida = capsys.readouterr().out
+    assert "ANTROPIC_API_KEY" in salida and "mal escrita" in salida
+    assert "sk-ant-api03-ok" not in salida          # nombres, nunca valores

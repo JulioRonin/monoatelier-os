@@ -17,10 +17,21 @@ if os.path.isdir(_MOTOR) and _MOTOR not in sys.path:
 
 #: de dónde salió cada variable que se cargó del archivo (para el doctor)
 DESDE_ARCHIVO: dict[str, str] = {}
+#: variables que la terminal ya traía y el archivo reemplazó (para el doctor)
+TAPADAS: dict[str, str] = {}
+#: qué claves traía el archivo y si se pudo leer
+LEIDO: dict[str, object] = {"ruta": None, "claves": []}
 
 #: lo que la plataforma ya guarda en .env.local con otro nombre
 _EQUIVALENTES = {"SUPABASE_URL": "VITE_SUPABASE_URL",
                  "SUPABASE_KEY": "VITE_SUPABASE_ANON_KEY"}
+
+#: se cuelan al copiar de una página: espacio de ancho cero, BOM, NBSP
+_INVISIBLES = dict.fromkeys(map(ord, "\u200b\u200c\u200d\u2060\ufeff\u00a0"))
+
+
+def _limpio(t: str) -> str:
+    return t.translate(_INVISIBLES).strip().strip('"').strip("'").strip()
 
 
 def cargar_env_local(ruta: str | None = None) -> None:
@@ -28,34 +39,44 @@ def cargar_env_local(ruta: str | None = None) -> None:
 
     Definirlas con setx en Windows fallaba de mil formas: comillas guardadas
     como parte de la llave, el texto de ejemplo copiado tal cual, ventanas que
-    no ven el cambio. Un archivo que se edita con el Bloc de notas no tiene
-    esos problemas, y el agente cotizador ya lee sus llaves de ahí.
-
-    Una variable del entorno siempre gana sobre el archivo.
+    no ven el cambio, y valores viejos que se quedan en el registro. Por eso
+    el ARCHIVO manda: es lo único que se edita a la vista con el Bloc de
+    notas. Lo que la terminal traía distinto se reporta en el doctor.
     """
     ruta = ruta or os.path.join(RAIZ, ".env.local")
     try:
-        with open(ruta, encoding="utf-8-sig") as f:
-            lineas = f.read().splitlines()
+        with open(ruta, "rb") as f:
+            crudo = f.read()
     except OSError:
         return
+    # el Bloc de notas puede guardar en UTF-8, UTF-8 con BOM o "Unicode" (UTF-16)
+    if crudo[:2] in (b"\xff\xfe", b"\xfe\xff"):
+        texto = crudo.decode("utf-16")
+    else:
+        try:
+            texto = crudo.decode("utf-8-sig")
+        except UnicodeDecodeError:
+            texto = crudo.decode("latin-1")
     valores = {}
-    for linea in lineas:
-        linea = linea.strip()
+    for linea in texto.splitlines():
+        linea = linea.translate(_INVISIBLES).strip()
         if not linea or linea.startswith("#") or "=" not in linea:
             continue
         clave, valor = linea.split("=", 1)
         clave = clave.strip().removeprefix("export ").strip()
-        valores[clave] = valor.strip().strip('"').strip("'").strip()
+        valores[clave] = _limpio(valor)
+    LEIDO.update(ruta=ruta, claves=sorted(valores))
     for clave, alterna in _EQUIVALENTES.items():
         if clave not in valores and valores.get(alterna):
             valores[clave] = valores[alterna]
     for clave, valor in valores.items():
-        actual = os.environ.get(clave, "")
-        # "sk-ant-..." en el entorno es el ejemplo copiado, no una llave
-        if valor and (not actual or "..." in actual):
-            os.environ[clave] = valor
-            DESDE_ARCHIVO[clave] = ruta
+        if not valor:
+            continue
+        actual = os.environ.get(clave)
+        if actual is not None and _limpio(actual) != valor:
+            TAPADAS[clave] = actual
+        os.environ[clave] = valor
+        DESDE_ARCHIVO[clave] = ruta
 
 
 cargar_env_local()
@@ -84,8 +105,7 @@ def llave_anthropic() -> str | None:
     parte del valor y Anthropic rechaza la llave. Una llave nunca lleva
     comillas, así que quitarlas es seguro.
     """
-    k = (os.environ.get("ANTHROPIC_API_KEY") or "").strip().strip('"').strip("'").strip()
-    return k or None
+    return _limpio(os.environ.get("ANTHROPIC_API_KEY") or "") or None
 
 
 def problemas_de_llave() -> list[str]:
@@ -95,7 +115,7 @@ def problemas_de_llave() -> list[str]:
     p = []
     if not k:
         return ["no está definida: ponla en el archivo .env.local del repo"]
-    if crudo != crudo.strip().strip('"').strip("'").strip():
+    if crudo != _limpio(crudo):
         p.append("trae comillas o espacios alrededor (se quitan solos, pero "
                  "corrige cómo la defines: en cmd va sin comillas)")
     if "..." in k or "…" in k:
@@ -116,3 +136,33 @@ def llave_enmascarada() -> str:
     if len(k) < 16:
         return f"«{k[:4]}…» ({len(k)} caracteres)"
     return f"{k[:12]}…{k[-4:]} ({len(k)} caracteres)"
+
+
+def diagnostico_llave() -> list[str]:
+    """Por qué no hay llave: qué se leyó del archivo y qué traía la terminal.
+    Nombres de variables, nunca valores."""
+    lineas = []
+    ruta = LEIDO.get("ruta")
+    if not ruta:
+        lineas.append(f"No encontré {os.path.join(RAIZ, '.env.local')}.")
+    else:
+        claves = LEIDO.get("claves") or []
+        lineas.append(f"Leí {ruta}: trae {', '.join(claves) or 'nada'}.")
+        if "ANTHROPIC_API_KEY" not in claves:
+            import difflib
+            parecidas = difflib.get_close_matches(
+                "ANTHROPIC_API_KEY", [c.upper() for c in claves], n=2, cutoff=0.75)
+            lineas.append("No hay una línea ANTHROPIC_API_KEY=" + (
+                f" (¿está mal escrita? veo {', '.join(parecidas)})" if parecidas
+                else ": revisa que esté en su PROPIO renglón (Enter antes)."))
+        elif _anthropic_vacia_en_archivo():
+            lineas.append("La línea ANTHROPIC_API_KEY= está, pero sin nada "
+                          "después del =.")
+    if "ANTHROPIC_API_KEY" in TAPADAS:
+        lineas.append("La terminal traía otra ANTHROPIC_API_KEY; se usa la del archivo.")
+    return lineas
+
+
+def _anthropic_vacia_en_archivo() -> bool:
+    return ("ANTHROPIC_API_KEY" in (LEIDO.get("claves") or [])
+            and "ANTHROPIC_API_KEY" not in DESDE_ARCHIVO)
