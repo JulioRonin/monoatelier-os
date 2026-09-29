@@ -10,18 +10,17 @@ import React, { useEffect, useState } from 'react';
 import '@google/model-viewer';
 import { Loader2, Smartphone, AlertTriangle } from 'lucide-react';
 import { api } from '../lib/api';
-import { ForgeModel } from '../types';
 
 interface ForgeARViewProps {
     modelId: string;
 }
 
 const ForgeARView: React.FC<ForgeARViewProps> = ({ modelId }) => {
-    const [model, setModel] = useState<ForgeModel | null>(null);
+    const [model, setModel] = useState<{ name: string; glbUrl: string | null; usdzUrl: string | null } | null>(null);
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        api.getForgeModel(modelId)
+        api.getModeloAR(modelId)
             .then(m => {
                 if (!m.glbUrl) setError('Este diseño aún no está publicado en AR.');
                 else setModel(m);

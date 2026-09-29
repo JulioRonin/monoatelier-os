@@ -196,6 +196,10 @@ vigentes en <https://platform.claude.com/docs/en/pricing>.
   muestra la huella de la llave que ve (`sk-ant-api03…WXYZ`), de dónde la
   tomó, y la verifica sin gastar tokens. La plataforma web no usa ninguna
   llave de Anthropic: no la subas a Vercel.
+- **La cola se ve vacía pero en la plataforma hay trabajos** → con las tablas
+  protegidas (`20260929_rls_miembros.sql`) el worker necesita la llave de
+  servicio: `SUPABASE_KEY=<service_role>` en el `.env.local`, sin `VITE_`.
+  El doctor avisa si estás usando la pública.
 - **"No se pudo encolar la lectura"** → falta `20260928_forge_lectura.sql`.
 - **El agente diseñó algo raro** → sé más específico en el prompt (medidas del
   muro, dónde va la tarja, cuántas puertas). Todo lo que no especifiques lo

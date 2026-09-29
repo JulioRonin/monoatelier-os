@@ -295,10 +295,13 @@ export interface Quote {
 export interface User {
   id: string;
   email: string;
-  password?: string; // Optional in frontend type
+  /** sólo en el formulario de alta: nunca se lee de la base */
+  password?: string;
   fullName: string;
   role: 'Super User' | 'Level 2';
   avatarUrl?: string;
+  /** cuenta de Supabase Auth ligada; null = aún no ha iniciado sesión */
+  authId?: string | null;
 }
 // --- FORGE (motor paramétrico mono-forge + visor AR) ---
 

@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "build:agente": "tsc -p tsconfig.agente.json",
     "doctor:agente": "npm run build:agente && node agente-cotizador/dist/agente-cotizador/doctor.js",
-    "calibrar:pdf": "npm run build:agente && node calibrar.mjs"
+    "calibrar:pdf": "npm run build:agente && node calibrar.mjs",
+    "prueba:auth": "node prueba-auth.mjs"
   },
   "dependencies": {
     "@google/model-viewer": "^4.3.1",
@@ -26,6 +27,7 @@
     "three": "^0.183.0"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8",
     "@types/node": "^22.14.0",
     "@types/qrcode": "^1.5.6",
     "@vitejs/plugin-react": "^5.0.0",

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import BannerFacturacion from './components/BannerFacturacion';
@@ -20,6 +20,8 @@ import PaymentReceipts from './pages/PaymentReceipts'; // New
 import Forge from './pages/Forge'; // New: motor paramétrico + AR
 import ForgeARView from './pages/ForgeARView'; // New: visor AR público (QR)
 import { User } from './types';
+import { api } from './lib/api';
+import { vinoDeRecuperacion } from './lib/supabaseClient';
 
 export enum Page {
   Login,
@@ -47,7 +49,34 @@ const App: React.FC = () => {
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [initialProjectData, setInitialProjectData] = useState<any>(null);
 
+  const [recuperando, setRecuperando] = useState(vinoDeRecuperacion);
+  const arModelId = new URLSearchParams(window.location.search).get('ar');
+  const [restaurando, setRestaurando] = useState(!arModelId && !vinoDeRecuperacion);
+
+  // La sesión de Supabase Auth sobrevive al recargar: se retoma aquí. Antes
+  // recargar la página te sacaba, porque el "login" sólo vivía en memoria.
+  useEffect(() => {
+    if (arModelId) return;
+    if (!vinoDeRecuperacion) {
+      api.auth.perfilActual()
+        .then(u => { if (u) handleLogin(u); })
+        .catch(e => console.warn('No se pudo retomar la sesión:', e))
+        .finally(() => setRestaurando(false));
+    }
+    return api.auth.alCambiar(evento => {
+      if (evento === 'recuperar') {
+        setRecuperando(true);
+        setCurrentPage(Page.Login);
+      } else {
+        setCurrentUser(null);
+        setCurrentPage(Page.Login);
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleLogin = (user: User) => {
+    setRecuperando(false);
     setCurrentUser(user);
     if (user.role === 'Level 2') {
       setCurrentPage(Page.UserDashboard);
@@ -105,13 +134,16 @@ const App: React.FC = () => {
   };
 
   // Visor AR público: /?ar=<forge_model_id> — sin login, es el link del QR
-  const arModelId = new URLSearchParams(window.location.search).get('ar');
   if (arModelId) {
     return <ForgeARView modelId={arModelId} />;
   }
 
+  if (restaurando) {
+    return <div className="min-h-screen bg-[#F9F8F6]" aria-busy="true" />;
+  }
+
   if (currentPage === Page.Login) {
-    return <Login onLogin={handleLogin} />;
+    return <Login onLogin={handleLogin} recuperando={recuperando} />;
   }
 
   return (
@@ -126,7 +158,7 @@ const App: React.FC = () => {
           role={currentUser ? (currentUser.role === 'Super User' ? 'admin' : 'client') : 'admin'} // Legacy mapping for Header
           darkMode={darkMode}
           toggleDarkMode={toggleDarkMode}
-          onLogout={() => { setCurrentUser(null); setCurrentPage(Page.Login); }}
+          onLogout={() => { api.auth.logout(); setCurrentUser(null); setCurrentPage(Page.Login); }}
           user={currentUser} // Pass full user if Header needs it
           onNotificationClick={handleNotificationClick}
         />

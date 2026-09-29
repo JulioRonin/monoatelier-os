@@ -190,6 +190,21 @@ COLUMNAS = {
 }
 
 
+def rol_de_llave(k: str) -> str:
+    """anon (pública) o servicio. Las JWT dicen su rol; las nuevas, su prefijo."""
+    import base64
+    if k.startswith("sb_publishable_"):
+        return "anon"
+    if k.startswith("sb_secret_"):
+        return "servicio"
+    try:
+        cuerpo = k.split(".")[1]
+        datos = json.loads(base64.urlsafe_b64decode(cuerpo + "=" * (-len(cuerpo) % 4)))
+    except Exception:                               # noqa: BLE001
+        return "desconocido"
+    return {"anon": "anon", "service_role": "servicio"}.get(datos.get("role"), "desconocido")
+
+
 def revisar_supabase() -> bool:
     if not os.environ.get("SUPABASE_URL") or not os.environ.get("SUPABASE_KEY"):
         _linea(AVISO, "sin SUPABASE_URL / SUPABASE_KEY",
@@ -198,6 +213,11 @@ def revisar_supabase() -> bool:
                "VITE_SUPABASE_ANON_KEY si están en .env.local.")
         return True
 
+    if rol_de_llave(os.environ["SUPABASE_KEY"]) == "anon":
+        _linea(AVISO, "SUPABASE_KEY es la llave PÚBLICA (anon)",
+               "Con la migración 20260929_rls_miembros.sql el worker verá la cola\n"
+               "VACÍA sin dar error. Agrega al .env.local del repo, SIN VITE_:\n"
+               "  SUPABASE_KEY=<service_role de Supabase → Project Settings → API Keys>")
     ok = True
     for tabla, columnas in COLUMNAS.items():
         codigo, texto = _supabase(f"/rest/v1/{tabla}?select=id&limit=1")

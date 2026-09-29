@@ -26,6 +26,19 @@ function linea(marca: string, texto: string, ayuda = '') {
     for (const l of ayuda.split('\n').filter(Boolean)) console.log(`      ${l}`);
 }
 
+/** anon (pública) o de servicio. Las JWT dicen su rol; las nuevas de
+ *  Supabase lo dicen en el prefijo. */
+function rolDeLlave(k: string): 'anon' | 'servicio' | 'desconocido' {
+    if (k.startsWith('sb_publishable_')) return 'anon';
+    if (k.startsWith('sb_secret_')) return 'servicio';
+    try {
+        const cuerpo = JSON.parse(Buffer.from(k.split('.')[1], 'base64url').toString('utf8'));
+        return cuerpo.role === 'anon' ? 'anon' : cuerpo.role === 'service_role' ? 'servicio' : 'desconocido';
+    } catch {
+        return 'desconocido';
+    }
+}
+
 async function rest(ruta: string): Promise<{ codigo: number; cuerpo: string }> {
     const k = llaveSupabase()!;
     try {
@@ -62,8 +75,15 @@ async function main() {
         'Ponla en el config de Hermes, o deja VITE_SUPABASE_URL en el .env.local del repo.');
 
     if (llave) {
-        const tipo = llave.length > 100 ? 'JWT' : 'corta';
-        linea(OK, `SUPABASE_KEY presente (${tipo}, termina en …${llave.slice(-6)})`);
+        const rol = rolDeLlave(llave);
+        if (rol === 'anon') {
+            linea(AVISO, `SUPABASE_KEY es la llave PÚBLICA (anon), termina en …${llave.slice(-6)}`,
+                'Con la migración 20260929_rls_miembros.sql este agente verá TODO VACÍO\n' +
+                'sin dar error. Agrega al .env.local del repo, SIN el prefijo VITE_:\n' +
+                '  SUPABASE_KEY=<service_role de Supabase → Project Settings → API Keys>');
+        } else {
+            linea(OK, `SUPABASE_KEY de servicio presente (termina en …${llave.slice(-6)})`);
+        }
     } else {
         linea(MAL, 'sin SUPABASE_KEY',
             'Supabase → Project Settings → API. Empieza con la anon key;\n' +

@@ -119,3 +119,18 @@ def test_sin_la_linea_el_doctor_dice_que_si_leyo(monkeypatch, tmp_path, capsys):
     salida = capsys.readouterr().out
     assert "ANTROPIC_API_KEY" in salida and "mal escrita" in salida
     assert "sk-ant-api03-ok" not in salida          # nombres, nunca valores
+
+
+def test_distingue_la_llave_publica_de_la_de_servicio():
+    import base64
+    import json as _json
+
+    def jwt(rol):
+        cuerpo = base64.urlsafe_b64encode(_json.dumps({"role": rol}).encode()).decode().rstrip("=")
+        return f"eyJhbGciOiJIUzI1NiJ9.{cuerpo}.firma"
+
+    assert doctor.rol_de_llave(jwt("anon")) == "anon"
+    assert doctor.rol_de_llave(jwt("service_role")) == "servicio"
+    assert doctor.rol_de_llave("sb_publishable_abc") == "anon"
+    assert doctor.rol_de_llave("sb_secret_abc") == "servicio"
+    assert doctor.rol_de_llave("basura") == "desconocido"

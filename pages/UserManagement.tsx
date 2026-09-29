@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../lib/api';
 import { User } from '../types';
-import { Plus, Trash2, Edit2, Shield, User as UserIcon, Save, X, Search } from 'lucide-react';
+import { Plus, Trash2, Edit2, User as UserIcon, Save, X, Mail } from 'lucide-react';
 
 const UserManagement: React.FC = () => {
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingUser, setEditingUser] = useState<User | null>(null);
+    const [mensaje, setMensaje] = useState<{ tipo: 'ok' | 'error'; texto: string } | null>(null);
+    const [guardando, setGuardando] = useState(false);
 
     // Form State
     const [formData, setFormData] = useState<Partial<User>>({
@@ -34,33 +36,50 @@ const UserManagement: React.FC = () => {
 
     const handleSave = async () => {
         if (!formData.email || !formData.fullName) return;
-
+        if (!editingUser && formData.password && formData.password.length < 8) {
+            setMensaje({ tipo: 'error', texto: 'La contraseña debe tener al menos 8 caracteres.' });
+            return;
+        }
+        setGuardando(true);
         try {
             if (editingUser) {
                 await api.auth.updateUser(editingUser.id, formData);
+                setMensaje({ tipo: 'ok', texto: 'Usuario actualizado.' });
             } else {
-                if (!formData.password) {
-                    alert("Password is required for new users");
-                    return;
-                }
-                await api.auth.createUser(formData);
+                const aviso = await api.auth.createUser({
+                    email: formData.email, fullName: formData.fullName,
+                    role: formData.role || 'Level 2', avatarUrl: formData.avatarUrl,
+                    password: formData.password || undefined,
+                });
+                setMensaje({ tipo: 'ok', texto: aviso });
             }
             setIsModalOpen(false);
             setEditingUser(null);
             setFormData({ fullName: '', email: '', password: '', role: 'Level 2' });
             loadUsers();
         } catch (error: any) {
-            alert("Error saving: " + error.message);
+            setMensaje({ tipo: 'error', texto: error.message || 'No se pudo guardar.' });
+        } finally {
+            setGuardando(false);
         }
     };
 
-    const handleDelete = async (id: string) => {
-        if (!confirm("Are you sure you want to delete this user?")) return;
+    const handleDelete = async (user: User) => {
+        if (!confirm(`¿Quitar el acceso de ${user.fullName}? Su cuenta deja de ver cualquier dato.`)) return;
         try {
-            await api.auth.deleteUser(id);
+            await api.auth.deleteUser(user.id);
             loadUsers();
-        } catch (error) {
-            console.error(error);
+        } catch (error: any) {
+            setMensaje({ tipo: 'error', texto: error.message || 'No se pudo eliminar.' });
+        }
+    };
+
+    const restablecer = async (user: User) => {
+        try {
+            await api.auth.enviarRestablecimiento(user.email);
+            setMensaje({ tipo: 'ok', texto: `Se envió a ${user.email} el enlace para crear una contraseña nueva.` });
+        } catch (error: any) {
+            setMensaje({ tipo: 'error', texto: error.message });
         }
     };
 
@@ -88,6 +107,15 @@ const UserManagement: React.FC = () => {
                 </button>
             </div>
 
+            {mensaje && (
+                <div role={mensaje.tipo === 'error' ? 'alert' : 'status'}
+                    className={`px-6 py-4 text-sm flex justify-between items-center border ${mensaje.tipo === 'error'
+                        ? 'bg-red-50 border-red-200 text-danger' : 'bg-brand-bg border-primary/30 text-primary'}`}>
+                    <span>{mensaje.texto}</span>
+                    <button onClick={() => setMensaje(null)} aria-label="Cerrar"><X size={16} /></button>
+                </div>
+            )}
+
             {/* User List */}
             <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
                 <table className="w-full text-left">
@@ -96,6 +124,7 @@ const UserManagement: React.FC = () => {
                             <th className="p-6 font-bold">User</th>
                             <th className="p-6 font-bold">Role</th>
                             <th className="p-6 font-bold">Email</th>
+                            <th className="p-6 font-bold">Cuenta</th>
                             <th className="p-6 font-bold text-right">Actions</th>
                         </tr>
                     </thead>
@@ -116,9 +145,13 @@ const UserManagement: React.FC = () => {
                                     </span>
                                 </td>
                                 <td className="p-6 text-sm text-gray-500 font-mono">{user.email}</td>
-                                <td className="p-6 text-right space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <button onClick={() => openEdit(user)} className="text-gray-400 hover:text-primary transition-colors"><Edit2 size={16} /></button>
-                                    <button onClick={() => handleDelete(user.id)} className="text-gray-400 hover:text-red-500 transition-colors"><Trash2 size={16} /></button>
+                                <td className="p-6 text-[11px] text-gray-500">
+                                    {user.authId ? 'Activa' : 'Aún no entra'}
+                                </td>
+                                <td className="p-6 text-right space-x-2 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                                    <button onClick={() => restablecer(user)} title="Enviar correo para restablecer contraseña" className="text-gray-400 hover:text-primary transition-colors"><Mail size={16} /></button>
+                                    <button onClick={() => openEdit(user)} title="Editar" className="text-gray-400 hover:text-primary transition-colors"><Edit2 size={16} /></button>
+                                    <button onClick={() => handleDelete(user)} title="Quitar acceso" className="text-gray-400 hover:text-red-500 transition-colors"><Trash2 size={16} /></button>
                                 </td>
                             </tr>
                         ))}
@@ -142,8 +175,11 @@ const UserManagement: React.FC = () => {
                             </div>
                             <div>
                                 <label className="block text-[10px] uppercase tracking-widest text-gray-500 mb-2">Email Address</label>
-                                <input type="email" className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 p-3 text-sm focus:outline-none focus:border-primary transition-colors"
+                                <input type="email" disabled={!!editingUser} className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 p-3 text-sm focus:outline-none focus:border-primary transition-colors disabled:opacity-60"
                                     value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} placeholder="name@firm.com" />
+                                {editingUser && (
+                                    <p className="text-[11px] text-gray-400 mt-1">El correo liga el perfil con su cuenta: para cambiarlo, crea otro usuario.</p>
+                                )}
                             </div>
                             <div>
                                 <label className="block text-[10px] uppercase tracking-widest text-gray-500 mb-2">Role</label>
@@ -153,15 +189,24 @@ const UserManagement: React.FC = () => {
                                     <option value="Super User">Super User (Admin)</option>
                                 </select>
                             </div>
-                            <div>
-                                <label className="block text-[10px] uppercase tracking-widest text-gray-500 mb-2">{editingUser ? 'New Password (Optional)' : 'Password'}</label>
-                                <input type="password" className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 p-3 text-sm focus:outline-none focus:border-primary transition-colors"
-                                    value={formData.password} onChange={e => setFormData({ ...formData, password: e.target.value })} placeholder="••••••••" />
-                            </div>
+                            {editingUser ? (
+                                <p className="text-[11px] text-gray-500">
+                                    Las contraseñas las guarda Supabase y nadie más las ve. Para cambiar la
+                                    de esta persona, usa el sobre <Mail size={11} className="inline" /> en la
+                                    lista: le llega un enlace para crear una nueva.
+                                </p>
+                            ) : (
+                                <div>
+                                    <label className="block text-[10px] uppercase tracking-widest text-gray-500 mb-2">Contraseña inicial</label>
+                                    <input type="password" autoComplete="new-password" className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 p-3 text-sm focus:outline-none focus:border-primary transition-colors"
+                                        value={formData.password} onChange={e => setFormData({ ...formData, password: e.target.value })} placeholder="mínimo 8 caracteres" />
+                                    <p className="text-[11px] text-gray-400 mt-1">Le llega un correo para confirmar su cuenta antes de entrar.</p>
+                                </div>
+                            )}
                         </div>
                         <div className="p-6 border-t border-gray-100 dark:border-gray-700 flex justify-end gap-3 bg-gray-50 dark:bg-gray-900">
                             <button onClick={() => setIsModalOpen(false)} className="px-6 py-2 text-[10px] uppercase tracking-widest font-bold text-gray-500 hover:text-gray-900">Cancel</button>
-                            <button onClick={handleSave} className="bg-primary hover:bg-gray-900 text-white px-6 py-2 text-[10px] uppercase tracking-widest font-bold transition-colors flex items-center gap-2">
+                            <button onClick={handleSave} disabled={guardando} className="disabled:opacity-50 bg-primary hover:bg-gray-900 text-white px-6 py-2 text-[10px] uppercase tracking-widest font-bold transition-colors flex items-center gap-2">
                                 <Save size={14} /> Save User
                             </button>
                         </div>

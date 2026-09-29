@@ -235,6 +235,18 @@ Están en Supabase → **Project Settings → API**. El agente las lee de ahí, 
 no hay que copiarlas al config de Hermes y arriesgarse a que un día queden
 distintas en cada lado. Ese archivo **no se sube al repositorio**.
 
+**La llave de servicio.** Con las tablas protegidas (migración
+`20260929_rls_miembros.sql`) la llave pública ya no ve nada, y el agente no
+falla: contesta que no hay datos. Agrega también, **sin** el prefijo `VITE_`:
+
+```
+SUPABASE_KEY=<service_role de Project Settings → API Keys>
+```
+
+Sin `VITE_` la plataforma nunca la publica; con `VITE_` quedaría dentro del
+sitio, a la vista de cualquiera. El Forge Agent lee la misma línea.
+`npm run doctor:agente` te dice cuál estás usando.
+
 **3. Instalar y revisar:**
 
 ```cmd

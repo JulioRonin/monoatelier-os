@@ -1,5 +1,6 @@
 
 import { supabase } from './supabaseClient';
+import { createClient } from '@supabase/supabase-js';
 import { Project, Client, Quote, ProjectStatus, PriorityLevel, PhaseEnum, User, ForgeModel, ForgeJob, FichaLectura, Service, ServiceVariable, TipoVariante, FacturaExterna, RepPago } from '../types';
 import type { CfdiExterno } from './cfdi';
 
@@ -142,6 +143,58 @@ const mapForgeJob = (data: any): ForgeJob => ({
     createdAt: data.created_at,
     updatedAt: data.updated_at
 });
+
+const mapUser = (u: any): User => ({
+    id: u.id,
+    email: u.email,
+    fullName: u.full_name,
+    role: u.role,
+    avatarUrl: u.avatar_url,
+    authId: u.auth_id ?? null,
+});
+
+/** Los mensajes de Supabase Auth, en lo que Julio necesita saber. */
+const errorDeAuth = (e: { message?: string; status?: number }): string => {
+    const m = e?.message || '';
+    if (/invalid login credentials/i.test(m)) return 'Correo o contraseña incorrectos.';
+    if (/email not confirmed/i.test(m)) return 'Tu correo aún no está confirmado: revisa tu bandeja.';
+    if (/signups not allowed|signup is disabled/i.test(m)) {
+        return 'El registro está desactivado en Supabase: crea la cuenta en Authentication → Add user.';
+    }
+    if (/already registered|already been registered/i.test(m)) return 'Ese correo ya tiene cuenta.';
+    if (/password should be|weak password/i.test(m)) return 'La contraseña es muy corta o débil (mínimo 6 caracteres).';
+    if (/rate limit|too many/i.test(m)) return 'Demasiados intentos. Espera un minuto.';
+    return m || 'Error de autenticación.';
+};
+
+/**
+ * Crea la cuenta de Auth de OTRA persona sin cerrar la sesión del admin.
+ *
+ * `signUp` en el cliente normal cambiaría la sesión a la cuenta nueva; con un
+ * cliente aparte que no guarda sesión, el admin sigue dentro. Con "Confirm
+ * email" activo (lo normal en Supabase) le llega un correo para confirmar.
+ */
+async function crearCuentaAuth(email: string, password: string): Promise<string> {
+    const url = import.meta.env.VITE_SUPABASE_URL;
+    const anon = import.meta.env.VITE_SUPABASE_ANON_KEY;
+    const aparte = createClient(url, anon, {
+        auth: { persistSession: false, autoRefreshToken: false,
+                detectSessionInUrl: false, storageKey: 'mono-alta-usuario' },
+    });
+    const { data, error } = await aparte.auth.signUp({
+        email, password,
+        options: { emailRedirectTo: window.location.origin + window.location.pathname },
+    });
+    if (error) {
+        if (/already registered|already been registered/i.test(error.message)) {
+            return 'Ese correo ya tenía cuenta: se liga a su perfil cuando inicie sesión.';
+        }
+        throw new Error('Perfil creado, pero no la cuenta: ' + errorDeAuth(error));
+    }
+    return data.session
+        ? 'Usuario creado: ya puede entrar.'
+        : 'Usuario creado: le llegó un correo para confirmar su cuenta antes de entrar.';
+}
 
 // --- API METHODS ---
 
@@ -646,9 +699,12 @@ export const api = {
         if (error) throw error;
     },
 
-    // AUTH
+    // AUTH — Supabase Auth. La tabla `users` es el PERFIL (nombre, rol) y se
+    // liga a la cuenta de Auth por `auth_id`. Las contraseñas viven sólo en
+    // Supabase Auth: antes estaban en texto plano en `users`, legibles con la
+    // llave pública del sitio.
     auth: {
-        async login(email: string, password: string) {
+        async login(email: string, password: string): Promise<User> {
             if (!supabase) {
                 console.warn("Supabase not configured. Using mock login.");
                 return {
@@ -659,87 +715,111 @@ export const api = {
                     avatarUrl: 'https://i.pravatar.cc/150?u=' + encodeURIComponent(email)
                 } as User;
             }
-
-            // For prototype: Simple query. In prod use supabase.auth.
-            const { data, error } = await supabase
-                .from('users')
-                .select('*')
-                .eq('email', email)
-                .single();
-
-            if (error) throw new Error("User not found");
-            if (data.password !== password) throw new Error("Invalid password");
-
-            return {
-                id: data.id,
-                email: data.email,
-                fullName: data.full_name,
-                role: data.role,
-                avatarUrl: data.avatar_url,
-                createdAt: data.created_at
-            } as User;
+            const { error } = await supabase.auth.signInWithPassword({ email, password });
+            if (error) throw new Error(errorDeAuth(error));
+            const perfil = await api.auth.perfilActual();
+            if (!perfil) throw new Error('No se pudo abrir la sesión.');
+            return perfil;
         },
 
-        async getUsers() {
+        /** El perfil de la sesión guardada, o null si no hay sesión. Liga la
+         *  cuenta de Auth con su perfil la primera vez (por correo confirmado). */
+        async perfilActual(): Promise<User | null> {
+            if (!supabase) return null;
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) return null;
+            const { data, error } = await supabase.rpc('vincular_perfil');
+            if (error) {
+                if (/vincular_perfil|function|schema cache/i.test(error.message)) {
+                    throw new Error('Falta la migración 20260929_auth_perfiles.sql en Supabase.');
+                }
+                throw error;
+            }
+            if (!data || !data.id) {
+                await supabase.auth.signOut();
+                throw new Error('Tu cuenta existe pero no tiene perfil en Mono Atelier OS '
+                    + '(o tu correo no está confirmado). Pide a un administrador que te dé de alta.');
+            }
+            return mapUser(data);
+        },
+
+        async logout() {
+            if (supabase) await supabase.auth.signOut();
+        },
+
+        /** Manda el correo para crear una contraseña nueva. Sirve para "olvidé
+         *  mi contraseña" y para que un admin se la reinicie a alguien. */
+        async enviarRestablecimiento(email: string) {
+            if (!supabase) throw new Error("Supabase not configured");
+            const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                redirectTo: window.location.origin + window.location.pathname,
+            });
+            if (error) throw new Error(errorDeAuth(error));
+        },
+
+        async cambiarContrasena(nueva: string) {
+            if (!supabase) throw new Error("Supabase not configured");
+            const { error } = await supabase.auth.updateUser({ password: nueva });
+            if (error) throw new Error(errorDeAuth(error));
+        },
+
+        /** Avisa cuando se entra desde el correo de restablecer contraseña, o
+         *  cuando la sesión se cierra (en otra pestaña o porque caducó). */
+        alCambiar(cb: (evento: 'recuperar' | 'salio') => void) {
+            if (!supabase) return () => {};
+            const { data } = supabase.auth.onAuthStateChange(evento => {
+                if (evento === 'PASSWORD_RECOVERY') cb('recuperar');
+                if (evento === 'SIGNED_OUT') cb('salio');
+            });
+            return () => data.subscription.unsubscribe();
+        },
+
+        async getUsers(): Promise<User[]> {
             if (!supabase) return [];
             const { data, error } = await supabase
                 .from('users')
-                .select('*')
+                .select('id, email, full_name, role, avatar_url, created_at, auth_id')
                 .order('full_name');
-
             if (error) throw error;
-            return (data || []).map((u: any) => ({
-                id: u.id,
-                email: u.email,
-                fullName: u.full_name,
-                role: u.role,
-                avatarUrl: u.avatar_url,
-                createdAt: u.created_at
-            }));
+            return (data || []).map(mapUser);
         },
 
-        async createUser(user: any) {
+        /** Da de alta el perfil y, si viene contraseña, la cuenta de Auth.
+         *  Devuelve un aviso para mostrar (p. ej. que llegará un correo). */
+        async createUser(user: { email: string; fullName: string; role: string;
+                                 avatarUrl?: string; password?: string }): Promise<string> {
             if (!supabase) throw new Error("Supabase not configured");
-            const { data, error } = await supabase
+            const { error } = await supabase
                 .from('users')
                 .insert([{
-                    email: user.email,
-                    password: user.password,
+                    email: user.email.trim().toLowerCase(),
                     full_name: user.fullName,
-                    role: user.role, // 'Super User' | 'Level 2'
+                    role: user.role,
                     avatar_url: user.avatarUrl
-                }])
-                .select()
-                .single();
-
+                }]);
             if (error) throw error;
-            return data;
+            if (!user.password) {
+                return 'Perfil creado. Crea su cuenta en Supabase → Authentication → Add user '
+                    + 'con el mismo correo, o vuelve a guardarlo con una contraseña.';
+            }
+            return await crearCuentaAuth(user.email.trim().toLowerCase(), user.password);
         },
 
-        async updateUser(id: string, updates: any) {
+        async updateUser(id: string, updates: Partial<User>) {
             if (!supabase) throw new Error("Supabase not configured");
             const dbUpdates: any = {};
-            if (updates.email) dbUpdates.email = updates.email;
-            if (updates.password) dbUpdates.password = updates.password;
             if (updates.fullName) dbUpdates.full_name = updates.fullName;
             if (updates.role) dbUpdates.role = updates.role;
             if (updates.avatarUrl !== undefined) dbUpdates.avatar_url = updates.avatarUrl;
-
-            const { error } = await supabase
-                .from('users')
-                .update(dbUpdates)
-                .eq('id', id);
-
+            // el correo NO se cambia aquí: es con el que se liga la cuenta de Auth
+            const { error } = await supabase.from('users').update(dbUpdates).eq('id', id);
             if (error) throw error;
         },
 
+        /** Quita el perfil: la cuenta de Auth queda, pero sin perfil no ve nada. */
         async deleteUser(id: string) {
             if (!supabase) throw new Error("Supabase not configured");
-            const { error } = await supabase
-                .from('users')
-                .delete()
-                .eq('id', id);
-
+            const { error } = await supabase.from('users').delete().eq('id', id);
             if (error) throw error;
         }
     },
@@ -896,6 +976,17 @@ export const api = {
             .single();
         if (error) throw error;
         return mapForgeModel(data);
+    },
+
+    /** Lo mínimo para el visor AR público (el QR), sin sesión: nombre y
+     *  modelos 3D de UN diseño. No expone la cotización ni deja listar. */
+    async getModeloAR(id: string) {
+        if (!supabase) throw new Error("Supabase not configured");
+        const { data, error } = await supabase.rpc('modelo_ar', { p_id: id });
+        if (error) throw error;
+        if (!data) throw new Error('Diseño no encontrado.');
+        return { id, name: data.name as string, glbUrl: data.glb_url as string | null,
+                 usdzUrl: data.usdz_url as string | null };
     },
 
     async createForgeModel(model: { name: string; description?: string; projectId?: string | null; projectJson: any }) {
