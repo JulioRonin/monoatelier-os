@@ -10,10 +10,55 @@ para que funcione con o sin la instalación.
 import os
 import sys
 
-_MOTOR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-                      "mono-forge")
+RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_MOTOR = os.path.join(RAIZ, "mono-forge")
 if os.path.isdir(_MOTOR) and _MOTOR not in sys.path:
     sys.path.insert(0, _MOTOR)
+
+#: de dónde salió cada variable que se cargó del archivo (para el doctor)
+DESDE_ARCHIVO: dict[str, str] = {}
+
+#: lo que la plataforma ya guarda en .env.local con otro nombre
+_EQUIVALENTES = {"SUPABASE_URL": "VITE_SUPABASE_URL",
+                 "SUPABASE_KEY": "VITE_SUPABASE_ANON_KEY"}
+
+
+def cargar_env_local(ruta: str | None = None) -> None:
+    """Lee las llaves del .env.local del repo (no se sube a git).
+
+    Definirlas con setx en Windows fallaba de mil formas: comillas guardadas
+    como parte de la llave, el texto de ejemplo copiado tal cual, ventanas que
+    no ven el cambio. Un archivo que se edita con el Bloc de notas no tiene
+    esos problemas, y el agente cotizador ya lee sus llaves de ahí.
+
+    Una variable del entorno siempre gana sobre el archivo.
+    """
+    ruta = ruta or os.path.join(RAIZ, ".env.local")
+    try:
+        with open(ruta, encoding="utf-8-sig") as f:
+            lineas = f.read().splitlines()
+    except OSError:
+        return
+    valores = {}
+    for linea in lineas:
+        linea = linea.strip()
+        if not linea or linea.startswith("#") or "=" not in linea:
+            continue
+        clave, valor = linea.split("=", 1)
+        clave = clave.strip().removeprefix("export ").strip()
+        valores[clave] = valor.strip().strip('"').strip("'").strip()
+    for clave, alterna in _EQUIVALENTES.items():
+        if clave not in valores and valores.get(alterna):
+            valores[clave] = valores[alterna]
+    for clave, valor in valores.items():
+        actual = os.environ.get(clave, "")
+        # "sk-ant-..." en el entorno es el ejemplo copiado, no una llave
+        if valor and (not actual or "..." in actual):
+            os.environ[clave] = valor
+            DESDE_ARCHIVO[clave] = ruta
+
+
+cargar_env_local()
 
 
 def comando_instalar() -> str:
@@ -49,7 +94,7 @@ def problemas_de_llave() -> list[str]:
     k = llave_anthropic() or ""
     p = []
     if not k:
-        return ["no está definida en ESTA terminal"]
+        return ["no está definida: ponla en el archivo .env.local del repo"]
     if crudo != crudo.strip().strip('"').strip("'").strip():
         p.append("trae comillas o espacios alrededor (se quitan solos, pero "
                  "corrige cómo la defines: en cmd va sin comillas)")

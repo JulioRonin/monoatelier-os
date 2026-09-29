@@ -61,3 +61,36 @@ def test_una_llave_rechazada_se_dice_con_su_huella(monkeypatch, capsys):
     salida = capsys.readouterr().out
     assert "rechazó" in salida and "…WXYZ" in salida and "Vercel" in salida
     assert "a" * 20 not in salida                   # el secreto no se imprime
+
+
+def test_las_llaves_se_leen_del_env_local(monkeypatch, tmp_path):
+    import forge_agent
+    for v in ("ANTHROPIC_API_KEY", "SUPABASE_URL", "SUPABASE_KEY"):
+        monkeypatch.delenv(v, raising=False)
+    archivo = tmp_path / ".env.local"
+    # el Bloc de notas guarda con BOM; y la plataforma ya tiene las VITE_
+    archivo.write_text('﻿VITE_SUPABASE_URL=https://abc.supabase.co\n'
+                       'VITE_SUPABASE_ANON_KEY=eyJ.anon\n'
+                       '# comentario\n'
+                       'ANTHROPIC_API_KEY = "sk-ant-api03-real"\n', encoding="utf-8")
+    forge_agent.cargar_env_local(str(archivo))
+    import os
+    assert os.environ["ANTHROPIC_API_KEY"] == "sk-ant-api03-real"
+    assert os.environ["SUPABASE_URL"] == "https://abc.supabase.co"
+    assert os.environ["SUPABASE_KEY"] == "eyJ.anon"
+
+
+def test_el_entorno_gana_salvo_que_sea_el_ejemplo(monkeypatch, tmp_path):
+    import os
+
+    import forge_agent
+    archivo = tmp_path / ".env.local"
+    archivo.write_text("ANTHROPIC_API_KEY=sk-ant-api03-del-archivo\n", encoding="utf-8")
+
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-api03-del-entorno")
+    forge_agent.cargar_env_local(str(archivo))
+    assert os.environ["ANTHROPIC_API_KEY"] == "sk-ant-api03-del-entorno"
+
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-...")
+    forge_agent.cargar_env_local(str(archivo))
+    assert os.environ["ANTHROPIC_API_KEY"] == "sk-ant-api03-del-archivo"

@@ -325,10 +325,10 @@ def _explicar_llave_rechazada() -> None:
     for p in problemas_de_llave():
         print(f"  · {p}")
     print("  Compárala con console.anthropic.com → API keys. Si no es la nueva:")
+    print("  · Corre  notepad .env.local  en la carpeta del repo, deja la línea")
+    print("    ANTHROPIC_API_KEY=  con tu llave completa pegada después del =")
+    print("    (sin comillas), guarda y vuelve a intentar.")
     print("  · Vercel NO cuenta: sus variables son para la página web, no para tu PC.")
-    print("  · Escribe  setx ANTHROPIC_API_KEY  deja un espacio, PEGA tu llave")
-    print("    completa (sin comillas) y da Enter. Luego abre una terminal NUEVA:")
-    print("    setx no cambia la que ya está abierta.")
 
 
 def _leer_desde_terminal(argv: list[str]) -> int:
@@ -388,7 +388,9 @@ def main(argv: list[str]) -> int:
         return 1
     if "--leer" in argv:
         if not llave_anthropic():
-            print("ERROR: la lectura de fotos usa Claude: define ANTHROPIC_API_KEY.")
+            print("ERROR: la lectura de fotos usa Claude y no encuentro ANTHROPIC_API_KEY.")
+            print("  Corre  notepad .env.local  en la carpeta del repo, agrega la línea")
+            print("  ANTHROPIC_API_KEY=  con tu llave completa después del =, y guarda.")
             return 1
         return _leer_desde_terminal(argv)
 

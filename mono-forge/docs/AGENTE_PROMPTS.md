@@ -112,14 +112,20 @@ Requiere la migración `supabase/migrations/20260928_forge_lectura.sql`.
 
 La lectura necesita un modelo que vea imágenes. Nemotron 3 Super sólo recibe
 texto, pero construir desde la ficha sólo necesita texto — y ahí están las
-15–25 llamadas de herramientas, que es lo caro. La combinación:
+15–25 llamadas de herramientas, que es lo caro. La combinación, en el `.env.local` de la raíz del repo (no se sube a git;
+ábrelo con `notepad .env.local`; cada valor va completo, sin comillas —
+`...` aquí sólo marca dónde va tu llave):
 
-```powershell
-$env:ANTHROPIC_API_KEY = "sk-ant-..."                         # lee la foto
-$env:FORGE_PROVEEDOR   = "nvidia"                             # construye
-$env:NVIDIA_API_KEY    = "nvapi-..."
-$env:FORGE_MODEL       = "nvidia/nemotron-3-super-120b-a12b"
 ```
+ANTHROPIC_API_KEY=sk-ant-api03-...        # lee la foto
+FORGE_PROVEEDOR=nvidia                    # construye
+NVIDIA_API_KEY=nvapi-...
+FORGE_MODEL=nvidia/nemotron-3-super-120b-a12b
+```
+
+El worker lee ese archivo solo, y de ahí mismo toma `VITE_SUPABASE_URL` y
+`VITE_SUPABASE_ANON_KEY` que ya usa la plataforma. Una variable definida en
+la terminal gana sobre el archivo.
 
 Confirma el id exacto con `python -m forge_agent.probar_modelo --listar` y
 pásalo por las tres pruebas antes de confiarle una cocina en L:
@@ -181,13 +187,13 @@ vigentes en <https://platform.claude.com/docs/en/pricing>.
   otro. Instala con el Python que de verdad usas:
   `python -m pip install -r forge_agent/requirements.txt`. El worker y el
   doctor imprimen la ruta del Python en uso y el comando exacto.
-- **"Anthropic rechazó la llave"** → la llave vive en TU PC, no en Vercel: las
-  variables de Vercel son para la página web, y el worker corre en tu
-  terminal. En cmd: escribe `setx ANTHROPIC_API_KEY `, **pega tu llave
-  completa** (sin comillas; `sk-ant-...` en los ejemplos es sólo el formato) y
-  abre una terminal nueva. El doctor muestra la huella de la llave que ve (`sk-ant-api03…WXYZ`)
-  para compararla con console.anthropic.com, y la verifica sin gastar tokens.
-  La plataforma web no usa ninguna llave de Anthropic: no la subas a Vercel.
+- **"Anthropic rechazó la llave" o "sin ANTHROPIC_API_KEY"** → la llave vive en
+  tu PC, no en Vercel (sus variables son para la página web). Lo más simple:
+  en la carpeta del repo corre `notepad .env.local` y deja la línea
+  `ANTHROPIC_API_KEY=` con tu llave completa pegada después del `=`. El doctor
+  muestra la huella de la llave que ve (`sk-ant-api03…WXYZ`), de dónde la
+  tomó, y la verifica sin gastar tokens. La plataforma web no usa ninguna
+  llave de Anthropic: no la subas a Vercel.
 - **"No se pudo encolar la lectura"** → falta `20260928_forge_lectura.sql`.
 - **El agente diseñó algo raro** → sé más específico en el prompt (medidas del
   muro, dónde va la tarja, cuántas puertas). Todo lo que no especifiques lo

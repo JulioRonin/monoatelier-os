@@ -81,6 +81,12 @@ def revisar_paquetes(proveedor: str) -> bool:
     return ok
 
 
+def _origen(clave: str) -> str:
+    from . import DESDE_ARCHIVO
+    return (f"archivo {os.path.basename(DESDE_ARCHIVO[clave])}"
+            if clave in DESDE_ARCHIVO else "variable de entorno")
+
+
 def revisar_lectura(verificar: bool = True) -> bool:
     """La llave que lee las fotos: que exista, que se vea bien y que Anthropic
     la acepte. La verificación consulta el modelo: no gasta tokens."""
@@ -90,8 +96,10 @@ def revisar_lectura(verificar: bool = True) -> bool:
     if not llave_anthropic():
         _linea(MAL, "sin ANTHROPIC_API_KEY: la lectura de fotos no va a funcionar",
                "La foto la lee Claude aunque construyas con NVIDIA.\n"
-               "Genera la llave en console.anthropic.com y defínela EN ESTA PC\n"
-               "(las variables de Vercel son de la página web, no de tu terminal).")
+               "En la carpeta del repo corre  notepad .env.local , agrega la línea\n"
+               "  ANTHROPIC_API_KEY=  y pega tu llave completa después del =\n"
+               "(sin comillas ni espacios). Guarda y vuelve a correr esto.\n"
+               "(Vercel no cuenta: sus variables son para la página web.)")
         return False
 
     problemas = problemas_de_llave()
@@ -106,10 +114,10 @@ def revisar_lectura(verificar: bool = True) -> bool:
         anthropic.Anthropic(api_key=llave_anthropic()).models.retrieve(modelo)
     except anthropic.AuthenticationError:
         _linea(MAL, f"Anthropic rechazó la llave {llave_enmascarada()}",
-               "Compárala con console.anthropic.com → API keys. Si no es la nueva:\n"
-               "escribe  setx ANTHROPIC_API_KEY  , deja un espacio, PEGA tu llave\n"
-               "completa sin comillas y abre una terminal NUEVA.\n"
-               "Vercel no cuenta para tu PC.")
+               f"Viene de: {_origen('ANTHROPIC_API_KEY')}\n"
+               "Compárala con console.anthropic.com → API keys. Si no es la nueva,\n"
+               "corre  notepad .env.local  y corrige la línea ANTHROPIC_API_KEY=\n"
+               "(Vercel no cuenta: sus variables son para la página web.)")
         return False
     except anthropic.NotFoundError:
         _linea(MAL, f"la llave sirve, pero tu cuenta no tiene el modelo {modelo}",
@@ -122,7 +130,8 @@ def revisar_lectura(verificar: bool = True) -> bool:
     except anthropic.APIStatusError as e:
         _linea(MAL, f"Anthropic respondió {e.status_code}: {e.message}")
         return False
-    _linea(OK, f"lectura de fotos con {modelo} · llave {llave_enmascarada()} aceptada")
+    _linea(OK, f"lectura de fotos con {modelo} · llave {llave_enmascarada()} "
+               f"aceptada ({_origen('ANTHROPIC_API_KEY')})")
     return True
 
 
@@ -183,7 +192,9 @@ COLUMNAS = {
 def revisar_supabase() -> bool:
     if not os.environ.get("SUPABASE_URL") or not os.environ.get("SUPABASE_KEY"):
         _linea(AVISO, "sin SUPABASE_URL / SUPABASE_KEY",
-               "Sólo podrás usar --prompt en local; el modo escucha necesita las dos.")
+               "Sólo podrás usar --prompt y --leer en local; el modo escucha\n"
+               "necesita las dos. Se toman solas de VITE_SUPABASE_URL y\n"
+               "VITE_SUPABASE_ANON_KEY si están en .env.local.")
         return True
 
     ok = True
