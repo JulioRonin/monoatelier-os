@@ -29,3 +29,6 @@ __pycache__/
 # compilado del servidor MCP del agente cotizador
 agente-cotizador/dist/
 cotizaciones/
+
+# entorno de Python del Forge Agent (cada máquina crea el suyo)
+.venv/

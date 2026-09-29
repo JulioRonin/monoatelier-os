@@ -86,9 +86,9 @@ def revisar_lectura() -> bool:
     if os.environ.get("ANTHROPIC_API_KEY"):
         _linea(OK, f"lectura de fotos con {modelo}")
         return True
-        _linea(MAL, "sin ANTHROPIC_API_KEY: la lectura de fotos no va a funcionar",
-               "La foto la lee Claude aunque construyas con NVIDIA.\n"
-               "Genera la llave en console.anthropic.com.")
+    _linea(MAL, "sin ANTHROPIC_API_KEY: la lectura de fotos no va a funcionar",
+           "La foto la lee Claude aunque construyas con NVIDIA.\n"
+           "Genera la llave en console.anthropic.com.")
     return False
 
 
