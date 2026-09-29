@@ -20,6 +20,8 @@ PALETA = {
     "LAC-ROSA-PASTEL-15": dict(base=(0.957, 0.788, 0.827, 1), rough=0.28),
     "CUA-ROSA-PASTEL-19": dict(base=(0.910, 0.737, 0.776, 1), rough=0.22),
     "MET-ROSA-MONO":     dict(base=(0.851, 0.545, 0.639, 1), rough=0.25),
+    "MET-CROMO":         dict(base=(0.80, 0.80, 0.82, 1), rough=0.12),   # tubo de closet
+    "VID-TEMP-6":        dict(base=(0.80, 0.88, 0.90, 1), rough=0.04),   # vidrio de vitrina
 }
 
 

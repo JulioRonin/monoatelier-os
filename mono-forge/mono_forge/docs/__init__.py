@@ -64,8 +64,10 @@ def verificar(project: Project, destino: str) -> dict:
 
     # 2. bisagras vs puertas
     for m in project.modules:
+        # los frentes de cajón no llevan bisagra (cajonera de cocina o de closet)
+        de_cajon = tuple(f"{m.id}_c{cj['i']}_" for cj in m.flags.get("cajones") or [])
         puertas = [p for p in m.panels if p.rol_estructural == "frente"
-                   and m.tipo != "cajonera"]
+                   and m.tipo != "cajonera" and not p.name.startswith(de_cajon)]
         esperadas = sum(num_bisagras(p.largo) * int(p.cantidad) for p in puertas)
         declaradas = sum(h.cantidad for h in m.hardware if h.sku.startswith("BIS-"))
         if esperadas != declaradas:
@@ -73,15 +75,15 @@ def verificar(project: Project, destino: str) -> dict:
                 f"{m.id}: {declaradas:g} bisagras declaradas, {esperadas} esperadas "
                 f"por la regla de altura.")
 
-    # 3. suma vertical de torres
+    # 3. suma vertical de torres y closets (misma estructura apoyada)
     for m in project.modules:
-        if m.tipo != "torre":
+        if m.tipo not in ("torre", "closet"):
             continue
         lat = next((p for p in m.panels if p.rol_estructural == "lateral_apoyado"), None)
         if lat is None:
-            problemas.append(f"{m.id}: torre sin lateral apoyado.")
+            problemas.append(f"{m.id}: {m.tipo} sin lateral apoyado.")
             continue
-        esperado = alto_lateral("torre", m.alto)
+        esperado = alto_lateral(m.tipo, m.alto)
         if abs(lat.largo - esperado) > 0.01:
             problemas.append(
                 f"{m.id}: lateral de {lat.largo}mm; la suma vertical exige {esperado}mm.")

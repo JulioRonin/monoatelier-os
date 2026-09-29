@@ -21,6 +21,8 @@ from mono_forge.generators.cubierta import cubierta
 from mono_forge.generators.jaladera import jaladeras
 from mono_forge.generators.superior import alacena
 from mono_forge.generators.tarja import TARJA_ANCHO, TARJA_FONDO, TARJA_PROFUNDIDAD, tarja
+from mono_forge.generators.closet import TIPOS as TIPOS_CLOSET
+from mono_forge.generators.closet import closet, relleno_esquina
 from mono_forge.generators.torre import torre
 from mono_forge.models import Project, Tramo
 from mono_forge.rules import led as regla_led
@@ -357,6 +359,64 @@ def agregar_tarja(modulo_id: str, ancho: float = TARJA_ANCHO,
 
 
 @beta_tool
+def agregar_closet(id: str, ancho: float, tipo: str, plafon: float = 2400,
+                   tubos: list[float] | None = None,
+                   altos_frentes: list[float] | None = None,
+                   vitrina: bool = False, entrepanos: int | None = None,
+                   repisas_zapatos: int = 0, led: bool = False,
+                   material: str = "", material_frente: str = "") -> str:
+    """Agrega un módulo de CLOSET o VESTIDOR, abierto, de piso a plafón.
+
+    Estructura de torre: zoclo 100, base a todo el ancho, laterales de una
+    pieza. El módulo mide plafón − 40 (copete en obra), con tope de 2536 que
+    es lo que da una hoja. Fondo 600. Arriba de 900 de ancho lleva divisor.
+
+    Args:
+        id: identificador corto y único (ej. "V01").
+        ancho: ancho exterior en mm (máximo 1216; cajonera máximo 900).
+        tipo: colgado_doble (tubos a 1000 y 2000, maletero arriba) |
+            colgado_sencillo (tubo a 1700, maletero arriba, zapatera opcional
+            abajo) | entrepanos (en toda la altura) | cajonera (cajones de 200
+            abajo, entrepaños arriba) | zapatera (repisas fijas en toda la altura).
+        plafon: altura del piso al plafón en mm.
+        tubos: alturas del centro de los tubos desde el piso, si el cliente
+            las pidió distintas del estándar.
+        altos_frentes: cajonera — frentes de abajo hacia arriba. Default 3 × 200.
+        vitrina: cajonera — el cajón de arriba lleva tapa de vidrio.
+        entrepanos: extra en el maletero (colgados), sobre los cajones
+            (cajonera) o en toda la altura (entrepanos, default 5).
+        repisas_zapatos: colgado_sencillo — niveles de zapatera abajo del
+            tubo. zapatera — niveles totales (0 = los que quepan).
+        led: tira LED bajo cada entrepaño; esos entrepaños quedan fijos.
+        material: SKU de estructura. Vacío = el del proyecto.
+        material_frente: SKU de frentes de cajón. Vacío = el del proyecto.
+    """
+    if ESTADO.modulo(id):
+        return f"ERROR: ya existe un módulo con id {id}. Usa otro."
+    if tipo not in TIPOS_CLOSET:
+        return f"ERROR: tipo '{tipo}' desconocido. Usa: {', '.join(TIPOS_CLOSET)}."
+    try:
+        m = closet(id=id, ancho=ancho, tipo=tipo, plafon=plafon, tubos=tubos,
+                   altos_frentes=altos_frentes, vitrina=vitrina,
+                   entrepanos=entrepanos, repisas_zapatos=repisas_zapatos, led=led,
+                   material=material or ESTADO.material_default,
+                   material_frente=material_frente or ESTADO.material_frente_default,
+                   apertura=ESTADO.apertura_default)
+    except ValueError as e:
+        return f"ERROR: {e}"
+    ESTADO.project.modules.append(m)
+    cfg = m.flags["closet"]
+    fijos = len(cfg["niveles"].get(f"{id}_ent_fijo", []))
+    moviles = len(cfg["niveles"].get(f"{id}_ent_movil", []))
+    return (f"{id}: closet {tipo} {ancho:.0f}×{m.alto:.0f}×{m.prof:.0f}mm "
+            f"({fijos} entrepaños fijos, {moviles} móviles"
+            + (f", tubos a {', '.join(f'{z:.0f}' for z in sorted(sum(cfg['tubos'].values(), [])))}"
+               if cfg["tubos"] else "")
+            + (f", {len(m.flags.get('cajones') or [])} cajones" if tipo == "cajonera" else "")
+            + f"). {len(m.panels)} piezas.")
+
+
+@beta_tool
 def agregar_jaladeras(modulo_id: str, silueta: str = "bow",
                       sku: str = "JAL-MONO-BOW",
                       material: str = "MET-ROSA-MONO") -> str:
@@ -483,6 +543,32 @@ def agregar_tramo(id: str, muro: str, modulos: list[str],
         if hermano is not None:
             t.rotacion, t.origen = hermano.rotacion, list(hermano.origen)
 
+    closets = [ESTADO.modulo(mid) for mid in modulos
+               if ESTADO.modulo(mid).tipo == "closet"]
+    if closets and len(closets) == len(modulos):
+        if lleva_cubierta:
+            notas.append("Tramo de closet: no lleva cubierta.")
+        lleva_cubierta = t.lleva_cubierta = False
+        if retorno_de:
+            # un closet abierto deja ver el muro por el claro de esquina
+            t.panels.append(relleno_esquina(id, max(m.alto for m in closets),
+                                            material=closets[0].panels[0].material))
+            notas.append(f"Relleno recto de {HOLGURA_ESQUINA:.0f}mm en la esquina.")
+            # el muro previo entra hasta la esquina: su último módulo queda
+            # tapado por el costado de este muro en los primeros 600mm
+            previo_t = next(x for x in ESTADO.project.tramos if x.id == retorno_de)
+            # a la derecha la esquina está al final del muro previo; a la izquierda, al inicio
+            extremo = 0 if sentido == "izquierda" else -1
+            ultimo = ESTADO.modulo(previo_t.modulos[extremo]) if previo_t.modulos else None
+            if ultimo is not None:
+                ciego = min(ultimo.ancho, prof_muro)
+                aviso = (f"Esquina CIEGA: los últimos {ciego:.0f}mm de {ultimo.id} "
+                         f"({ultimo.ancho:.0f} de ancho) quedan detrás del costado de "
+                         f"{modulos[0]}; su tubo o entrepaño sigue, pero sólo se alcanza "
+                         f"deslizando desde la parte libre.")
+                t.notas.append(aviso)
+                notas.append(aviso)
+
     if lleva_cubierta:
         prof = max(ESTADO.modulo(mid).prof for mid in modulos)
         sku_cub = material_cubierta or ESTADO.material_cubierta_default
@@ -541,7 +627,7 @@ def agregar_nota(nota: str) -> str:
 HERRAMIENTAS = [
     ver_catalogo, definir_proyecto, estado_actual,
     agregar_gabinete_base, agregar_alacena, agregar_cajonera, agregar_torre,
-    agregar_tarja, agregar_jaladeras,
+    agregar_closet, agregar_tarja, agregar_jaladeras,
     eliminar_modulo, agregar_tramo, calcular_led, agregar_nota,
 ]
 

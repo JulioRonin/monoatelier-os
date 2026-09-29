@@ -18,7 +18,10 @@ def calcular(project: Project, temperatura_k: int = 3000,
     if not modulos:
         return [], []
 
-    ml = sum(max(0.0, m.ancho - LED_RETRANQUEO) / 1000 for m in modulos)
+    # un closet lleva la tira bajo CADA entrepaño y la declara en led_ml; los
+    # demás muebles llevan una tira a lo ancho
+    ml = sum(m.flags.get("led_ml", max(0.0, m.ancho - LED_RETRANQUEO) / 1000)
+             for m in modulos)
     watts = ml * LED_W_POR_M
     fuente = fuente_led(watts)
 

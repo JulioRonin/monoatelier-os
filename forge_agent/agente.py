@@ -75,6 +75,25 @@ JALADERAS
 - Se compran: van a la lista de herrajes, no al cutlist. Un módulo con gola o
   push no lleva jaladera y la herramienta te lo va a decir.
 
+CLOSETS Y VESTIDORES
+- Usa agregar_closet: un módulo por elemento. Tipos: colgado_doble,
+  colgado_sencillo (la zapatera de abajo va con repisas_zapatos), entrepanos,
+  cajonera (vitrina=True si el cajón de arriba es vitrina) y zapatera. El
+  maletero es la parte alta de los colgados: sus entrepaños extra van en
+  `entrepanos`.
+- plafon: la altura al plafón que diga el cliente, la MISMA en todos los
+  módulos. El motor resta 40 para el copete y respeta lo que da una hoja.
+- Anchos hasta 1216 (arriba de 900 el motor pone divisor); la cajonera, 900
+  como máximo. Los tubos sólo se pasan si el cliente pidió alturas distintas
+  del estándar (sencillo 1700; doble 1000 y 2000).
+- Un tramo por muro. El motor quita la cubierta sola en tramos de closet. En
+  L, el segundo muro va con retorno_de y el motor pone el relleno recto de 50
+  en la esquina: el esquinero de una foto NO es un módulo. Ese muro pierde
+  650mm en la esquina (600 de fondo del muro anterior + 50 de relleno).
+- Los cajones llevan jaladera: agregar_jaladeras en los módulos cajonera.
+- Si el motor responde que un maletero o un colgado no cabe, no lo fuerces:
+  quita entrepaños extra o ajusta los tubos, y anótalo con agregar_nota.
+
 FLUJO
 1. Si el prompt menciona un material, color, acabado o gola, llama ver_catalogo
    antes de elegir el SKU. Nunca inventes SKUs.

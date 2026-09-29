@@ -121,12 +121,40 @@ def test_la_ficha_de_ejemplo_respeta_el_esquema():
 
 # ── qué se puede construir lo decide el código ───────────────────────────
 
-def test_un_closet_no_es_construible_hoy_y_dice_que_falta():
+def test_el_vestidor_de_la_foto_ya_se_construye():
     f = evaluar(copy.deepcopy(VESTIDOR))
+    assert f["construible"] is True
+    assert f["omitidos"] == []
+
+
+def test_lo_que_no_tiene_generador_sigue_sin_construirse():
+    f = copy.deepcopy(VESTIDOR)
+    f["tipo"] = "mueble_tv"
+    f["muros"] = [{"id": "A", "descripcion": "", "elementos": [
+        _elem("panel_decorativo", 0.7, 1400), _elem("repisa_abierta", 0.3, 600)]}]
+    f = evaluar(f)
     assert f["construible"] is False
-    assert "closet_colgado_doble" in f["omitidos"]
-    assert "esquinero" in f["omitidos"]
+    assert f["omitidos"] == ["panel_decorativo", "repisa_abierta"]
     assert "generador" in resumen_de_ficha(f)
+
+
+def test_un_esquinero_solo_no_es_un_mueble():
+    f = copy.deepcopy(VESTIDOR)
+    f["muros"] = [{"id": "A", "descripcion": "", "elementos": [_elem("esquinero", 1, 50)]}]
+    assert evaluar(f)["construible"] is False
+
+
+def test_el_retorno_de_una_L_descuenta_la_esquina():
+    # muro B de 1500: 600 del fondo del muro A + 50 de relleno = 850 para módulos
+    f = evaluar(copy.deepcopy(VESTIDOR))
+    b = next(m for m in f["medidas"] if m["clave"] == "largo_muro_B")
+    b["valor_mm"] = 1500
+    p = ficha_a_prompt(f)
+    assert "quedan 850mm para módulos" in p
+    # el esquinero no se escala ni se construye: 0.5 y 0.38 se reparten los 850
+    assert "closet_cajonera · ~480mm" in p
+    assert "closet_colgado_sencillo · ~370mm" in p
+    assert "esquinero  [NO es módulo" in p
 
 
 def test_una_cocina_con_isla_se_construye_sin_la_isla():
@@ -212,7 +240,7 @@ def test_la_foto_y_el_esquema_viajan_al_modelo(tmp_path):
     assert "para la señora Díaz" in bloques[-1]["text"]
     assert cli.pedido["output_config"]["format"]["schema"] is FICHA_SCHEMA
     assert cli.pedido["model"] == "claude-opus-5-5"
-    assert r["ficha"]["construible"] is False       # ya viene evaluada
+    assert r["ficha"]["construible"] is True        # ya viene evaluada
 
 
 def test_sin_fotos_no_hay_lectura():
@@ -247,13 +275,14 @@ def test_un_trabajo_de_lectura_guarda_la_ficha_y_no_construye(monkeypatch, cierr
     assert "Revisa la ficha" in cierres[0]["log"]
 
 
-def test_construir_un_closet_hoy_falla_con_un_motivo_claro(monkeypatch, cierres):
+def test_construir_sin_generador_falla_con_un_motivo_claro(monkeypatch, cierres):
     monkeypatch.setattr(worker, "procesar",
-                        lambda *a, **k: pytest.fail("no hay generador de closet"))
-    worker.atender({"id": "j2", "tipo": "diseno", "prompt": "Construir",
-                    "ficha": evaluar(copy.deepcopy(VESTIDOR))})
+                        lambda *a, **k: pytest.fail("no hay generador"))
+    f = copy.deepcopy(VESTIDOR)
+    f["muros"] = [{"id": "A", "descripcion": "", "elementos": [_elem("isla", 1, 1800)]}]
+    worker.atender({"id": "j2", "tipo": "diseno", "prompt": "Construir", "ficha": evaluar(f)})
     assert cierres[0]["status"] == "error"
-    assert "closet_colgado_doble" in cierres[0]["error"]
+    assert "isla" in cierres[0]["error"]
 
 
 def test_construir_desde_ficha_usa_la_ficha_y_no_la_foto(monkeypatch, cierres):

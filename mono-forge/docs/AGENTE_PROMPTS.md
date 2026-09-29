@@ -102,9 +102,10 @@ va directo a construir: pasa por una **ficha** que tú revisas.
    construye: el constructor recibe la ficha, no la foto.
 
 Qué se puede construir lo decide el código, no el modelo: hoy el motor tiene
-generadores de **cocina**. Una cocina con isla se construye sin la isla y lo
-dice. Un **closet** queda como levantamiento (ficha completa) hasta que exista
-su generador; el botón de construir aparece deshabilitado con el motivo.
+generadores de **cocina** y de **closet** (colgado doble, colgado sencillo con
+zapatera, entrepaños, cajonera con vitrina y zapatera). Lo que no tenga
+generador (una isla, un mueble de TV) se omite y se dice; si nada de la ficha
+tiene generador, el botón de construir aparece deshabilitado con el motivo.
 
 Requiere la migración `supabase/migrations/20260928_forge_lectura.sql`.
 

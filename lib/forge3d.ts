@@ -84,6 +84,8 @@ const PALETA: Record<string, { color: number; roughness: number; metalness?: num
     'LAC-ROSA-PASTEL-15': { color: 0xf4c9d3, roughness: 0.28 },
     'CUA-ROSA-PASTEL-19': { color: 0xe8bcc6, roughness: 0.22 },
     'MET-ROSA-MONO': { color: 0xd98ba3, roughness: 0.25, metalness: 0.35 },
+    'MET-CROMO': { color: 0xcccccf, roughness: 0.12, metalness: 0.9 },
+    'VID-TEMP-6': { color: 0xcce0e6, roughness: 0.04 },
 };
 
 const MM = 0.001; // el GLB/USDZ va en METROS: escala real para AR

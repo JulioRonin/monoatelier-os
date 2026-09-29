@@ -75,6 +75,27 @@ El tornillo nunca carga el peso; el tablero sí. El tornillo sólo alinea.
   tramos comerciales reportando desperdicio y uniones.
 - costing.py debe poder comparar gola_aluminio vs gola_tablero.
 
+## Closet / vestidor (generators/closet.py)
+Estándares confirmados por Julio (2026-09-29):
+- Estructura de TORRE: zoclo 100, base a todo el ancho, laterales de UNA pieza
+  (alto − 115). Fondo 600 (corredera de 500). Fondo aplicado de 3mm.
+- Alto = plafón − 40 (copete en obra). Tope 2536: el fondo (alto − 100) tiene
+  que salir de una hoja de 2440 − kerf. Ancho máximo 1216 por la misma razón;
+  arriba de 900 lleva divisor y todo va por vano. Cajonera ≤ 900.
+- Tubo oval cromado COMPRADO: sencillo a 1700, doble a 1000 y 2000 (centro
+  desde el piso), 60mm bajo el entrepaño FIJO que lo carga. Mínimo 700 libres
+  bajo el tubo.
+- Entrepaños móviles (sistema 32) salvo los que cargan: el del tubo, el piso
+  del maletero, las repisas de zapatos (rectas, fijas) y cualquiera con LED.
+- Cajones de 200, corredera 500; el frente cubre el canto de la base como en
+  cocina. Vitrina: tapa de vidrio templado 6mm en rebaje, SUBCONTRATADA.
+- LED bajo cada entrepaño: led_ml declarado por el módulo (no ancho − 40).
+- Esquina en L: relleno recto de 50 (pieza del tramo, rol relleno_esquina).
+  El muro previo entra hasta la esquina: su módulo de esquina queda CIEGO en
+  los últimos 600mm; el agente lo avisa en la nota del tramo.
+- Las alturas de entrepaños, tubos y cajones se DECLARAN en flags["closet"]
+  y flags["cajones"]; posicion.py sólo las lee.
+
 ## Cubierta
 - La fabrica Mono Atelier: entra al cutlist. Espesor 19, vuelo 20 → prof 620.
 - Se calcula POR TRAMO. Unión si el tramo > 2440 (nunca sobre el hueco de la tarja).

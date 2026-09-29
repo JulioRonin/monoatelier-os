@@ -375,6 +375,8 @@ RECETAS = {
     # cuarzo rosa: misma receta de piedra que el granito, con vetas más claras
     "CUA-ROSA-PASTEL-19": ("piedra", (0.86, 0.66, 0.71, 1), (0.98, 0.94, 0.95, 1), 0.20),
     "MET-ROSA-MONO":    ("plano", (0.78, 0.44, 0.55, 1), 0.22),
+    "MET-CROMO":        ("plano", (0.78, 0.78, 0.80, 1), 0.10),
+    "VID-TEMP-6":       ("plano", (0.78, 0.86, 0.88, 1), 0.03),
 }
 
 

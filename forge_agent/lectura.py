@@ -30,12 +30,23 @@ import os
 MODELO_LECTURA = "claude-opus-5-5"
 
 #: tipos de elemento que el motor sabe construir hoy
-SOPORTADOS = {"gabinete_base", "cajonera", "tarja", "torre", "alacena", "hueco"}
+SOPORTADOS = {"gabinete_base", "cajonera", "tarja", "torre", "alacena", "hueco",
+              "closet_colgado_sencillo", "closet_colgado_doble", "closet_entrepanos",
+              "closet_cajonera", "closet_zapatera", "closet_vitrina",
+              "closet_maletero", "esquinero"}
+
+#: los que no son un módulo: el hueco no lleva mueble y el esquinero lo
+#: resuelve el relleno de 50 que el motor pone solo en la esquina
+NO_MODULO = {"hueco", "esquinero"}
+
+#: lo que ocupa la esquina de una L o una U en el muro de retorno: el fondo
+#: de los muebles del muro anterior más el relleno (o filler) de 50
+ESQUINA_MM = 600 + 50
 
 TIPOS_ELEMENTO = [
     # cocina — el motor los construye
     "gabinete_base", "cajonera", "tarja", "torre", "alacena", "hueco",
-    # closet y vestidor — sin generador todavía
+    # closet y vestidor — generators/closet.py
     "closet_colgado_sencillo", "closet_colgado_doble", "closet_entrepanos",
     "closet_cajonera", "closet_zapatera", "closet_vitrina", "closet_maletero",
     "esquinero",
@@ -271,7 +282,7 @@ def evaluar(ficha: dict) -> dict:
     tipos = [e.get("tipo") for m in ficha.get("muros", [])
              for e in m.get("elementos", [])]
     ficha["omitidos"] = sorted({t for t in tipos if t not in SOPORTADOS})
-    ficha["construible"] = any(t in SOPORTADOS and t != "hueco" for t in tipos)
+    ficha["construible"] = any(t in SOPORTADOS and t not in NO_MODULO for t in tipos)
 
     # el largo de cada muro es LA medida: sin ella no hay a qué escalar las
     # proporciones. Si el modelo la olvidó, se agrega con la suma de lo que vio.
@@ -301,7 +312,9 @@ def _anchos(muro: dict, largo: float) -> list[float]:
     tal cual dejaría 4% del muro sin mueble.
     """
     elems = muro.get("elementos", [])
-    fr = [max(float(e.get("fraccion_ancho") or 0), 0.0) for e in elems]
+    # el esquinero no es un módulo: su parte del muro la cubre el relleno
+    fr = [0.0 if e.get("tipo") == "esquinero" else
+          max(float(e.get("fraccion_ancho") or 0), 0.0) for e in elems]
     total = sum(fr)
     if total <= 0:
         return [float(e.get("ancho_estimado_mm") or 0) for e in elems]
@@ -315,7 +328,28 @@ _HERRAMIENTA = {
     "torre": "agregar_torre",
     "alacena": "agregar_alacena",
     "hueco": "no lleva mueble: parte el tramo o usa desplazamiento",
+    "closet_colgado_doble": "agregar_closet tipo=colgado_doble",
+    "closet_colgado_sencillo": "agregar_closet tipo=colgado_sencillo",
+    "closet_entrepanos": "agregar_closet tipo=entrepanos",
+    "closet_cajonera": "agregar_closet tipo=cajonera",
+    "closet_zapatera": "agregar_closet tipo=zapatera (o repisas_zapatos en un colgado_sencillo)",
+    "closet_vitrina": "agregar_closet tipo=cajonera con vitrina=True",
+    "closet_maletero": "es la parte alta de un colgado: entrepanos del colgado",
+    "esquinero": "NO es módulo: el relleno de 50 sale solo con retorno_de",
 }
+
+
+def largo_util(ficha: dict, indice: int, largo: float, muro: dict) -> float:
+    """Lo que queda para módulos en un muro.
+
+    En una L o una U, el muro de retorno pierde la esquina: ahí están el fondo
+    de los muebles del muro anterior y el relleno de 50. Pedirle al constructor
+    que llene el muro completo mete 650mm de más. Una isla no es retorno.
+    """
+    es_isla = all(e.get("tipo") == "isla" for e in muro.get("elementos", []))
+    if indice > 0 and ficha.get("distribucion") in ("L", "U") and not es_isla:
+        return max(largo - ESQUINA_MM, 0.0)
+    return largo
 
 
 def ficha_a_prompt(ficha: dict) -> str:
@@ -340,15 +374,21 @@ def ficha_a_prompt(ficha: dict) -> str:
         estado = "confirmada" if m.get("valor_mm") not in (None, "") else "estimada"
         lineas.append(f"  - {m.get('pregunta')} → {_valor(m):.0f} ({estado})")
 
-    for muro in ficha.get("muros", []):
+    for i, muro in enumerate(ficha.get("muros", [])):
         mid = muro.get("id")
         largo = medidas.get(f"largo_muro_{mid}", 0.0)
+        util = largo_util(ficha, i, largo, muro)
         lineas += ["", f"MURO {mid} — {muro.get('descripcion', '')} — "
                        f"largo {largo:.0f}mm, de izquierda a derecha:"]
+        if util != largo:
+            lineas.append(
+                f"  (retorno: la esquina se lleva {ESQUINA_MM}mm — fondo del muro "
+                f"anterior + relleno —, quedan {util:.0f}mm para módulos; créalo "
+                f"con retorno_de)")
         for n, (e, ancho) in enumerate(zip(muro.get("elementos", []),
-                                           _anchos(muro, largo)), 1):
+                                           _anchos(muro, util)), 1):
             tipo = e.get("tipo")
-            partes = [f"~{ancho:.0f}mm"]
+            partes = [f"~{ancho:.0f}mm"] if tipo not in NO_MODULO or tipo == "hueco" else []
             for campo in ("puertas", "cajones", "entrepanos"):
                 if e.get(campo):
                     partes.append(f"{e[campo]} {campo}")
@@ -358,7 +398,7 @@ def ficha_a_prompt(ficha: dict) -> str:
                 partes.append(e["detalle"])
             como = (_HERRAMIENTA.get(tipo) if tipo in SOPORTADOS
                     else "NO CONSTRUIR: el motor no tiene generador")
-            lineas.append(f"  {n}. {tipo} · {' · '.join(partes)}  [{como}]")
+            lineas.append(f"  {n}. {' · '.join([tipo] + partes)}  [{como}]")
 
     lineas += ["", "ACABADOS:"]
     if not ficha.get("acabados"):
@@ -386,9 +426,9 @@ def ficha_a_prompt(ficha: dict) -> str:
                    ficha["indicaciones"].strip()]
 
     lineas += ["", "Los anchos con ~ son proporciones de la foto: ajústalos a "
-                   "anchos de taller, pero cada muro —contando sus huecos— debe "
-                   "sumar exactamente su largo. Si no cuadra, usa un filler y "
-                   "anótalo con agregar_nota."]
+                   "anchos de taller, pero los módulos de cada muro —contando sus "
+                   "huecos— deben sumar exactamente lo que queda para módulos. Si "
+                   "no cuadra, usa un filler y anótalo con agregar_nota."]
     return "\n".join(lineas)
 
 

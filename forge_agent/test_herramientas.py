@@ -189,3 +189,42 @@ def test_la_tarja_no_entra_al_cutlist():
 
     assert "ERROR" in _llamar(h.agregar_tarja, modulo_id="B01")     # duplicada
     assert "ERROR" in _llamar(h.agregar_tarja, modulo_id="NOPE")
+
+
+def test_vestidor_en_L_de_punta_a_punta(tmp_path):
+    """La foto que mandó Julio, armada con las herramientas en el orden del modelo."""
+    from mono_forge.costing import Tarifas
+    from mono_forge.docs import generar_todo
+
+    _llamar(h.definir_proyecto, cliente="Sra. Díaz", nombre="Vestidor en L",
+            apertura="jaladera")
+    r = _llamar(h.agregar_closet, id="A1", ancho=1000, tipo="colgado_doble",
+                plafon=2400, led=True)
+    assert "tubos a 1000, 2000" in r
+    _llamar(h.agregar_closet, id="B1", ancho=480, tipo="cajonera", plafon=2400,
+            vitrina=True, entrepanos=3, led=True)
+    _llamar(h.agregar_closet, id="B2", ancho=370, tipo="colgado_sencillo",
+            plafon=2400, repisas_zapatos=2, entrepanos=2, led=True)
+    assert "jaladera" in _llamar(h.agregar_jaladeras, modulo_id="B1", silueta="barra")
+    _llamar(h.agregar_tramo, id="TA", muro="A", modulos=["A1"])
+    r = _llamar(h.agregar_tramo, id="TB", muro="B", modulos=["B1", "B2"],
+                retorno_de="TA")
+    assert "no lleva cubierta" in r and "Relleno recto de 50" in r
+    assert "Esquina CIEGA: los últimos 600mm de A1" in r
+    _llamar(h.calcular_led)
+
+    proyecto = h.finalizar()
+    p = Project.from_dict(json.loads(json.dumps(proyecto)))
+    assert not [t for t in p.tramos if any(x.rol_estructural == "cubierta" for x in t.panels)]
+    relleno = next(x for t in p.tramos for x in t.panels
+                   if x.rol_estructural == "relleno_esquina")
+    assert relleno.largo == 2360 and relleno.colocacion
+    # ninguna pieza se quedó sin lugar en el 3D
+    assert not [n for n in p.notas if "sin regla" in n], p.notas
+
+    destino = tmp_path / "deliverables"
+    generar_todo(p, str(destino), Tarifas(canto_maquina_ml=12, canto_manual_ml=45,
+                                          mano_obra_modulo=850))
+    v = verificar(p, str(destino))
+    assert v["problemas"] == [], v["problemas"]
+    assert set(v["faltantes"]) <= {"modelo.blend", "preview.glb"}   # esos los hace Blender

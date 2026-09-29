@@ -295,12 +295,41 @@ def _colocar_jaladeras(m: Module) -> list[str]:
     return sin_regla
 
 
+def _colocar_panel_closet(m: Module, p: Panel) -> bool:
+    """Closet: el casco es el de la torre; el interior lo declaró el generador
+    en flags["closet"] (cara inferior de cada entrepaño, centro de cada tubo)."""
+    cfg = m.flags.get("closet") or {}
+    xs = cfg.get("vanos_x") or [m.ancho / 2]
+
+    if p.name in cfg.get("niveles", {}):
+        y = RETRANQUEO_ENTREPANO + p.ancho / 2
+        p.colocacion = [_c(x, y, z + p.espesor / 2, p.largo, p.ancho, p.espesor)
+                        for z in cfg["niveles"][p.name] for x in xs][:p.cantidad]
+        return True
+    if p.name in cfg.get("tubos", {}):
+        p.colocacion = [_c(x, m.prof / 2, z, p.largo, p.ancho, p.espesor)
+                        for z in cfg["tubos"][p.name] for x in xs][:p.cantidad]
+        return True
+    for cj in m.flags.get("cajones") or []:
+        if not p.name.startswith(f"{m.id}_c{cj['i']}_"):
+            continue
+        if p.rol_estructural == "accesorio_vidrio":
+            # asienta en el rebaje: al ras del canto superior de la caja
+            p.colocacion = [_c(m.ancho / 2, cj["corredera"] / 2,
+                               cj["z_caja"] + cj["alto_caja"] - p.espesor / 2,
+                               p.largo, p.ancho, p.espesor)]
+            return True
+        return _colocar_pieza_de_cajon(m, p, cj)
+    return _colocar_panel_apoyado(m, p)
+
+
 _DISPATCH = {
     "base": _colocar_panel_apoyado,
     "base_tarja": _colocar_panel_apoyado,
     "torre": _colocar_panel_apoyado,
     "superior": _colocar_panel_colgado,
     "cajonera": _colocar_panel_cajonera,
+    "closet": _colocar_panel_closet,
 }
 
 
@@ -435,6 +464,19 @@ def colocar(project: Project, alto_colgado: float = ALTO_COLGADO_DEFAULT) -> dic
                     _al_proyecto(c, marco, 0.0, 0.0, 0.0, rotacion)
                     p.colocacion.append(c)
                     cursor += p.largo
+            elif p.rol_estructural == "relleno_esquina":
+                # tapa el claro de esquina entre el frente del muro previo y
+                # esta corrida, en el plano del frente. Retorno a la derecha
+                # (giro −90°): la esquina está en el arranque. A la izquierda
+                # (+90°) los módulos corren hacia la esquina: está al final.
+                if rotacion > 0:
+                    largo = sum(m.ancho for m in mods if m.tipo != "superior")
+                    x = arranque + largo + p.ancho / 2
+                else:
+                    x = arranque - p.ancho / 2
+                c = _c(x, T / 2, p.largo / 2, p.ancho, T, p.largo)
+                _al_proyecto(c, marco, 0.0, 0.0, 0.0, rotacion)
+                p.colocacion = [c]
             else:
                 sin_regla.append(p.name)
 

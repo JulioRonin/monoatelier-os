@@ -45,6 +45,24 @@ ALTO_TORRE_RANGO = (2100, 2200)
 ALTO_TORRE_DEFAULT = 2100
 PROF_TORRE = 600
 
+# ── Closet / vestidor ────────────────────────────────────────────────────
+# Estándares confirmados por Julio (2026-09-29). Estructura apoyada, igual
+# que la torre: zoclo 100, base a todo el ancho y laterales de UNA pieza.
+PROF_CLOSET = 600               # permite la corredera estándar de 500
+HOLGURA_PLAFON = 40             # módulo = plafón − 40: el techo nunca está a nivel
+#: el lateral (alto − 115) y el fondo aplicado (alto − 100) salen de UNA hoja
+#: de 2440 menos el kerf: el fondo es el que limita → 2436 + 100 = 2536.
+ALTO_CLOSET_MAX = HOJA_LARGO - KERF + ALTO_ZOCLO
+#: el fondo aplicado mide el ancho del módulo: tiene que caber a lo ancho de la hoja
+ANCHO_CLOSET_MAX = HOJA_ANCHO - KERF
+TUBO_SENCILLO = 1700            # centro del tubo desde el piso
+TUBOS_DOBLE = (1000, 2000)      # tubo bajo y tubo alto
+TUBO_BAJO_ENTREPANO = 60        # del entrepaño que lo carga al centro del tubo
+COLGADO_MIN = 700               # libre bajo el tubo: menos no cuelga ni una camisa
+FRENTE_CAJON_CLOSET = 200
+NIVEL_ZAPATO = 200              # libre entre repisas de la zapatera
+VANO_MIN_CLOSET = 150           # un maletero más bajo no sirve
+
 # ── Correderas ───────────────────────────────────────────────────────────
 CORREDERAS_STD = (300, 350, 400, 450, 500, 550)
 CORREDERA_DEFAULT = 500     # estándar del taller: NO subir a 550 aunque el módulo dé
@@ -96,12 +114,15 @@ def alto_lateral(tipo: str, alto_total: float | None = None) -> float:
     base     → descansa sobre la base       → alto_cuerpo − T   (785)
     cajonera → es un mueble inferior         → igual que base
     torre    → mismo principio, pieza única → alto − zoclo − T  (2100 → 1985)
+    closet   → igual que la torre                                (2360 → 2245)
     superior → corre completo               → alto
     """
     if tipo in ("base", "base_tarja", "cajonera"):
         return ALTO_LATERAL_BASE
     if tipo == "torre":
         return (alto_total or ALTO_TORRE_DEFAULT) - ALTO_ZOCLO - T
+    if tipo == "closet":
+        return alto_total - ALTO_ZOCLO - T
     if tipo == "superior":
         return alto_total or ALTO_SUPERIOR_DEFAULT
     raise ValueError(f"tipo de mueble desconocido: {tipo}")
@@ -113,6 +134,8 @@ def alto_cuerpo(tipo: str, alto_total: float | None = None) -> float:
         return ALTO_CUERPO_BASE
     if tipo == "torre":
         return (alto_total or ALTO_TORRE_DEFAULT) - ALTO_ZOCLO
+    if tipo == "closet":
+        return alto_total - ALTO_ZOCLO
     if tipo == "superior":
         return alto_total or ALTO_SUPERIOR_DEFAULT
     raise ValueError(f"tipo de mueble desconocido: {tipo}")
