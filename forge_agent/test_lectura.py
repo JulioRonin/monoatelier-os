@@ -314,3 +314,10 @@ def test_el_constructor_con_claude_recibe_las_imagenes(monkeypatch):
     contenido = visto["messages"][0]["content"]
     assert contenido[0]["source"]["url"] == "https://x/ref.jpg"
     assert contenido[-1] == {"type": "text", "text": "una cocina"}
+
+
+def test_el_tipo_de_imagen_sale_del_contenido_no_de_la_extension(tmp_path):
+    # un WEBP que Windows dejó como .jpg: mandarlo como JPEG lo hace rechazar
+    f = tmp_path / "vestidor.webp.jpg"
+    f.write_bytes(b"RIFF\x00\x00\x00\x00WEBPVP8 resto")
+    assert lectura.bloque_imagen(str(f))["source"]["media_type"] == "image/webp"

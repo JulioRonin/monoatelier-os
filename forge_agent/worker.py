@@ -293,6 +293,31 @@ def _atender_diseno(job: dict) -> None:
     print("  ✓ trabajo completado")
 
 
+_EXT_IMAGEN = (".jpg", ".jpeg", ".png", ".webp", ".gif", ".heic")
+
+
+def _sugerir_fotos(ruta: str) -> None:
+    """Lo que sí hay en esa carpeta. Windows esconde las extensiones: la foto
+    que se ve como "vestidor" puede llamarse vestidor.jpg o vestidor.webp.jpg."""
+    carpeta = os.path.dirname(ruta) or "."
+    if not os.path.isdir(carpeta):
+        print(f"  Tampoco existe la carpeta {carpeta}.")
+    else:
+        buscado = os.path.splitext(os.path.basename(ruta))[0].lower()
+        fotos = [os.path.join(carpeta, n) for n in os.listdir(carpeta)
+                 if n.lower().endswith(_EXT_IMAGEN)]
+        fotos.sort(key=lambda x: (buscado not in os.path.basename(x).lower(),
+                                  -os.path.getmtime(x)))
+        if fotos:
+            print(f"  Imágenes en {carpeta} (las más recientes primero):")
+            for x in fotos[:8]:
+                print(f'    "{x}"')
+        else:
+            print(f"  No hay imágenes en {carpeta}.")
+    print("  Truco: escribe  python -m forge_agent.worker --leer  y ARRASTRA la foto")
+    print("  a esta ventana; Windows pega la ruta exacta, con comillas.")
+
+
 def _leer_desde_terminal(argv: list[str]) -> int:
     """--leer foto.jpg [...] [--indicaciones "..."]: imprime la ficha y las
     instrucciones que recibiría el constructor. No sube ni construye nada."""
@@ -311,8 +336,7 @@ def _leer_desde_terminal(argv: list[str]) -> int:
     for f in fotos:
         if not f.startswith(("http://", "https://")) and not os.path.isfile(f):
             print(f"ERROR: no encuentro la foto {f}")
-            print("  Pon la ruta completa entre comillas, por ejemplo:")
-            print('    --leer "C:\\Users\\ORKA\\Downloads\\vestidor.webp"')
+            _sugerir_fotos(f)
             return 1
 
     import anthropic

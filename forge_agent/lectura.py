@@ -165,6 +165,23 @@ Español de México, conciso."""
 
 # ── imágenes ─────────────────────────────────────────────────────────────
 
+def tipo_de_imagen(crudo: bytes) -> str | None:
+    """El tipo por el CONTENIDO, no por la extensión.
+
+    Una foto WEBP guardada como "vestidor.jpg" (Windows esconde la extensión
+    real) se mandaría como JPEG y la API la rechaza por no coincidir.
+    """
+    if crudo.startswith(b"\x89PNG"):
+        return "image/png"
+    if crudo.startswith(b"\xff\xd8\xff"):
+        return "image/jpeg"
+    if crudo.startswith((b"GIF87a", b"GIF89a")):
+        return "image/gif"
+    if crudo[:4] == b"RIFF" and crudo[8:12] == b"WEBP":
+        return "image/webp"
+    return None
+
+
 def bloque_imagen(ref: str) -> dict:
     """URL pública → bloque por URL. Ruta local → base64.
 
@@ -172,9 +189,10 @@ def bloque_imagen(ref: str) -> dict:
     cliente, sin subirla antes a ningún lado.
     """
     if os.path.isfile(ref):
-        tipo = mimetypes.guess_type(ref)[0] or "image/jpeg"
         with open(ref, "rb") as f:
-            datos = base64.standard_b64encode(f.read()).decode("ascii")
+            crudo = f.read()
+        tipo = tipo_de_imagen(crudo) or mimetypes.guess_type(ref)[0] or "image/jpeg"
+        datos = base64.standard_b64encode(crudo).decode("ascii")
         return {"type": "image",
                 "source": {"type": "base64", "media_type": tipo, "data": datos}}
     return {"type": "image", "source": {"type": "url", "url": ref}}
