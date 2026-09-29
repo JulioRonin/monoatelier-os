@@ -24,6 +24,7 @@ from __future__ import annotations
 import json
 import os
 
+from . import llave_anthropic
 from .herramientas import HERRAMIENTAS
 
 #: tope de seguridad del bucle manual. Un diseño normal usa 15–25 llamadas;
@@ -202,7 +203,7 @@ def configurar(proveedor: str | None = None) -> dict:
         return {"proveedor": "anthropic",
                 "modelo": os.environ.get("FORGE_MODEL", "claude-opus-5-5"),
                 "base_url": None,
-                "api_key": os.environ.get("ANTHROPIC_API_KEY")}
+                "api_key": llave_anthropic()}
 
     if proveedor == "nvidia":
         llave = os.environ.get("NVIDIA_API_KEY") or os.environ.get("FORGE_API_KEY")

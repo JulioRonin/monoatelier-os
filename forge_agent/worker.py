@@ -40,7 +40,8 @@ import urllib.parse
 import urllib.request
 import uuid
 
-from . import comando_instalar, faltantes
+from . import (comando_instalar, faltantes, llave_anthropic, llave_enmascarada,
+               problemas_de_llave)
 from .lectura import ficha_a_prompt, leer_foto, resumen_de_ficha
 
 INTERVALO = float(os.environ.get("FORGE_POLL_SECONDS", "5"))
@@ -318,6 +319,18 @@ def _sugerir_fotos(ruta: str) -> None:
     print("  a esta ventana; Windows pega la ruta exacta, con comillas.")
 
 
+def _explicar_llave_rechazada() -> None:
+    print("ERROR: Anthropic rechazó la llave.")
+    print(f"  La que ve ESTA terminal: {llave_enmascarada()}")
+    for p in problemas_de_llave():
+        print(f"  · {p}")
+    print("  Compárala con console.anthropic.com → API keys. Si no es la nueva:")
+    print("  · Vercel NO cuenta: sus variables son para la página web, no para tu PC.")
+    print("  · En cmd, sin comillas:   set ANTHROPIC_API_KEY=sk-ant-api03-...")
+    print("  · Para dejarla fija:      setx ANTHROPIC_API_KEY sk-ant-api03-...")
+    print("    y abre una terminal NUEVA (setx no cambia la que ya está abierta).")
+
+
 def _leer_desde_terminal(argv: list[str]) -> int:
     """--leer foto.jpg [...] [--indicaciones "..."]: imprime la ficha y las
     instrucciones que recibiría el constructor. No sube ni construye nada."""
@@ -343,8 +356,7 @@ def _leer_desde_terminal(argv: list[str]) -> int:
     try:
         r = leer_foto(fotos, indicaciones)
     except anthropic.AuthenticationError:
-        print("ERROR: Anthropic rechazó la llave. Revisa ANTHROPIC_API_KEY "
-              "(console.anthropic.com → API keys).")
+        _explicar_llave_rechazada()
         return 1
     except anthropic.NotFoundError as e:
         print(f"ERROR: el modelo no existe para tu cuenta: {e.message}")
@@ -375,7 +387,7 @@ def main(argv: list[str]) -> int:
     if not _revisar_paquetes(["anthropic"]):
         return 1
     if "--leer" in argv:
-        if not os.environ.get("ANTHROPIC_API_KEY"):
+        if not llave_anthropic():
             print("ERROR: la lectura de fotos usa Claude: define ANTHROPIC_API_KEY.")
             return 1
         return _leer_desde_terminal(argv)

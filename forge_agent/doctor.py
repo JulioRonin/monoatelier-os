@@ -81,15 +81,48 @@ def revisar_paquetes(proveedor: str) -> bool:
     return ok
 
 
-def revisar_lectura() -> bool:
+def revisar_lectura(verificar: bool = True) -> bool:
+    """La llave que lee las fotos: que exista, que se vea bien y que Anthropic
+    la acepte. La verificación consulta el modelo: no gasta tokens."""
+    from . import llave_anthropic, llave_enmascarada, problemas_de_llave
+
     modelo = os.environ.get("FORGE_MODELO_LECTURA") or "claude-opus-5-5"
-    if os.environ.get("ANTHROPIC_API_KEY"):
-        _linea(OK, f"lectura de fotos con {modelo}")
+    if not llave_anthropic():
+        _linea(MAL, "sin ANTHROPIC_API_KEY: la lectura de fotos no va a funcionar",
+               "La foto la lee Claude aunque construyas con NVIDIA.\n"
+               "Genera la llave en console.anthropic.com y defínela EN ESTA PC\n"
+               "(las variables de Vercel son de la página web, no de tu terminal).")
+        return False
+
+    problemas = problemas_de_llave()
+    if problemas:
+        _linea(AVISO, f"ANTHROPIC_API_KEY {llave_enmascarada()}",
+               "\n".join(f"· {p}" for p in problemas))
+    if not verificar:
         return True
-    _linea(MAL, "sin ANTHROPIC_API_KEY: la lectura de fotos no va a funcionar",
-           "La foto la lee Claude aunque construyas con NVIDIA.\n"
-           "Genera la llave en console.anthropic.com.")
-    return False
+
+    import anthropic
+    try:
+        anthropic.Anthropic(api_key=llave_anthropic()).models.retrieve(modelo)
+    except anthropic.AuthenticationError:
+        _linea(MAL, f"Anthropic rechazó la llave {llave_enmascarada()}",
+               "Compárala con console.anthropic.com → API keys. Si no es la nueva:\n"
+               "en cmd, sin comillas:  setx ANTHROPIC_API_KEY sk-ant-api03-...\n"
+               "y abre una terminal NUEVA. Vercel no cuenta para tu PC.")
+        return False
+    except anthropic.NotFoundError:
+        _linea(MAL, f"la llave sirve, pero tu cuenta no tiene el modelo {modelo}",
+               "Usa otro con FORGE_MODELO_LECTURA (por ejemplo claude-sonnet-5-5).")
+        return False
+    except anthropic.APIConnectionError:
+        _linea(AVISO, "no pude conectar con Anthropic para verificar la llave",
+               "Revisa tu internet; la llave no se pudo comprobar.")
+        return True
+    except anthropic.APIStatusError as e:
+        _linea(MAL, f"Anthropic respondió {e.status_code}: {e.message}")
+        return False
+    _linea(OK, f"lectura de fotos con {modelo} · llave {llave_enmascarada()} aceptada")
+    return True
 
 
 # ── 2. el modelo responde y llama herramientas ──────────────────────────

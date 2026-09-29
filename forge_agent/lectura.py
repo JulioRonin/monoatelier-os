@@ -222,7 +222,8 @@ def leer_foto(imagenes: list[str], indicaciones: str = "", *,
     modelo = modelo or os.environ.get("FORGE_MODELO_LECTURA") or MODELO_LECTURA
     if cliente is None:
         from anthropic import Anthropic
-        cliente = Anthropic()
+        from . import llave_anthropic
+        cliente = Anthropic(api_key=llave_anthropic())
 
     texto = ("Lee esta referencia y llena la ficha.\n\n"
              "CATÁLOGO DEL TALLER\n" + _catalogo() + "\n\n"

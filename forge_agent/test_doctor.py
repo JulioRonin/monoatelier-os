@@ -13,8 +13,7 @@ def test_sin_llave_de_anthropic_se_imprime_el_motivo(monkeypatch, capsys):
 
 def test_con_llave_la_lectura_queda_en_verde(monkeypatch, capsys):
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-prueba")
-    assert doctor.revisar_lectura() is True
-    assert "✓ lectura de fotos" in capsys.readouterr().out
+    assert doctor.revisar_lectura(verificar=False) is True
 
 
 def test_cada_falla_del_resumen_tiene_su_linea(monkeypatch, capsys):
@@ -26,3 +25,39 @@ def test_cada_falla_del_resumen_tiene_su_linea(monkeypatch, capsys):
     if "Arregla las líneas con ✗" in salida:
         assert codigo == 1
         assert salida.count("✗") >= 2, salida
+
+
+def test_la_llave_con_comillas_se_limpia_y_se_avisa(monkeypatch):
+    from forge_agent import llave_anthropic, problemas_de_llave
+    real = "sk-ant-api03-" + "x" * 95
+    monkeypatch.setenv("ANTHROPIC_API_KEY", f' "{real}" ')
+    assert llave_anthropic() == real
+    assert any("comillas" in p for p in problemas_de_llave())
+
+
+def test_el_texto_de_ejemplo_se_reconoce(monkeypatch):
+    from forge_agent import problemas_de_llave
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-...")
+    assert any("EJEMPLO" in p for p in problemas_de_llave())
+
+
+def test_una_llave_rechazada_se_dice_con_su_huella(monkeypatch, capsys):
+    import anthropic
+
+    class _Modelos:
+        def retrieve(self, m):
+            # el doctor sólo distingue por tipo; no hace falta una respuesta HTTP real
+            e = anthropic.AuthenticationError.__new__(anthropic.AuthenticationError)
+            Exception.__init__(e, "invalid x-api-key")
+            raise e
+
+    class _Cliente:
+        def __init__(self, **kw):
+            self.models = _Modelos()
+
+    monkeypatch.setattr(anthropic, "Anthropic", _Cliente)
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-api03-" + "a" * 91 + "WXYZ")
+    assert doctor.revisar_lectura() is False
+    salida = capsys.readouterr().out
+    assert "rechazó" in salida and "…WXYZ" in salida and "Vercel" in salida
+    assert "a" * 20 not in salida                   # el secreto no se imprime
