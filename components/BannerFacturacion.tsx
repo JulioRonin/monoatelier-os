@@ -1,6 +1,6 @@
 import React from 'react';
 import { AlertTriangle } from 'lucide-react';
-import { facturapiModo, facturapiPrefijoLlave } from '../lib/facturapi';
+import { useFacturapiEstado } from '../lib/facturapi';
 
 /**
  * Aviso global cuando la facturación NO está en producción.
@@ -13,11 +13,12 @@ import { facturapiModo, facturapiPrefijoLlave } from '../lib/facturapi';
  * Por eso este aviso NO se puede cerrar y sale en todas las páginas: el modo
  * equivocado no se detecta a tiempo si hay que acordarse de revisarlo.
  *
- * En producción no estorba: no se dibuja nada.
+ * En producción no estorba: no se dibuja nada. Mientras el servidor contesta,
+ * tampoco: un aviso rojo de un segundo en cada carga enseña a ignorarlo.
  */
 const BannerFacturacion: React.FC = () => {
-    const modo = facturapiModo();
-    if (modo === 'live') return null;
+    const { modo, prefijo, detalle } = useFacturapiEstado();
+    if (modo === 'live' || modo === 'cargando') return null;
 
     const esSandbox = modo === 'test';
 
@@ -39,16 +40,16 @@ const BannerFacturacion: React.FC = () => {
                         lo que timbres aquí <strong>no llega al SAT</strong>, no tiene validez fiscal y
                         el cliente no lo puede deducir, aunque el PDF se vea igual de real.
                         {' '}Para facturar de verdad, pon la llave <code className="font-mono">sk_live_…</code>
-                        {' '}en <code className="font-mono">VITE_FACTURAPI_KEY</code> y vuelve a desplegar.
-                        <span className="opacity-70"> (llave activa: <code className="font-mono">{facturapiPrefijoLlave()}</code>)</span>
+                        {' '}en <code className="font-mono">FACTURAPI_KEY</code> (Vercel → Settings → Environment
+                        Variables) y vuelve a desplegar.
+                        <span className="opacity-70"> (llave activa: <code className="font-mono">{prefijo}</code>)</span>
                     </>
                 ) : (
                     <>
                         <strong className="uppercase tracking-widest">Sin llave de Facturapi</strong>
                         {' — '}
-                        no se puede timbrar ni consultar facturas. Falta
-                        {' '}<code className="font-mono">VITE_FACTURAPI_KEY</code> en las variables de
-                        entorno de este despliegue.
+                        no se puede timbrar ni consultar facturas.
+                        {' '}{detalle || <>Falta <code className="font-mono">FACTURAPI_KEY</code> en las variables de entorno de Vercel.</>}
                     </>
                 )}
             </div>

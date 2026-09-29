@@ -6,46 +6,104 @@
 
 import { redondear, type CfdiImpuesto } from './cfdi';
 
-const FACTURAPI_BASE = 'https://www.facturapi.io/v2';
-const FACTURAPI_KEY = import.meta.env.VITE_FACTURAPI_KEY;
+import { useEffect, useState } from 'react';
+import { supabase } from './supabaseClient';
 
 // ---------------------------------------------------------------------------
-// Helpers
+// El servidor
 // ---------------------------------------------------------------------------
+//
+// La llave de Facturapi ya NO está en el navegador: todo pasa por la función
+// /api/facturapi (api/facturapi.ts), que tiene la llave, revisa que la sesión
+// sea de alguien del equipo y sólo deja pasar las operaciones que se usan aquí.
 
-/** Sandbox o producción — lo dice el prefijo de la llave, no una config aparte
- *  que se pueda desincronizar. Todo lo que dependa del modo (el saldo de las
- *  facturas, los avisos en pantalla) debe leerlo de aquí. */
-export type FacturapiModo = 'live' | 'test' | 'sin-llave';
+/** Sandbox o producción — lo dice la llave del SERVIDOR. 'cargando' mientras
+ *  no ha contestado: en ese estado no se timbra, para nunca guardar como real
+ *  una factura de pruebas. */
+export type FacturapiModo = 'live' | 'test' | 'sin-llave' | 'cargando';
 
-export function facturapiModo(): FacturapiModo {
-    if (!FACTURAPI_KEY) return 'sin-llave';
-    return FACTURAPI_KEY.startsWith('sk_test') ? 'test' : 'live';
+export interface EstadoFacturapi {
+    modo: FacturapiModo;
+    /** sk_live_… / sk_test_…: para compararla de un vistazo con la de Vercel */
+    prefijo: string;
+    /** por qué no hay modo, si no lo hay */
+    detalle?: string;
 }
 
-/**
- * Sólo el prefijo de la llave (`sk_test_…` / `sk_live_…`), para poder
- * compararla de un vistazo con la que está puesta en Vercel.
- *
- * Nunca devuelve el resto: es un secreto y no tiene por qué aparecer en
- * pantalla ni en una captura.
- */
-export function facturapiPrefijoLlave(): string {
-    if (!FACTURAPI_KEY) return 'ninguna';
-    return `${FACTURAPI_KEY.slice(0, 7)}_…`;
+let estado: EstadoFacturapi = { modo: 'cargando', prefijo: '…' };
+let pedido: Promise<void> | null = null;
+const suscritos = new Set<(e: EstadoFacturapi) => void>();
+
+function publicar(e: EstadoFacturapi) {
+    estado = e;
+    suscritos.forEach(fn => fn(e));
 }
 
-function authHeaders(): HeadersInit {
-    if (!FACTURAPI_KEY) {
-        throw new Error('La clave de Facturapi no está configurada. Verifica tu archivo .env.local (VITE_FACTURAPI_KEY).');
+async function llamar(ruta: string, init: {
+    method?: 'GET' | 'POST' | 'DELETE';
+    body?: unknown;
+    query?: Record<string, string | undefined>;
+} = {}): Promise<Response> {
+    const qs = new URLSearchParams({ ruta });
+    for (const [k, v] of Object.entries(init.query || {})) if (v) qs.set(k, v);
+    const { data } = supabase ? await supabase.auth.getSession() : { data: { session: null } };
+    const token = data.session?.access_token;
+    const res = await fetch(`/api/facturapi?${qs}`, {
+        method: init.method || 'GET',
+        headers: {
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            ...(init.body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+        },
+        body: init.body !== undefined ? JSON.stringify(init.body) : undefined,
+    });
+    const modo = res.headers.get('x-facturapi-modo');
+    if ((modo === 'live' || modo === 'test' || modo === 'sin-llave') && modo !== estado.modo) {
+        publicar({ ...estado, modo });
     }
-    // Facturapi uses HTTP Basic Auth: key as username, empty password
-    const encoded = btoa(`${FACTURAPI_KEY}:`);
-    return {
-        Authorization: `Basic ${encoded}`,
-        'Content-Type': 'application/json',
-    };
+    return res;
 }
+
+/** El modo de las RESPUESTAS: lo que de verdad hizo Facturapi con ese timbre. */
+function modoDe(res: Response): 'live' | 'test' | undefined {
+    const m = res.headers.get('x-facturapi-modo');
+    return m === 'live' || m === 'test' ? m : undefined;
+}
+
+export function cargarEstadoFacturapi(): Promise<void> {
+    pedido ??= (async () => {
+        try {
+            const res = await llamar('modo');
+            if (res.ok) {
+                const d = await res.json();
+                publicar({ modo: d.modo, prefijo: d.prefijo });
+            } else {
+                const d = await res.json().catch(() => ({}));
+                publicar({ modo: 'sin-llave', prefijo: 'ninguna',
+                           detalle: d.message || `El servidor respondió ${res.status}.` });
+                if (res.status === 401) pedido = null;      // al iniciar sesión se reintenta
+            }
+        } catch {
+            publicar({ modo: 'sin-llave', prefijo: 'ninguna',
+                       detalle: 'No se pudo hablar con el servidor de facturación (/api/facturapi).' });
+            pedido = null;
+        }
+    })();
+    return pedido;
+}
+
+/** El modo de facturación para una pantalla; se actualiza solo. */
+export function useFacturapiEstado(): EstadoFacturapi {
+    const [e, setE] = useState(estado);
+    useEffect(() => {
+        suscritos.add(setE);
+        cargarEstadoFacturapi();
+        setE(estado);
+        return () => { suscritos.delete(setE); };
+    }, []);
+    return e;
+}
+
+export const useFacturapiModo = (): FacturapiModo => useFacturapiEstado().modo;
 
 /**
  * Parses Facturapi error responses and surfaces a human-readable message.
@@ -123,6 +181,9 @@ export interface FacturapiInvoiceResult {
     /** true = se timbró, pero SIN el CFDI relacionado que se pidió. Ver
      *  facturapiCreateInvoice: la liga de sustitución queda en la cancelación. */
     relacionOmitida?: boolean;
+    /** en qué modo lo timbró Facturapi (lo dice el servidor): es lo que se
+     *  guarda, no lo que la pantalla creía */
+    modo?: 'live' | 'test';
 }
 
 // ---------------------------------------------------------------------------
@@ -229,11 +290,7 @@ export interface FacturapiInvoiceListResponse {
 export async function facturapiCreateCustomer(
     payload: FacturapiCustomerPayload
 ): Promise<string> {
-    const res = await fetch(`${FACTURAPI_BASE}/customers`, {
-        method: 'POST',
-        headers: authHeaders(),
-        body: JSON.stringify(payload),
-    });
+    const res = await llamar('customers', { method: 'POST', body: payload });
 
     if (!res.ok) {
         const msg = await parseFacturapiError(res);
@@ -260,11 +317,7 @@ export async function facturapiCreateInvoice(
             payload.payment_method === 'PPD' ? '99' : payload.payment_form,
     };
 
-    const res = await fetch(`${FACTURAPI_BASE}/invoices`, {
-        method: 'POST',
-        headers: authHeaders(),
-        body: JSON.stringify(finalPayload),
-    });
+    const res = await llamar('invoices', { method: 'POST', body: finalPayload });
 
     if (!res.ok) {
         const msg = await parseFacturapiError(res);
@@ -279,21 +332,17 @@ export async function facturapiCreateInvoice(
 
         if (esProblemaDeRelacion) {
             const { relation, related, ...sinRelacion } = finalPayload as any;
-            const reintento = await fetch(`${FACTURAPI_BASE}/invoices`, {
-                method: 'POST',
-                headers: authHeaders(),
-                body: JSON.stringify(sinRelacion),
-            });
+            const reintento = await llamar('invoices', { method: 'POST', body: sinRelacion });
             if (reintento.ok) {
                 const data = await reintento.json();
-                return { ...data, relacionOmitida: true } as FacturapiInvoiceResult;
+                return { ...data, relacionOmitida: true, modo: modoDe(reintento) } as FacturapiInvoiceResult;
             }
         }
 
         throw new Error(`Error al timbrar factura con Facturapi: ${msg}`);
     }
 
-    return res.json() as Promise<FacturapiInvoiceResult>;
+    return { ...(await res.json()), modo: modoDe(res) } as FacturapiInvoiceResult;
 }
 
 // ---------------------------------------------------------------------------
@@ -366,12 +415,8 @@ export async function facturapiCancelInvoice(
             'Emite primero la factura corregida y vuelve a intentar.');
     }
 
-    const qs = new URLSearchParams({ motive });
-    if (substitution) qs.set('substitution', substitution);
-
-    const res = await fetch(`${FACTURAPI_BASE}/invoices/${invoiceId}?${qs.toString()}`, {
-        method: 'DELETE',
-        headers: authHeaders(),
+    const res = await llamar(`invoices/${invoiceId}`, {
+        method: 'DELETE', query: { motive, substitution },
     });
     if (!res.ok) {
         const msg = await parseFacturapiError(res);
@@ -384,11 +429,7 @@ export async function facturapiCancelInvoice(
  * Step 3a – Download the PDF for a stamped invoice as a Blob.
  */
 export async function facturapiDownloadPdf(invoiceId: string): Promise<Blob> {
-    const encoded = btoa(`${FACTURAPI_KEY}:`);
-    const res = await fetch(`${FACTURAPI_BASE}/invoices/${invoiceId}/pdf`, {
-        method: 'GET',
-        headers: { Authorization: `Basic ${encoded}` },
-    });
+    const res = await llamar(`invoices/${invoiceId}/pdf`);
     if (!res.ok) {
         const msg = await parseFacturapiError(res);
         throw new Error(`Error al descargar PDF: ${msg}`);
@@ -400,11 +441,7 @@ export async function facturapiDownloadPdf(invoiceId: string): Promise<Blob> {
  * Step 3b – Download the XML for a stamped invoice as a Blob.
  */
 export async function facturapiDownloadXml(invoiceId: string): Promise<Blob> {
-    const encoded = btoa(`${FACTURAPI_KEY}:`);
-    const res = await fetch(`${FACTURAPI_BASE}/invoices/${invoiceId}/xml`, {
-        method: 'GET',
-        headers: { Authorization: `Basic ${encoded}` },
-    });
+    const res = await llamar(`invoices/${invoiceId}/xml`);
     if (!res.ok) {
         const msg = await parseFacturapiError(res);
         throw new Error(`Error al descargar XML: ${msg}`);
@@ -417,11 +454,7 @@ export async function facturapiDownloadXml(invoiceId: string): Promise<Blob> {
  * Falls back to separate PDF + XML downloads if ZIP fails.
  */
 export async function facturapiDownloadZip(invoiceId: string): Promise<Blob> {
-    const encoded = btoa(`${FACTURAPI_KEY}:`);
-    const res = await fetch(`${FACTURAPI_BASE}/invoices/${invoiceId}/zip`, {
-        method: 'GET',
-        headers: { Authorization: `Basic ${encoded}` },
-    });
+    const res = await llamar(`invoices/${invoiceId}/zip`);
     if (!res.ok) {
         const msg = await parseFacturapiError(res);
         throw new Error(`Error al descargar ZIP: ${msg}`);
@@ -436,20 +469,14 @@ export async function facturapiDownloadZip(invoiceId: string): Promise<Blob> {
 export async function facturapiListInvoices(
     params: FacturapiInvoiceListParams = {}
 ): Promise<FacturapiInvoiceListResponse> {
-    const encoded = btoa(`${FACTURAPI_KEY}:`);
-    const qs = new URLSearchParams();
-    if (params.limit)  qs.set('limit', String(params.limit));
-    if (params.page)   qs.set('page',  String(params.page));
-    if (params.q)      qs.set('q', params.q);
-    if (params.status) qs.set('status', params.status);
-    if (params.date?.gt) qs.set('date[gt]', params.date.gt);
-    if (params.date?.lt) qs.set('date[lt]', params.date.lt);
-
-    const url = `${FACTURAPI_BASE}/invoices${qs.toString() ? '?' + qs.toString() : ''}`;
-    const res = await fetch(url, {
-        method: 'GET',
-        headers: { Authorization: `Basic ${encoded}` },
-    });
+    const res = await llamar('invoices', { query: {
+        limit: params.limit ? String(params.limit) : undefined,
+        page: params.page ? String(params.page) : undefined,
+        q: params.q,
+        status: params.status,
+        'date[gt]': params.date?.gt,
+        'date[lt]': params.date?.lt,
+    } });
     if (!res.ok) {
         const msg = await parseFacturapiError(res);
         throw new Error(`Error al obtener facturas: ${msg}`);
@@ -467,10 +494,7 @@ export async function facturapiListInvoices(
 export async function facturapiRetrieveInvoice(
     invoiceId: string
 ): Promise<FacturapiInvoiceRecord> {
-    const res = await fetch(`${FACTURAPI_BASE}/invoices/${invoiceId}`, {
-        method: 'GET',
-        headers: authHeaders(),
-    });
+    const res = await llamar(`invoices/${invoiceId}`);
     if (!res.ok) {
         const msg = await parseFacturapiError(res);
         throw new Error(`Error al leer la factura: ${msg}`);
@@ -561,9 +585,7 @@ export async function facturapiFindOrCreateCustomer(
 ): Promise<string> {
     const rfc = payload.tax_id.trim().toUpperCase();
     try {
-        const res = await fetch(
-            `${FACTURAPI_BASE}/customers?q=${encodeURIComponent(rfc)}&limit=50`,
-            { method: 'GET', headers: authHeaders() });
+        const res = await llamar('customers', { query: { q: rfc, limit: '50' } });
         if (res.ok) {
             const body = await res.json();
             const hit = (body?.data ?? []).find(
@@ -630,14 +652,10 @@ export async function facturapiCreatePaymentComplement(
 
     const finalPayload = { ...resto, type: 'P', complements };
 
-    const res = await fetch(`${FACTURAPI_BASE}/invoices`, {
-        method: 'POST',
-        headers: authHeaders(),
-        body: JSON.stringify(finalPayload),
-    });
+    const res = await llamar('invoices', { method: 'POST', body: finalPayload });
     if (!res.ok) {
         const msg = await parseFacturapiError(res);
         throw new Error(`Error al timbrar Complemento de Pago: ${msg}`);
     }
-    return res.json() as Promise<FacturapiInvoiceResult>;
+    return { ...(await res.json()), modo: modoDe(res) } as FacturapiInvoiceResult;
 }

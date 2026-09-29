@@ -167,10 +167,13 @@ al cliente.
 
 1. **Correr la migración** `20260818_rep_pagos_modo.sql` (libera el saldo que
    se comió la prueba).
-2. **La llave en `.env.local`**: `VITE_FACTURAPI_KEY=sk_live_…`. Vite hornea
-   las variables al arrancar: hay que **reiniciar `npm run dev`** (o rehacer
-   el build si está desplegada). El distintivo del título dice qué llave está
-   leyendo de verdad.
+2. **La llave en el SERVIDOR**: `FACTURAPI_KEY=sk_live_…` en Vercel →
+   Settings → Environment Variables (y en `.env.local` para `npm run dev`),
+   **sin** el prefijo `VITE_`: con `VITE_` la llave viajaría dentro del sitio y
+   cualquiera podría timbrar a tu nombre. El navegador ya no la ve nunca: todo
+   pasa por `/api/facturapi`, que exige sesión con perfil. Después de cambiarla
+   hay que volver a desplegar. El distintivo del título dice qué llave está
+   usando el servidor.
 3. **La organización de producción en Facturapi debe estar completa**: datos
    fiscales y los **CSD del SAT subidos** (.cer, .key y su contraseña). El
    sandbox timbra sin certificados; producción no — sin CSD el timbre falla.

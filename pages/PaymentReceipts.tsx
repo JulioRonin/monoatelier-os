@@ -7,7 +7,7 @@ import {
     facturapiDownloadPdf,
     facturapiDownloadXml,
     estructuraDeFactura,
-    facturapiModo,
+    useFacturapiEstado,
     triggerBlobDownload,
     type FacturapiInvoiceRecord,
 } from '../lib/facturapi';
@@ -412,7 +412,7 @@ const PaymentReceipts: React.FC = () => {
 
     /** Sandbox o producción, según la llave activa. Los timbres y los saldos
      *  de cada modo viven separados: una prueba no descuenta saldo real. */
-    const modo = facturapiModo();
+    const { modo, detalle: detalleModo } = useFacturapiEstado();
 
     // ── Documentos por pagar ────────────────────────────────────────────────
     const [ppdFacturapi, setPpdFacturapi] = useState<FacturapiInvoiceRecord[]>([]);
@@ -599,8 +599,12 @@ const PaymentReceipts: React.FC = () => {
     const handleTimbrar = async () => {
         if (!validate() || !doc) return;
 
+        if (modo === 'cargando') {
+            setErrors({ invoice: 'Todavía no se sabe si la facturación está en producción o en pruebas. Espera un momento.' });
+            return;
+        }
         if (modo === 'sin-llave') {
-            setErrors({ invoice: 'No hay llave de Facturapi (VITE_FACTURAPI_KEY). Revisa .env.local y reinicia el servidor.' });
+            setErrors({ invoice: detalleModo || 'El servidor no tiene FACTURAPI_KEY.' });
             return;
         }
 
@@ -666,7 +670,7 @@ const PaymentReceipts: React.FC = () => {
                 await api.registrarRepPago({
                     facturaUuid: doc.uuid,
                     facturaOrigen: doc.origen,
-                    modo: modo === 'test' ? 'test' : 'live',
+                    modo: stamped.modo ?? (modo === 'test' ? 'test' : 'live'),
                     facturaFolio: etiqueta(doc),
                     repUuid: stamped.uuid,
                     repFacturapiId: stamped.id,
@@ -809,9 +813,9 @@ const PaymentReceipts: React.FC = () => {
                     <div>
                         <div className="flex items-center gap-3 flex-wrap mb-2">
                             <h1 className="font-serif text-4xl dark:text-white text-primary">Complemento de Pago</h1>
-                            {/* El modo lo dice la llave activa. Si cambiaste a la de
-                                producción y aquí sigue diciendo SANDBOX, el servidor no
-                                la ha leído: reinicia npm run dev (o vuelve a hacer build). */}
+                            {/* El modo lo dice la llave del SERVIDOR (FACTURAPI_KEY en
+                                Vercel). Si la cambiaste y aquí sigue diciendo SANDBOX,
+                                vuelve a desplegar: Vercel lee las variables al desplegar. */}
                             {modo === 'test' && (
                                 <span className="text-[10px] uppercase tracking-widest px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 font-bold border border-amber-200">
                                     Sandbox — pruebas, sin validez fiscal

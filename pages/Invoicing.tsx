@@ -7,7 +7,7 @@ import {
     facturapiDownloadPdf,
     facturapiDownloadXml,
     facturapiListInvoices,
-    facturapiModo,
+    useFacturapiEstado,
     triggerBlobDownload,
     MOTIVOS_CANCELACION,
     type FacturapiInvoiceRecord,
@@ -556,7 +556,7 @@ const Invoicing: React.FC = () => {
         { id: string; uuid: string; folio: string } | null>(null);
     const [pidiendoUuid, setPidiendoUuid] = useState(false);
 
-    const modo = facturapiModo();
+    const { modo, detalle: detalleModo } = useFacturapiEstado();
 
 
 
@@ -756,8 +756,13 @@ const Invoicing: React.FC = () => {
         // Un CFDI de sandbox se ve idéntico a uno real: mismo PDF, mismo folio
         // fiscal, mismo sello. La única oportunidad de notarlo es ANTES de
         // timbrarlo, así que aquí hay que decirlo de frente y a propósito.
+        if (modo === 'cargando') {
+            setTimbradoError('Todavía no se sabe si la facturación está en producción o en pruebas. Espera un momento y vuelve a intentar.');
+            setTimbradoStep('error');
+            return;
+        }
         if (modo === 'sin-llave') {
-            setTimbradoError('No hay llave de Facturapi (VITE_FACTURAPI_KEY) en este despliegue.');
+            setTimbradoError(detalleModo || 'El servidor no tiene FACTURAPI_KEY.');
             setTimbradoStep('error');
             return;
         }
@@ -868,7 +873,7 @@ const Invoicing: React.FC = () => {
                     subtotal, totalTaxesTransferred: totalIva,
                     totalTaxesRetained: totalIsr, total,
                     status: 'Stamped' as any, uuid: stamped.uuid,
-                    modo: modo === 'test' ? 'test' : 'live',
+                    modo: stamped.modo ?? (modo === 'test' ? 'test' : 'live'),
                     items: items.map(i => ({ ...i, productCode: i.productCode, unitCode: i.unitCode, taxObject: '02', taxes: [] })),
                     date: new Date().toISOString(), series: stamped.series || 'A', folio: stamped.folio_number,
                 });
@@ -1200,7 +1205,7 @@ const Invoicing: React.FC = () => {
                                             ¿Falta una factura que sí emitiste?
                                         </span>{' '}
                                         Aquí sólo salen las de la organización de la llave activa
-                                        ({modo === 'live' ? 'producción' : modo === 'test' ? 'sandbox' : 'sin llave'}).
+                                        ({modo === 'live' ? 'producción' : modo === 'test' ? 'sandbox' : modo === 'cargando' ? 'consultando…' : 'sin llave'}).
                                         Una factura timbrada con la otra llave no aparece — y desde
                                         aquí tampoco se puede cancelar: eso se hace donde vive.
                                         Para emitir su sustituta de todos modos, usa el botón.
