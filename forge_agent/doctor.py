@@ -47,7 +47,9 @@ def _supabase(ruta: str, metodo: str = "GET", cuerpo: bytes | None = None):
 
 # ── 1. paquetes ─────────────────────────────────────────────────────────
 
-INSTALAR = "pip install -r forge_agent/requirements.txt"
+from . import comando_instalar
+
+INSTALAR = comando_instalar()
 
 
 def revisar_paquetes(proveedor: str) -> bool:
@@ -227,6 +229,7 @@ def revisar_blender() -> None:
 
 def main() -> int:
     print("\nDIAGNÓSTICO DE FORGE\n" + "─" * 62)
+    print(f"Python en uso: {sys.executable} ({sys.version.split()[0]})")
 
     proveedor = (os.environ.get("FORGE_PROVEEDOR") or "anthropic").strip().lower()
     print("\nPaquetes")

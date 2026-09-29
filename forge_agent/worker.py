@@ -40,12 +40,7 @@ import urllib.parse
 import urllib.request
 import uuid
 
-from mono_forge.costing import Tarifas
-from mono_forge.docs import generar_todo, verificar
-from mono_forge.models import Project
-
-from . import proveedores
-from .agente import disenar
+from . import comando_instalar, faltantes
 from .lectura import ficha_a_prompt, leer_foto, resumen_de_ficha
 
 INTERVALO = float(os.environ.get("FORGE_POLL_SECONDS", "5"))
@@ -147,7 +142,9 @@ def construir_en_blender(ruta_json: str) -> list[str]:
             if os.path.exists(os.path.join(deliv, f))]
 
 
-def _tarifas() -> Tarifas:
+def _tarifas():
+    from mono_forge.costing import Tarifas
+
     def num(k: str, d: float) -> float:
         try:
             return float(os.environ.get(k, d))
@@ -165,6 +162,13 @@ def procesar(prompt: str, base: dict | None = None,
              subir: bool = True, nombre_dir: str | None = None,
              imagenes: list[str] | None = None) -> dict:
     """Diseña → 3D → entregables → publica. Devuelve el resultado del trabajo."""
+    # los documentos necesitan reportlab y openpyxl; se importan aquí para
+    # que la lectura de fotos funcione aunque falten
+    from mono_forge.docs import generar_todo, verificar
+    from mono_forge.models import Project
+
+    from .agente import disenar
+
     print(f"\n▸ Diseñando: {prompt[:90]}")
     if imagenes:
         print(f"  · {len(imagenes)} imagen(es) de referencia")
@@ -300,7 +304,33 @@ def _leer_desde_terminal(argv: list[str]) -> int:
     indicaciones = ""
     if "--indicaciones" in argv:
         indicaciones = argv[argv.index("--indicaciones") + 1]
-    r = leer_foto(fotos, indicaciones)
+
+    if not fotos:
+        print("ERROR: falta la foto. Uso: python -m forge_agent.worker --leer <foto>")
+        return 1
+    for f in fotos:
+        if not f.startswith(("http://", "https://")) and not os.path.isfile(f):
+            print(f"ERROR: no encuentro la foto {f}")
+            print("  Pon la ruta completa entre comillas, por ejemplo:")
+            print('    --leer "C:\\Users\\ORKA\\Downloads\\vestidor.webp"')
+            return 1
+
+    import anthropic
+    try:
+        r = leer_foto(fotos, indicaciones)
+    except anthropic.AuthenticationError:
+        print("ERROR: Anthropic rechazó la llave. Revisa ANTHROPIC_API_KEY "
+              "(console.anthropic.com → API keys).")
+        return 1
+    except anthropic.NotFoundError as e:
+        print(f"ERROR: el modelo no existe para tu cuenta: {e.message}")
+        return 1
+    except anthropic.APIStatusError as e:
+        print(f"ERROR {e.status_code} de Anthropic: {e.message}")
+        return 1
+    except anthropic.APIConnectionError:
+        print("ERROR: no se pudo conectar con Anthropic. Revisa tu internet.")
+        return 1
     print(json.dumps(r["ficha"], ensure_ascii=False, indent=2))
     print("\n" + "─" * 62 + "\n" + resumen_de_ficha(r["ficha"]))
     print("\nLo que recibiría el constructor:\n" + ficha_a_prompt(r["ficha"]))
@@ -308,7 +338,18 @@ def _leer_desde_terminal(argv: list[str]) -> int:
     return 0
 
 
+def _revisar_paquetes(modulos: list[str]) -> bool:
+    falta = faltantes(modulos)
+    if falta:
+        print(f"ERROR: a este Python le falta {', '.join(falta)}.")
+        print(f"  Python en uso: {sys.executable}")
+        print(f"  Instálalo en ESTE Python con:\n    {comando_instalar()}")
+    return not falta
+
+
 def main(argv: list[str]) -> int:
+    if not _revisar_paquetes(["anthropic"]):
+        return 1
     if "--leer" in argv:
         if not os.environ.get("ANTHROPIC_API_KEY"):
             print("ERROR: la lectura de fotos usa Claude: define ANTHROPIC_API_KEY.")
@@ -316,6 +357,9 @@ def main(argv: list[str]) -> int:
         return _leer_desde_terminal(argv)
 
     # falla aquí, con un mensaje claro, y no a media hora de trabajo
+    if not _revisar_paquetes(["openpyxl", "reportlab"]):
+        return 1
+    from . import proveedores
     try:
         cfg = proveedores.configurar()
     except RuntimeError as e:

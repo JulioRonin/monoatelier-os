@@ -175,8 +175,12 @@ vigentes en <https://platform.claude.com/docs/en/pricing>.
 - **`ANTHROPIC_API_KEY` no definida** → el worker lo dice al arrancar. Con
   constructor NVIDIA sigue trabajando, pero las lecturas de foto fallan.
 - **`No module named 'mono_forge'`** → versiones anteriores lo pedían instalado;
-  ahora basta correr desde la raíz del repo. Si falta otro paquete:
-  `pip install -r forge_agent/requirements.txt`.
+  ahora basta correr desde la raíz del repo.
+- **`No module named 'reportlab'` (u otro) aunque pip dice "already
+  satisfied"** → tienes dos Python: `pip` instaló en uno y `python` abre el
+  otro. Instala con el Python que de verdad usas:
+  `python -m pip install -r forge_agent/requirements.txt`. El worker y el
+  doctor imprimen la ruta del Python en uso y el comando exacto.
 - **"No se pudo encolar la lectura"** → falta `20260928_forge_lectura.sql`.
 - **El agente diseñó algo raro** → sé más específico en el prompt (medidas del
   muro, dónde va la tarja, cuántas puertas). Todo lo que no especifiques lo
