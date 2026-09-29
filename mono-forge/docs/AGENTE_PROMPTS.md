@@ -183,9 +183,9 @@ vigentes en <https://platform.claude.com/docs/en/pricing>.
   doctor imprimen la ruta del Python en uso y el comando exacto.
 - **"Anthropic rechazó la llave"** → la llave vive en TU PC, no en Vercel: las
   variables de Vercel son para la página web, y el worker corre en tu
-  terminal. En cmd va **sin comillas**
-  (`setx ANTHROPIC_API_KEY sk-ant-api03-...`) y después se abre una terminal
-  nueva. El doctor muestra la huella de la llave que ve (`sk-ant-api03…WXYZ`)
+  terminal. En cmd: escribe `setx ANTHROPIC_API_KEY `, **pega tu llave
+  completa** (sin comillas; `sk-ant-...` en los ejemplos es sólo el formato) y
+  abre una terminal nueva. El doctor muestra la huella de la llave que ve (`sk-ant-api03…WXYZ`)
   para compararla con console.anthropic.com, y la verifica sin gastar tokens.
   La plataforma web no usa ninguna llave de Anthropic: no la subas a Vercel.
 - **"No se pudo encolar la lectura"** → falta `20260928_forge_lectura.sql`.

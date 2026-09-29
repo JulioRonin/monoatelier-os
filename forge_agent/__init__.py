@@ -54,7 +54,9 @@ def problemas_de_llave() -> list[str]:
         p.append("trae comillas o espacios alrededor (se quitan solos, pero "
                  "corrige cómo la defines: en cmd va sin comillas)")
     if "..." in k or "…" in k:
-        p.append("es el texto de EJEMPLO, no una llave real")
+        p.append("es el texto de EJEMPLO de las instrucciones, no tu llave: en "
+                 "lugar de «sk-ant-...» va la llave COMPLETA (~108 caracteres) "
+                 "que copias de console.anthropic.com")
     elif not k.startswith("sk-ant-"):
         p.append("no empieza con sk-ant- (¿es de otro servicio?)")
     elif len(k) < 90:

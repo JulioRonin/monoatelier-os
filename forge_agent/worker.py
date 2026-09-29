@@ -326,9 +326,9 @@ def _explicar_llave_rechazada() -> None:
         print(f"  · {p}")
     print("  Compárala con console.anthropic.com → API keys. Si no es la nueva:")
     print("  · Vercel NO cuenta: sus variables son para la página web, no para tu PC.")
-    print("  · En cmd, sin comillas:   set ANTHROPIC_API_KEY=sk-ant-api03-...")
-    print("  · Para dejarla fija:      setx ANTHROPIC_API_KEY sk-ant-api03-...")
-    print("    y abre una terminal NUEVA (setx no cambia la que ya está abierta).")
+    print("  · Escribe  setx ANTHROPIC_API_KEY  deja un espacio, PEGA tu llave")
+    print("    completa (sin comillas) y da Enter. Luego abre una terminal NUEVA:")
+    print("    setx no cambia la que ya está abierta.")
 
 
 def _leer_desde_terminal(argv: list[str]) -> int:

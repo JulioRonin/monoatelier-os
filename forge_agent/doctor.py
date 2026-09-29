@@ -107,8 +107,9 @@ def revisar_lectura(verificar: bool = True) -> bool:
     except anthropic.AuthenticationError:
         _linea(MAL, f"Anthropic rechazó la llave {llave_enmascarada()}",
                "Compárala con console.anthropic.com → API keys. Si no es la nueva:\n"
-               "en cmd, sin comillas:  setx ANTHROPIC_API_KEY sk-ant-api03-...\n"
-               "y abre una terminal NUEVA. Vercel no cuenta para tu PC.")
+               "escribe  setx ANTHROPIC_API_KEY  , deja un espacio, PEGA tu llave\n"
+               "completa sin comillas y abre una terminal NUEVA.\n"
+               "Vercel no cuenta para tu PC.")
         return False
     except anthropic.NotFoundError:
         _linea(MAL, f"la llave sirve, pero tu cuenta no tiene el modelo {modelo}",
