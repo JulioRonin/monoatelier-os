@@ -86,6 +86,20 @@ mandarle al cliente el PDF equivocado es peor que pedir que lo aclare.
 
 El PDF **sólo se genera al cerrar**, después de que apruebes los totales.
 
+### La cotización en curso no se pierde
+
+Hay **un borrador abierto a la vez**, y se guarda en disco
+(`cotizaciones/.borrador-abierto.json`) con cada cambio. Antes vivía sólo en la
+memoria y cada herramienta lo buscaba por un `sesion` que llenaba el modelo; si
+Hermes reconectaba el servidor, o el modelo mandaba otro `sesion` al cerrar,
+salía "la sesión se perdió" y el modelo reabría la cotización de cero.
+
+- Sobrevive a que se reinicie el servidor o Hermes.
+- Si el modelo vuelve a llamar `iniciar_cotizacion` con el **mismo** cliente y
+  proyecto, conserva las partidas; con otros distintos, reemplaza y lo dice.
+- Uno de más de 12 horas se descarta: no resucita mañana.
+- Consecuencia: si dos personas cotizan a la vez con el mismo bot, se pisarían.
+
 ### Por qué las respuestas vienen en bloque de código
 
 Las tablas salen dentro de ``` y con una nota que le pide al agente copiarlas
@@ -101,8 +115,30 @@ tal cual. Por dos razones:
 Ningún renglón pasa de 76 caracteres, que es lo que entra sin tener que
 arrastrar la tabla de lado en el teléfono. Las pruebas lo verifican.
 
-La ruta de un PDF **nunca** va dentro del bloque: Hermes ignora a propósito
-las rutas dentro de bloques de código, y no adjuntaría el archivo.
+### Cómo llega el PDF al chat
+
+El servidor termina su respuesta con una línea así:
+
+```
+MEDIA:C:/Users/ORKA/monoatelier-os/cotizaciones/Cotizacion_EMDICO_Escritorio_1790000000000.pdf
+```
+
+y le pide al modelo que la copie **al final de su mensaje**. Hermes reconoce la
+etiqueta `MEDIA:` y sube el archivo como adjunto (los PDF son "documentos": botón
+de descarga en Discord). Tres detalles que importan:
+
+- **Hace falta la etiqueta.** Antes se pedía la ruta suelta, y esa detección
+  está pensada para rutas de Linux: con `C:\Users\…` llegaba el texto de la
+  ruta y no el archivo. La etiqueta sí reconoce letras de unidad.
+- **Con `/` y no con `\`.** Discord toma la barra invertida como escape y los
+  modelos la duplican o se la comen al copiar. Windows abre las dos.
+- **Nunca en código.** Si el modelo la pone entre `comillas invertidas` o en un
+  bloque de código, Hermes la ignora a propósito y se ve la ruta. Por eso la
+  instrucción lo prohíbe.
+
+Si aun así llega la ruta y no el archivo: en Discord el bot necesita el permiso
+**Adjuntar archivos** en ese canal (en un mensaje directo no hace falta), y el
+archivo tiene que existir en la PC donde corre Hermes.
 
 ### Con qué fecha se mide cada cifra
 
@@ -311,9 +347,11 @@ Hermes lanza el servidor compilado; sin reconstruir sigue usando el anterior.
 
 1. Que Hermes liste las dieciséis herramientas.
 2. Que `ver_catalogo` traiga tus servicios reales (si no, es `SUPABASE_KEY`).
-3. Que al cerrar, el PDF quede en `COTIZADOR_SALIDA` y Hermes lo adjunte en el
-   chat. El servidor devuelve la ruta; **queda por confirmar si Hermes la
-   adjunta solo** o si hay que pedírselo con su propia herramienta de mensajería.
+3. Que al cerrar, el PDF quede en `COTIZADOR_SALIDA` y llegue como adjunto al
+   chat. Pídele *"mándame el PDF de la última cotización"* (`pdf_de_cotizacion`)
+   y confirma que aparece el archivo y no una ruta. Esa comprobación se hace
+   con Hermes de verdad: las pruebas del repo verifican la etiqueta contra su
+   expresión regular, no el envío a Discord.
 
 ## Probarlo sin Hermes
 
@@ -321,6 +359,7 @@ Hermes lanza el servidor compilado; sin reconstruir sigue usando el anterior.
 node prueba-flujo.mjs     # levanta un Supabase falso con los CSV y cotiza
 node prueba-ventas.mjs    # comprueba que cada cifra use su fecha, y el PDF
 node prueba-cobranza.mjs  # saldos por proyecto y estado de cuenta por cliente
+node prueba-borrador.mjs  # el borrador sobrevive a un reinicio; la línea MEDIA:
 ```
 
 `prueba-cobranza.mjs` arma el caso que describió Julio: un cliente con

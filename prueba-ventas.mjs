@@ -189,7 +189,8 @@ ok(!/ERROR:/.test(detalle) && /Cocina Planta 2/.test(detalle),
 // El PDF se revisa por su TEXTO, no por que el archivo exista y pese algo.
 // Así se detectó que el aviso de proyectos sin fecha quedaba escrito con la
 // lista cortada por el borde de la hoja: encabezado sin nada debajo.
-const rutaPdf = reporte.split('\n').find(l => l.trim().endsWith('.pdf'))?.trim();
+// el servidor entrega el PDF con una línea MEDIA:<ruta> (así lo adjunta Hermes)
+const rutaPdf = reporte.split('\n').find(l => l.trim().endsWith('.pdf'))?.trim().replace(/^MEDIA:/, '');
 if (rutaPdf && existsSync(rutaPdf)) {
   let texto = null;
   try {

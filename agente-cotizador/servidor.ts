@@ -36,6 +36,8 @@ import {
     puntajeDeNombre,
 } from '../lib/cotizador.js';
 import { generarCotizacionPdf } from '../lib/cotizacionPdf.js';
+import { Borradores, type Borrador } from './borradores.js';
+import { comoEntregar } from './entrega.js';
 import {
     generarReporteVentasPdf, type ClienteDeVentas,
 } from '../lib/reporteVentasPdf.js';
@@ -91,30 +93,13 @@ const pesos = (n: number) =>
 
 // ── Borrador en curso ────────────────────────────────────────────────────
 
-interface Borrador {
-    cliente: string;
-    proyecto: string;
-    fecha: string;
-    entrega: string;
-    notas?: string;
-    items: QuoteItem[];
-    avisos: string[];
-}
-
 /**
- * Un borrador por sesión de chat. Vive en memoria: el servidor es un proceso
- * que Hermes mantiene abierto. Si se reinicia, el borrador se pierde — por eso
- * `cerrar_cotizacion` guarda en Supabase en cuanto se aprueba, y no antes.
+ * UN borrador abierto a la vez, en memoria y en disco (ver borradores.ts).
+ * Sobrevive a un reinicio del servidor y no depende de ningún identificador
+ * que tenga que inventar el modelo.
  */
-const borradores = new Map<string, Borrador>();
-
-const tomar = (sesion: string): Borrador => {
-    const b = borradores.get(sesion);
-    if (!b) throw new Error(
-        'No hay una cotización abierta en esta conversación. ' +
-        'Usa iniciar_cotizacion con el cliente y el nombre del proyecto.');
-    return b;
-};
+const borradores = new Borradores(() => join(SALIDA(), '.borrador-abierto.json'));
+const tomar = (): Borrador => borradores.tomar();
 
 function resumen(b: Borrador, iva: number): string {
     if (!b.items.length) return `Cotización para ${b.cliente} — ${b.proyecto}\n(sin partidas todavía)`;
@@ -158,25 +143,6 @@ const COPIA_TAL_CUAL =
     '\n\nCopia el bloque de arriba TAL CUAL en tu respuesta, con sus comillas ' +
     'invertidas incluidas, sin reescribirlo ni recalcular nada. Si quieres ' +
     'comentar algo, ponlo debajo del bloque.';
-
-/**
- * Cómo pedirle al agente que entregue el archivo.
- *
- * El gateway de Hermes sube el PDF como adjunto nativo cuando detecta su ruta
- * absoluta en la respuesta, pero con dos reglas que hay que respetar o el
- * usuario recibe una ruta en vez del archivo:
- *
- *   1. Sólo mira el TEXTO FINAL del agente, no la salida de las herramientas.
- *   2. Ignora a propósito las rutas dentro de bloques de código o `comillas`
- *      invertidas, para no romper ejemplos de código.
- *
- * Los modelos tienden a formatear las rutas como código, que es justo lo que
- * la desactiva. Por eso se dice explícito.
- */
-const comoEntregar = (ruta: string) =>
-    `Para que el usuario reciba el PDF como archivo adjunto y no como texto, ` +
-    `escribe esta ruta TAL CUAL en tu respuesta, en texto plano y en su propio ` +
-    `renglón, SIN comillas invertidas y SIN bloque de código:\n${ruta}`;
 
 // ── Servidor ─────────────────────────────────────────────────────────────
 
@@ -232,17 +198,14 @@ server.registerTool('iniciar_cotizacion', {
         proyecto: z.string().describe('Nombre del proyecto.'),
         entrega: z.string().describe('Fecha comprometida de entrega, AAAA-MM-DD. El PDF imprime los días HÁBILES entre hoy y esa fecha.'),
         fecha: z.string().optional().describe('Fecha de la cotización AAAA-MM-DD. Por omisión, hoy.'),
-        sesion: z.string().optional().describe('Identificador de la conversación. Úsalo si atiendes varias a la vez.'),
     },
-}, async ({ cliente, proyecto, entrega, fecha, sesion }) => {
-    const id = sesion ?? 'default';
+}, async ({ cliente, proyecto, entrega, fecha }) => {
     const hoy = new Date().toISOString().slice(0, 10);
-    borradores.set(id, {
-        cliente, proyecto, entrega, fecha: fecha ?? hoy, items: [], avisos: [],
-    });
+    const { aviso } = borradores.abrir({ cliente, proyecto, entrega, fecha: fecha ?? hoy });
     const { tieneAjustes } = await catalogo();
     return texto(
         `Cotización abierta para ${cliente} — ${proyecto} (entrega ${entrega}).\n` +
+        (aviso ? `${aviso}\n` : '') +
         `Agrega partidas con agregar_partida.` +
         (tieneAjustes ? '' : '\n⚠ No encontré la tabla ajustes: usaré IVA 8% por omisión.'));
 });
@@ -262,10 +225,9 @@ server.registerTool('agregar_partida', {
         adicionales: z.array(z.string()).optional().describe('Nombres de las variantes que SE SUMAN.'),
         precio_directo: z.number().optional().describe('Precio unitario dictado por el usuario. Reemplaza al del catálogo.'),
         costo_directo: z.number().optional().describe('Costo directo unitario; el precio sale de aplicarle el margen objetivo.'),
-        sesion: z.string().optional(),
     },
-}, async ({ servicio, cantidad, sustitucion, adicionales, precio_directo, costo_directo, sesion }) => {
-    const b = tomar(sesion ?? 'default');
+}, async ({ servicio, cantidad, sustitucion, adicionales, precio_directo, costo_directo }) => {
+    const b = tomar();
     const { servicios, variantes, iva, margen } = await catalogo();
 
     const candidatos = buscarServicios(servicios, servicio);
@@ -333,6 +295,7 @@ server.registerTool('agregar_partida', {
     }
 
     b.items.push(...nuevas);
+    borradores.guardar();
 
     const detalle = nuevas.map(i => `  ${i.quantity} × ${i.description} @ ${pesos(i.unitPrice)} = ${pesos(importeDe(i))}`).join('\n');
     const t = totalesDe(b.items, iva);
@@ -370,11 +333,10 @@ server.registerTool('agregar_concepto', {
         costo_materiales: z.number().nonnegative().optional().describe('Costo de materiales por unidad. Se suma a la mano de obra.'),
         costo_mano_obra: z.number().nonnegative().optional().describe('Costo de mano de obra por unidad. Se suma a los materiales.'),
         notas: z.string().optional().describe('Nota que acompaña a la cotización (condiciones, alcances, exclusiones).'),
-        sesion: z.string().optional(),
     },
 }, async ({ descripcion, cantidad, medidas, unidad, precio_unitario, costo_directo,
-            costo_materiales, costo_mano_obra, notas, sesion }) => {
-    const b = tomar(sesion ?? 'default');
+            costo_materiales, costo_mano_obra, notas }) => {
+    const b = tomar();
     const { iva, margen } = await catalogo();
 
     // ── cantidad: dictada o calculada de las medidas ─────────────────────
@@ -453,6 +415,7 @@ server.registerTool('agregar_concepto', {
     if (notas?.trim()) {
         b.notas = [b.notas, notas.trim()].filter(Boolean).join(' · ');
     }
+    borradores.guardar();
 
     const t = totalesDe(b.items, iva);
     return texto(
@@ -469,9 +432,9 @@ server.registerTool('ver_borrador', {
     description:
         'Muestra las partidas y los totales. Enséñaselo al usuario y PIDE SU APROBACIÓN ' +
         'antes de cerrar la cotización y generar el PDF.',
-    inputSchema: { sesion: z.string().optional() },
-}, async ({ sesion }) => {
-    const b = tomar(sesion ?? 'default');
+    inputSchema: {},
+}, async () => {
+    const b = tomar();
     const { iva } = await catalogo();
     return texto(resumen(b, iva));
 });
@@ -481,14 +444,14 @@ server.registerTool('quitar_partida', {
     description: 'Elimina una partida por su número, tal como lo muestra ver_borrador.',
     inputSchema: {
         numero: z.number().int().positive().describe('Número de la partida (empezando en 1).'),
-        sesion: z.string().optional(),
     },
-}, async ({ numero, sesion }) => {
-    const b = tomar(sesion ?? 'default');
+}, async ({ numero }) => {
+    const b = tomar();
     if (numero > b.items.length) {
         return texto(`Sólo hay ${b.items.length} partida(s). Llama ver_borrador para verlas.`);
     }
     const [fuera] = b.items.splice(numero - 1, 1);
+    borradores.guardar();
     const { iva } = await catalogo();
     return texto(`Quitada: ${fuera.description}.\n\n${resumen(b, iva)}`);
 });
@@ -498,20 +461,22 @@ server.registerTool('cerrar_cotizacion', {
     description:
         'Guarda la cotización y genera el PDF. Llámala SÓLO después de que el usuario haya ' +
         'visto los totales con ver_borrador y los haya aprobado explícitamente. ' +
-        'Devuelve la ruta del archivo para que lo adjuntes en el chat.',
+        'Devuelve una línea MEDIA:… que debes copiar al final de tu respuesta para que el ' +
+        'PDF llegue como archivo adjunto en el chat.',
     inputSchema: {
         notas: z.string().optional().describe('Notas que salen impresas (máx. 80 caracteres visibles).'),
-        sesion: z.string().optional(),
     },
-}, async ({ notas, sesion }) => {
-    const id = sesion ?? 'default';
-    const b = tomar(id);
+}, async ({ notas }) => {
+    const b = tomar();
     if (!b.items.length) return texto('La cotización no tiene partidas. Agrega al menos una.');
 
     const { iva } = await catalogo();
     // Se acumulan: si agregar_concepto ya dejó notas, reemplazarlas aquí
     // borraría condiciones que el usuario ya dictó.
-    if (notas?.trim()) b.notas = [b.notas, notas.trim()].filter(Boolean).join(' · ');
+    if (notas?.trim()) {
+        b.notas = [b.notas, notas.trim()].filter(Boolean).join(' · ');
+        borradores.guardar();
+    }
     const t = totalesDe(b.items, iva);
 
     const quote: Quote = {
@@ -544,7 +509,7 @@ server.registerTool('cerrar_cotizacion', {
         guardado = `⚠ El PDF se generó pero NO se pudo guardar en la plataforma: ${e.message}`;
     }
 
-    borradores.delete(id);
+    borradores.cerrar();
     return texto(
         `${resumen({ ...b, avisos: [] }, iva)}\n\n` +
         `${guardado}\n\n${comoEntregar(ruta)}`);
@@ -569,13 +534,12 @@ server.registerTool('guardar_en_catalogo', {
         descripcion: z.string().optional().describe('Descripción larga, para reconocerlo dentro de un año.'),
         confirmar_duplicado: z.boolean().optional()
             .describe('Ponlo en true sólo si el usuario ya confirmó que quiere darlo de alta aunque exista uno parecido.'),
-        sesion: z.string().optional(),
     },
 }, async ({ desde_partida, nombre, precio_base, costo, unidad, categoria, descripcion,
-            confirmar_duplicado, sesion }) => {
+            confirmar_duplicado }) => {
     // De una partida del borrador, o de lo que manden suelto.
     if (desde_partida != null) {
-        const b = tomar(sesion ?? 'default');
+        const b = tomar();
         if (desde_partida > b.items.length) {
             return texto(`El borrador sólo tiene ${b.items.length} partida(s). Llama ver_borrador.`);
         }
@@ -1460,7 +1424,8 @@ server.registerTool('pdf_de_cotizacion', {
     title: 'Regenerar el PDF de una cotización guardada',
     description:
         'Vuelve a generar el PDF de una cotización ya guardada, para reenviarlo. ' +
-        'No la modifica ni crea una nueva. Devuelve la ruta del archivo.',
+        'No la modifica ni crea una nueva. Devuelve una línea MEDIA:… que debes copiar al final ' +
+        'de tu respuesta para que el PDF llegue como archivo adjunto.',
     inputSchema: {
         referencia: z.string().describe('Referencia corta o id completo de la cotización.'),
     },
