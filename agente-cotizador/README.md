@@ -67,6 +67,46 @@ Un proyecto **ya entregado que todavía debe sigue apareciendo**: el saldo no se
 cierra al entregar la cocina. El saldo sale de la tabla `payments`, sumando
 abonos — no de `downpayment`, que es el anticipo pactado y no lo que entró.
 
+Y para pedir diseños a **Forge** (el módulo de diseño de la plataforma, no Autodesk):
+
+| Herramienta | Qué hace |
+|---|---|
+| `disenar_mueble` | Pone el pedido en la cola de Forge. Con fotos las sube y encola una **lectura**; sin fotos, un diseño directo |
+| `estado_diseno` | Cómo va: en cola, trabajando, la **ficha** de una lectura lista, o los documentos y el enlace AR de un diseño terminado |
+| `construir_diseno` | Con las medidas que el usuario **confirmó**, manda a construir lo que leyó la foto |
+
+Sin estas tres, el agente no sabe que Forge existe y lo confunde con el de
+Autodesk (te pregunta por `.rvt` e `.ifc`). Sus descripciones lo dicen de frente.
+
+Es el mismo camino que la pantalla de Forge:
+
+```
+foto en Discord ─ disenar_mueble ─→ cola (forge_jobs) ─→ Forge Agent lee la foto
+                                                              │
+   el usuario confirma medidas ←─ estado_diseno ←─────── ficha
+                │
+   construir_diseno ─→ cola ─→ Forge Agent: cutlist, planos, cotización, 3D
+                                                              │
+                              estado_diseno ←──────── documentos + enlace AR
+```
+
+- **La foto la toma de la ruta que Hermes deja en disco.** Cuando el modelo de
+  Hermes no ve imágenes, Hermes guarda la foto en su caché y pone su ruta en el
+  mensaje; el modelo se la pasa a `disenar_mueble`, que la lee, comprueba que de
+  verdad sea una imagen (JPG, PNG, WEBP o GIF, no HEIC) y la sube al bucket
+  `forge`. También acepta una URL. Un archivo que no sea imagen no se sube nunca.
+- **No se construye con medidas sin confirmar.** Una foto no trae escala y las
+  hechas con IA mienten. `construir_diseno` exige TODAS las medidas de la ficha,
+  en **milímetros**, y rechaza las que parecen centímetros (`220` → "¿2200?").
+  Sólo con `usar_estimadas` (que el usuario pida a propósito) acepta las estimadas.
+- **El diseño lo hace el Forge Agent en tu PC**, no el chat. Si un trabajo lleva
+  más de 2 minutos en cola, el agente avisa que el worker no está corriendo.
+- Un pedido idéntico que ya está en curso no se vuelve a encolar (los modelos
+  chicos reintentan las herramientas).
+- Para el enlace de 3D/AR de un diseño terminado define en el `.env.local`
+  `PLATAFORMA_URL=https://…` (la dirección de la plataforma en Vercel). Los
+  costos internos nunca se comparten por aquí.
+
 Y para preguntar por las ventas:
 
 | Herramienta | Qué hace |
@@ -345,7 +385,7 @@ Hermes lanza el servidor compilado; sin reconstruir sigue usando el anterior.
 
 ## Qué verificar la primera vez
 
-1. Que Hermes liste las dieciséis herramientas.
+1. Que Hermes liste las veinte herramientas.
 2. Que `ver_catalogo` traiga tus servicios reales (si no, es `SUPABASE_KEY`).
 3. Que al cerrar, el PDF quede en `COTIZADOR_SALIDA` y llegue como adjunto al
    chat. Pídele *"mándame el PDF de la última cotización"* (`pdf_de_cotizacion`)
@@ -360,6 +400,7 @@ node prueba-flujo.mjs     # levanta un Supabase falso con los CSV y cotiza
 node prueba-ventas.mjs    # comprueba que cada cifra use su fecha, y el PDF
 node prueba-cobranza.mjs  # saldos por proyecto y estado de cuenta por cliente
 node prueba-borrador.mjs  # el borrador sobrevive a un reinicio; la línea MEDIA:
+node prueba-forge.mjs     # foto → lectura → medidas confirmadas → construcción
 ```
 
 `prueba-cobranza.mjs` arma el caso que describió Julio: un cliente con
@@ -379,6 +420,10 @@ sin tocar la base real. Útil para ver si un cambio rompió algo.
 ## Lo que este servidor NO hace, a propósito
 
 - **No manda correos.** Resend va aparte, cuando haya dominio verificado.
+- **No diseña él mismo.** Forge lo hace en tu PC; el agente sólo pone el pedido
+  en la cola y lee cómo va. Hoy Forge construye cocinas y closets abiertos; lo
+  demás (puertas de un armario, una isla) lo dice en la ficha como "sin
+  generador" o "no se fabrica como en la foto".
 - **No crea clientes.** Cotiza a nombre de quien le digas; dar de alta un
   cliente es un movimiento de la plataforma, no del chat.
 - **No corrige precios mal clasificados.** Si una variante marcada como

@@ -109,6 +109,22 @@ tiene generador, el botón de construir aparece deshabilitado con el motivo.
 
 Requiere la migración `supabase/migrations/20260928_forge_lectura.sql`.
 
+### Pedirlo desde Discord
+
+El agente del chat (Hermes) tiene tres herramientas que hablan con la misma cola
+que la pantalla de Forge: `disenar_mueble`, `estado_diseno` y `construir_diseno`.
+Mándale la foto y di *"necesito diseñar este mueble, mide 100 de ancho por 220 de
+alto y 50 de fondo"*. Él pone el pedido en la cola; **el Forge Agent tiene que
+estar corriendo en tu PC** (`python -m forge_agent.worker`) para que lo tome.
+
+1. Pídelo. Con foto, Forge la **lee** (unos minutos).
+2. Pregúntale *"¿ya está?"*: te enseña la ficha y las medidas por confirmar.
+3. Contéstale las medidas (él las convierte a milímetros) y dile que lo construya.
+4. Pregunta otra vez: te da los enlaces de cotización, manual, cutlist, herrajes
+   y el 3D/AR. Los costos internos nunca salen por el chat.
+
+Definición completa en `agente-cotizador/README.md`.
+
 ### Claude lee, Nemotron construye
 
 La lectura necesita un modelo que vea imágenes. Nemotron 3 Super sólo recibe

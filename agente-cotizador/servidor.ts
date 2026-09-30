@@ -39,6 +39,10 @@ import { generarCotizacionPdf } from '../lib/cotizacionPdf.js';
 import { Borradores, type Borrador } from './borradores.js';
 import { comoEntregar } from './entrega.js';
 import {
+    aplicarMedidas, avisoSinAgente, buscarTrabajo, corto as cortoForge, fichaEnTexto,
+    envolver, hace, MAX_IMAGENES, prepararImagenes,
+} from './forge.js';
+import {
     generarReporteVentasPdf, type ClienteDeVentas,
 } from '../lib/reporteVentasPdf.js';
 import type { Service, ServiceVariable, QuoteItem, Quote } from '../types.js';
@@ -49,6 +53,8 @@ import {
     leerCotizacionesTodas, leerCotizacionesVendidas, leerProyectosTodos, leerPagos,
     type FilaServicio, type FilaVariante, type FilaCotizacion,
     type FilaProyecto, type FilaFactura, type FilaPago,
+    encolarTrabajoForge, leerTrabajosForge, leerModeloForge, subirReferenciaForge,
+    variable, type FilaTrabajoForge,
 } from './supabase.js';
 
 const IVA_DEFAULT = 0.08;   // franja fronteriza norte
@@ -146,7 +152,14 @@ const COPIA_TAL_CUAL =
 
 // ── Servidor ─────────────────────────────────────────────────────────────
 
-const server = new McpServer({ name: 'mono-cotizador', version: '1.0.0' });
+const server = new McpServer({ name: 'mono-cotizador', version: '1.0.0' }, {
+    instructions:
+        'Herramientas de Mono Atelier, un taller de muebles a medida. Cotizar (iniciar_cotizacion…), ' +
+        'consultar ventas y cobranza, y DISEÑAR muebles con FORGE: el módulo de diseño de la propia ' +
+        'plataforma del taller (no es Autodesk Forge) que convierte una foto o una descripción en un ' +
+        'mueble fabricable con modelo 3D, cutlist, herrajes y cotización. Cuando el usuario pida diseñar ' +
+        'o modelar un mueble, usa disenar_mueble de inmediato; no preguntes por plataformas ni formatos.',
+});
 
 server.registerTool('ver_catalogo', {
     title: 'Ver catálogo de servicios',
@@ -1484,6 +1497,234 @@ async function buscarCotizacion(referencia: string): Promise<FilaCotizacion | st
     }
     return coinciden[0];
 }
+
+
+// ── Forge: pedir un diseño desde el chat ─────────────────────────────────
+//
+// El diseño lo hace el Forge Agent que corre en la PC del taller (Blender vive
+// ahí); estas herramientas sólo ponen el trabajo en la cola de la plataforma y
+// leen cómo va. Es el mismo camino que la pantalla de Forge: foto → lectura →
+// el usuario confirma medidas → construcción.
+
+const ES_FORGE =
+    'FORGE es el módulo de diseño de la plataforma de Mono Atelier (NO es Autodesk Forge ni ' +
+    'ningún otro): convierte una foto o una descripción en un mueble fabricable con las reglas ' +
+    'del taller — modelo 3D y AR, cutlist con nesting, herrajes, cotización, manual de ensamble ' +
+    'y documento de entrega.';
+
+/** Errores de Supabase que tienen una causa conocida, dichos como tal. */
+function errorDeForge(e: any): string {
+    const m = String(e?.message ?? e);
+    if (/column .*(tipo|ficha)|forge_jobs\.(tipo|ficha)|'(tipo|ficha)' column/i.test(m)) {
+        return 'Falta la migración 20260928_forge_lectura.sql en Supabase (columnas tipo y ficha de forge_jobs).';
+    }
+    if (/forge_jobs.*(does not exist|schema cache)|42P01/i.test(m)) {
+        return 'Falta la migración 20260806_forge_jobs.sql en Supabase (la cola de Forge).';
+    }
+    if (/bucket not found|forge.*not found/i.test(m)) {
+        return 'Falta el bucket «forge» en Supabase Storage (migración 20260806_forge_models.sql).';
+    }
+    return `No pude hablar con Forge: ${m.slice(0, 200)}`;
+}
+
+/** Una petición idéntica que ya está en curso: un modelo chico reintenta las herramientas. */
+const yaEnCurso = (lista: FilaTrabajoForge[], tipo: string, prompt: string) =>
+    lista.find(t => (t.status === 'pending' || t.status === 'running')
+        && t.tipo === tipo && t.prompt === prompt
+        && Date.now() - new Date(t.created_at).getTime() < 15 * 60 * 1000);
+
+server.registerTool('disenar_mueble', {
+    title: 'Pedirle a Forge que diseñe un mueble',
+    description:
+        `${ES_FORGE}\n` +
+        'Úsala cuando el usuario diga "necesito diseñar este mueble", "diséñame…", "modela esto en 3D" ' +
+        'o mande una foto de referencia (cocina, closet, vestidor, gabinete, mueble a medida).\n' +
+        'NO le preguntes por plataformas, formatos (.rvt, .ifc, .f3d) ni entornos: Forge ya está conectado. ' +
+        'Llámala DE INMEDIATO con lo que dijo y, si mandó fotos, con la RUTA de cada una tal como aparece ' +
+        'en el mensaje (Hermes guarda la imagen en el disco) o su URL. Lo que falte —medidas, acabados— ' +
+        'lo pregunta el paso siguiente, con la lectura en la mano.\n' +
+        'Con fotos, Forge primero las LEE y deja una ficha para que el usuario confirme las medidas ' +
+        '(estado_diseno y luego construir_diseno). Sin fotos, diseña directo desde el texto. Tarda unos ' +
+        'minutos: no esperes, avisa que quedó en cola y dale la ref.',
+    inputSchema: {
+        descripcion: z.string().min(3).describe(
+            'Todo lo que dijo el usuario: qué mueble es, medidas CON su unidad, dónde va, materiales, ' +
+            'cómo se usa. Copia sus palabras, no las resumas.'),
+        imagenes: z.array(z.string()).max(MAX_IMAGENES).optional().describe(
+            'Fotos de referencia: la ruta COMPLETA del archivo como aparece en el mensaje, o una URL. ' +
+            'No inventes rutas: si no la ves, pide que vuelva a mandar la foto.'),
+    },
+}, async ({ descripcion, imagenes }) => {
+    const prompt = descripcion.trim();
+    const conFotos = !!imagenes?.length;
+    const tipo = conFotos ? 'lectura' : 'diseno';
+
+    let lista: FilaTrabajoForge[] = [];
+    try { lista = await leerTrabajosForge(30); } catch (e) { return texto(errorDeForge(e)); }
+
+    const repetido = yaEnCurso(lista, tipo, prompt);
+    if (repetido) {
+        return texto(`Ese pedido ya está en curso (ref ${cortoForge(repetido.id)}, ${hace(repetido.created_at)}). ` +
+                     `No lo volví a encolar. Usa estado_diseno para ver cómo va.`);
+    }
+
+    let urls: string[] = [];
+    if (conFotos) {
+        const r = await prepararImagenes(imagenes!, subirReferenciaForge).catch((e: any) => ({
+            urls: [] as string[], errores: [errorDeForge(e)] }));
+        if (r.errores.length) {
+            return texto('No encolé nada porque falló al preparar las fotos:\n' +
+                r.errores.map(x => `  · ${x}`).join('\n') +
+                '\nPídele al usuario que vuelva a mandar la foto y usa la ruta que aparezca en su mensaje.');
+        }
+        urls = r.urls;
+    }
+
+    let fila: FilaTrabajoForge;
+    try { fila = await encolarTrabajoForge({ prompt, tipo, imagenes: urls }); }
+    catch (e) { return texto(errorDeForge(e)); }
+
+    const aviso = avisoSinAgente(lista);
+    const ref = cortoForge(fila.id);
+    return texto(
+        (conFotos
+            ? `Listo: ${urls.length} foto(s) en cola para que Forge las lea (ref ${ref}). En unos minutos ` +
+              `deja una ficha con lo que ve, lo que no se puede fabricar tal cual y las medidas por confirmar.`
+            : `Listo: el diseño quedó en cola (ref ${ref}). Forge lo construye en unos minutos.`) +
+        `\nCuando el usuario pregunte, o en un par de minutos, llama estado_diseno con ref ${ref}.` +
+        (aviso ? `\n\n${aviso}` : ''));
+});
+
+server.registerTool('estado_diseno', {
+    title: 'Ver cómo va un diseño de Forge',
+    description:
+        `${ES_FORGE}\n` +
+        'Consulta un trabajo de Forge por su ref (sin ref, el más reciente). Si es una LECTURA de fotos ' +
+        'ya lista, muestra la ficha —qué se ve, qué no se fabrica y las medidas por confirmar—: enséñasela ' +
+        'al usuario, pregúntale las medidas y luego llama construir_diseno. Si es un DISEÑO terminado, da ' +
+        'los enlaces de sus documentos (cotización, entrega, manual de ensamble, cutlist, herrajes) y el ' +
+        'enlace para verlo en 3D/AR.',
+    inputSchema: {
+        referencia: z.string().optional().describe(
+            'Los primeros caracteres de la ref que dio disenar_mueble. Vacío = el más reciente.'),
+    },
+}, async ({ referencia }) => {
+    let lista: FilaTrabajoForge[];
+    try { lista = await leerTrabajosForge(30); } catch (e) { return texto(errorDeForge(e)); }
+    const b = buscarTrabajo(lista, referencia);
+    if ('mensaje' in b) return texto(b.mensaje);
+
+    const t = b.trabajo;
+    const ref = cortoForge(t.id);
+    const cab = `${t.tipo === 'lectura' ? 'Lectura de fotos' : 'Diseño'} ${ref} (${hace(t.created_at)})`;
+
+    if (t.status === 'pending') {
+        return texto(`${cab}: en cola, el Forge Agent todavía no lo toma.` +
+                     (avisoSinAgente([t]) ? `\n\n${avisoSinAgente([t])}` : ''));
+    }
+    if (t.status === 'running') {
+        return texto(`${cab}: Forge está trabajando en esto. Vuelve a preguntar en un minuto.`);
+    }
+    if (t.status === 'error') {
+        return texto(`${cab}: falló.\n${(t.error ?? 'sin detalle').slice(0, 600)}\n\n` +
+                     'Cuéntale al usuario qué pasó. Si se arregla con un dato (una foto más clara, una medida), ' +
+                     'vuelve a pedirlo con disenar_mueble.');
+    }
+
+    if (t.tipo === 'lectura' && t.ficha) {
+        return texto(
+            `${fichaEnTexto(t.ficha, ref)}\n\n` +
+            (t.ficha.construible
+                ? 'SIGUIENTE: enséñale al usuario lo de arriba y pregúntale las medidas por confirmar (en ' +
+                  'milímetros: 100 cm = 1000). Copia el bloque de MEDIDAS tal cual. Cuando las dé, llama ' +
+                  `construir_diseno con referencia ${ref}, esas medidas y sus indicaciones. No construyas con ` +
+                  'medidas que no dijo él.'
+                : 'Forge no puede construir esto todavía: díselo claro al usuario, con lo que sí se levantó arriba.'));
+    }
+
+    // diseño terminado: sus documentos y el visor
+    const modelo = t.result_model_id ? await leerModeloForge(t.result_model_id).catch(() => null) : null;
+    const L = [`${cab}: listo${modelo ? ` — ${modelo.name}` : ''}.`];
+    if (t.log) L.push('', ...envolver(t.log.slice(0, 900)));
+    const docs = modelo?.documentos ?? {};
+    const orden: [string, string][] = [
+        ['cotizacion.pdf', 'Cotización (cliente)'], ['entrega.pdf', 'Documento de entrega (cliente)'],
+        ['manual_ensamble.pdf', 'Manual de ensamble (carpintero)'], ['cutlist.xlsx', 'Cutlist (taller)'],
+        ['herrajes.xlsx', 'Herrajes (compras)'], ['preview.glb', 'Modelo 3D (GLB)'],
+    ];
+    const hay = orden.filter(([k]) => docs[k]);
+    if (hay.length) L.push('', 'Documentos:', ...hay.map(([k, n]) => `  ${n}: ${docs[k]}`));
+    const plataforma = variable('PLATAFORMA_URL')?.replace(/\/+$/, '');
+    if (modelo && plataforma) L.push('', `Verlo en 3D / AR: ${plataforma}/?ar=${modelo.id}`);
+    if (!hay.length) L.push('', 'Todavía no hay documentos publicados para este diseño.');
+    L.push('', 'Los documentos van con su enlace tal cual, sin comillas invertidas. ' +
+                'El reporte de costos internos NO se comparte por aquí.');
+    return texto(L.join('\n'));
+});
+
+server.registerTool('construir_diseno', {
+    title: 'Construir el diseño de una lectura de Forge',
+    description:
+        `${ES_FORGE}\n` +
+        'Segundo paso, DESPUÉS de estado_diseno mostró la ficha de una lectura de fotos: manda a construir ' +
+        'el mueble con las medidas que el USUARIO confirmó. Una foto no trae escala y las hechas con IA ' +
+        'mienten: por eso nunca inventes ni adivines una medida ni uses las estimadas por tu cuenta; ' +
+        'pregúntaselas. Las medidas van en MILÍMETROS por su clave (100 cm = 1000, 2.2 m = 2200).',
+    inputSchema: {
+        referencia: z.string().optional().describe(
+            'Ref de la lectura. Vacío = la lectura terminada más reciente.'),
+        medidas: z.record(z.string(), z.number()).optional().describe(
+            'Medidas confirmadas por el usuario, en MILÍMETROS, por su clave. Ej: ' +
+            '{"largo_muro_A": 1000, "alto_total": 2200}. Deben ir TODAS las de la ficha.'),
+        indicaciones: z.string().optional().describe(
+            'Lo que el usuario pidió cambiar o precisar respecto a la foto (acabados, sin LED, fondo…).'),
+        usar_estimadas: z.boolean().optional().describe(
+            'true SÓLO si el usuario dijo expresamente que se usen las medidas estimadas tal cual.'),
+    },
+}, async ({ referencia, medidas, indicaciones, usar_estimadas }) => {
+    let lista: FilaTrabajoForge[];
+    try { lista = await leerTrabajosForge(30); } catch (e) { return texto(errorDeForge(e)); }
+
+    const lecturas = lista.filter(x => x.tipo === 'lectura' && x.status === 'done' && x.ficha);
+    const b = referencia?.trim() ? buscarTrabajo(lista, referencia) : buscarTrabajo(lecturas);
+    if ('mensaje' in b) {
+        return texto(referencia?.trim() ? b.mensaje
+            : 'No hay ninguna lectura de fotos terminada. Pide primero disenar_mueble con las fotos.');
+    }
+    const t = b.trabajo;
+    if (t.tipo !== 'lectura') return texto(`La ref ${cortoForge(t.id)} no es una lectura de fotos: no hay nada que confirmar ahí.`);
+    if (t.status !== 'done' || !t.ficha) {
+        return texto(`La lectura ${cortoForge(t.id)} todavía no termina (${t.status}). Consulta estado_diseno en un minuto.`);
+    }
+    if (!t.ficha.construible) {
+        return texto('Forge no tiene generador para lo que se ve en esta foto, así que no se puede construir. ' +
+                     'Dile al usuario qué se levantó (estado_diseno) y que se cotiza a mano o se espera al generador.');
+    }
+
+    const r = aplicarMedidas(t.ficha, medidas, !!usar_estimadas);
+    if ('motivo' in r) return texto(r.motivo);
+
+    const ficha = { ...r.ficha, indicaciones: indicaciones?.trim() || r.ficha.indicaciones || '' };
+    const prompt = `Construir: ${ficha.nombre_proyecto}`;
+    const repetido = yaEnCurso(lista, 'diseno', prompt);
+    if (repetido) {
+        return texto(`Ya hay una construcción de este diseño en curso (ref ${cortoForge(repetido.id)}, ` +
+                     `${hace(repetido.created_at)}). No la volví a encolar. Usa estado_diseno.`);
+    }
+
+    let fila: FilaTrabajoForge;
+    try { fila = await encolarTrabajoForge({ prompt, tipo: 'diseno', imagenes: t.imagenes ?? [], ficha }); }
+    catch (e) { return texto(errorDeForge(e)); }
+
+    const aviso = avisoSinAgente(lista);
+    return texto(
+        `Construcción en cola (ref ${cortoForge(fila.id)}): «${ficha.nombre_proyecto}» con las medidas confirmadas. ` +
+        `Forge deriva las piezas con las reglas del taller y genera cotización, cutlist y manual; tarda unos minutos. ` +
+        `Cuando el usuario pregunte llama estado_diseno con esa ref.` +
+        (r.estimadasUsadas.length
+            ? `\n⚠ Se usaron las medidas ESTIMADAS de: ${r.estimadasUsadas.join(', ')}. Díselo al usuario.` : '') +
+        (aviso ? `\n\n${aviso}` : ''));
+});
 
 // ── Arranque ─────────────────────────────────────────────────────────────
 

@@ -12,7 +12,8 @@
     "calibrar:pdf": "npm run build:agente && node calibrar.mjs",
     "prueba:auth": "node prueba-auth.mjs",
     "prueba:facturapi": "node --experimental-strip-types prueba-facturapi.ts",
-    "prueba:borrador": "npm run build:agente && node prueba-borrador.mjs"
+    "prueba:borrador": "npm run build:agente && node prueba-borrador.mjs",
+    "prueba:forge": "npm run build:agente && node prueba-forge.mjs"
   },
   "dependencies": {
     "@google/model-viewer": "^4.3.1",

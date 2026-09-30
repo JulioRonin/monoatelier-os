@@ -11,6 +11,7 @@
 import { raizRepo } from './rutas.js';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { randomUUID } from 'node:crypto';
 
 /**
  * Llaves del entorno, y si no están, del .env.local del repo.
@@ -358,4 +359,82 @@ export async function guardarPago(p: {
         }]),
     });
     return idsDeTexto(filas?.[0] ?? {}, ['id', 'project_id']);
+}
+
+/** Una variable de configuración: del entorno o del .env.local del repo. */
+export const variable = (clave: string): string | undefined =>
+    process.env[clave] || delEnvLocal(clave) || undefined;
+
+// ── Forge: la cola de diseño que atiende el Forge Agent en la PC ─────────
+
+export interface FilaTrabajoForge {
+    id: string;
+    prompt: string;
+    tipo: string | null;              // lectura | diseno (null = trabajo anterior a la migración)
+    status: string;                   // pending | running | done | error
+    imagenes: string[] | null;
+    ficha: any | null;
+    result_model_id: string | null;
+    log: string | null;
+    error: string | null;
+    created_at: string;
+    updated_at: string | null;
+}
+
+const COLUMNAS_TRABAJO =
+    'id,prompt,tipo,status,imagenes,ficha,result_model_id,log,error,created_at,updated_at';
+
+/** Encola un trabajo: el Forge Agent lo toma en cuanto esté corriendo. */
+export async function encolarTrabajoForge(t: {
+    prompt: string; tipo: 'lectura' | 'diseno'; imagenes?: string[]; ficha?: unknown;
+}): Promise<FilaTrabajoForge> {
+    const filas = await pedir('/forge_jobs', {
+        method: 'POST',
+        headers: { Prefer: 'return=representation' },
+        body: JSON.stringify([{
+            prompt: t.prompt,
+            tipo: t.tipo,
+            status: 'pending',
+            imagenes: t.imagenes ?? [],
+            ficha: t.ficha ?? null,
+        }]),
+    });
+    return filas[0];
+}
+
+/** Los más recientes primero. No trae base_project_json: pesa y aquí no sirve. */
+export async function leerTrabajosForge(limite = 30): Promise<FilaTrabajoForge[]> {
+    return pedir(`/forge_jobs?select=${COLUMNAS_TRABAJO}&order=created_at.desc&limit=${limite}`);
+}
+
+export interface FilaModeloForge {
+    id: string; name: string; status: string | null;
+    glb_url: string | null; documentos: Record<string, string> | null;
+}
+
+export async function leerModeloForge(id: string): Promise<FilaModeloForge | null> {
+    const q = new URLSearchParams({ select: 'id,name,status,glb_url,documentos', id: `eq.${id}` });
+    const filas = await pedir(`/forge_models?${q}`);
+    return filas?.[0] ?? null;
+}
+
+/**
+ * Sube una foto de referencia al bucket público `forge` (refs/) y devuelve su
+ * URL pública: la misma carpeta y el mismo camino que usa la pantalla de Forge
+ * al adjuntar una imagen, así que la referencia también se ve en la plataforma.
+ */
+export async function subirReferenciaForge(
+    bytes: Uint8Array, ext: string, contentType: string,
+): Promise<string> {
+    const nombre = `refs/${randomUUID()}.${ext}`;
+    const k = LLAVE();
+    const res = await fetch(`${URL_BASE()}/storage/v1/object/forge/${nombre}`, {
+        method: 'POST',
+        headers: { apikey: k, Authorization: `Bearer ${k}`, 'Content-Type': contentType },
+        body: bytes,
+    });
+    if (!res.ok) {
+        throw new Error(`Supabase Storage ${res.status}: ${(await res.text()).slice(0, 200)}`);
+    }
+    return `${URL_BASE()}/storage/v1/object/public/forge/${nombre}`;
 }

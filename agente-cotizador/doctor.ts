@@ -15,7 +15,7 @@ import { existsSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { readFileSync } from 'node:fs';
 import { raizRepo, rutaPlantilla, rutaSalida } from './rutas.js';
-import { urlSupabase, llaveSupabase } from './supabase.js';
+import { urlSupabase, llaveSupabase, variable } from './supabase.js';
 
 const OK = '  ✓', MAL = '  ✗', AVISO = '  !';
 let fallas = 0;
@@ -105,6 +105,8 @@ async function main() {
         ['quotes', 'la tabla de cotizaciones de la plataforma'],
         ['projects', 'la tabla de proyectos de la plataforma'],
         ['payments', 'la tabla de abonos de la plataforma'],
+        ['forge_jobs', 'supabase/migrations/20260806_forge_jobs.sql'],
+        ['forge_models', 'supabase/migrations/20260806_forge_models.sql'],
     ];
     for (const [tabla, migracion] of TABLAS) {
         const r = await rest(`/${tabla}?select=*&limit=1`);
@@ -137,6 +139,10 @@ async function main() {
          'supabase/migrations/20260808_master_list.sql'],
         ['projects', ['sold_at', 'quote_id'],
          'supabase/migrations/20260925_fecha_de_venta.sql'],
+        ['forge_jobs', ['imagenes'], 'supabase/migrations/20260807_forge_job_imagenes.sql'],
+        ['forge_jobs', ['tipo', 'ficha'],
+         'supabase/migrations/20260928_forge_lectura.sql\n' +
+         'Sin ellas no se puede pedir un diseño con fotos desde el chat.'],
     ];
     for (const [tabla, columnas, migracion] of COLUMNAS) {
         const faltan: string[] = [];
@@ -160,6 +166,16 @@ async function main() {
             linea(OK, `${tabla} tiene las columnas que el agente necesita`);
         }
     }
+
+    // ── Forge desde el chat ──────────────────────────────────────────────
+    console.log('\nForge (pedir diseños desde el chat)');
+    const plataforma = variable('PLATAFORMA_URL');
+    if (plataforma) linea(OK, `PLATAFORMA_URL → ${plataforma}`);
+    else linea(AVISO, 'sin PLATAFORMA_URL',
+        'Los diseños terminados no llevarán el enlace para verlos en 3D / AR.\n' +
+        'Agrega al .env.local la dirección de la plataforma:  PLATAFORMA_URL=https://…vercel.app');
+    console.log('      El diseño lo hace el Forge Agent en esta PC: para que avance debe estar\n' +
+                '      corriendo  python -m forge_agent.worker  (python -m forge_agent.doctor lo revisa).');
 
     // ── 4. catálogo con datos ────────────────────────────────────────────
     console.log('\nCatálogo');
