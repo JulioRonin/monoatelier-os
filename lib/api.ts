@@ -1200,10 +1200,10 @@ export const api = {
         let q = supabase.from('rep_pagos').select('*');
         if (facturaUuid) q = q.eq('factura_uuid', facturaUuid);
         const { data, error } = await q.order('parcialidad', { ascending: true });
-        if (error) {
-            console.error('Error al leer el libro de pagos:', error);
-            return [];
-        }
+        // NO se devuelve [] al fallar: una lista vacía se lee como "esta factura
+        // no tiene pagos", y la pantalla ofrecería parcialidad 1 con el saldo
+        // completo sobre una factura que ya lleva REP timbrados.
+        if (error) throw error;
         return (data || []).map(mapRepPago);
     },
 

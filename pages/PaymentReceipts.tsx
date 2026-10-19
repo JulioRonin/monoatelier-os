@@ -420,6 +420,11 @@ const PaymentReceipts: React.FC = () => {
     const [pagos, setPagos] = useState<RepPago[]>([]);
     const [loadingPpd, setLoadingPpd] = useState(false);
     const [errorPpd, setErrorPpd] = useState<string | null>(null);
+    /** El libro de pagos no cargó: sin él no se puede calcular la parcialidad. */
+    const [errorPagos, setErrorPagos] = useState<string | null>(null);
+    /** Un REP ya timbrado que no quedó asentado en el libro, pendiente de reintentar. */
+    const [pendienteLibro, setPendienteLibro] = useState<Omit<RepPago, 'id'> | null>(null);
+    const [reintentando, setReintentando] = useState(false);
 
     const [invoiceSearch, setInvoiceSearch] = useState('');
     const [showInvoiceDrop, setShowInvoiceDrop] = useState(false);
@@ -455,8 +460,20 @@ const PaymentReceipts: React.FC = () => {
     }, []);
 
     const cargarPagos = useCallback(async () => {
-        try { setPagos(await api.getRepPagos()); }
-        catch (e) { console.warn('rep_pagos no disponible:', e); }
+        try {
+            setPagos(await api.getRepPagos());
+            setErrorPagos(null);
+        } catch (e: any) {
+            console.warn('rep_pagos no disponible:', e);
+            // Sin el libro no se sabe qué parcialidad sigue ni cuánto falta
+            // por pagar: se dice en pantalla y no se deja timbrar.
+            setErrorPagos(
+                /rep_pagos|does not exist|schema cache|42P01/i.test(e?.message ?? '')
+                    ? 'Falta la migración 20260817_rep_facturas_externas.sql en Supabase (el libro de pagos).'
+                    : /JWT|permission|policy|row-level|401|403/i.test(e?.message ?? '')
+                        ? 'Tu sesión no puede leer el libro de pagos. Cierra sesión y vuelve a entrar.'
+                        : `No se pudo leer el libro de pagos: ${e?.message || e}`);
+        }
     }, []);
 
     const loadPpdInvoices = useCallback(async (q = '') => {
@@ -505,6 +522,13 @@ const PaymentReceipts: React.FC = () => {
     }, [doc, pagadoPorUuid]);
 
     const saldoInsoluto = doc ? redondear(saldoAnterior - amountPaid) : 0;
+
+    /** Los REP del modo activo que el libro ya tiene de la factura elegida. */
+    const pagosDelDoc = useMemo(() => doc
+        ? pagos.filter(p => p.facturaUuid.toLowerCase() === doc.uuid.toLowerCase()
+            && p.modo === (modo === 'test' ? 'test' : 'live'))
+        : [], [pagos, doc, modo]);
+    const pagadoDelDoc = redondear(pagosDelDoc.reduce((s, p) => s + p.monto, 0));
 
     // Desglose del pago con la estructura REAL de la factura
     const desglose = useMemo(
@@ -590,6 +614,7 @@ const PaymentReceipts: React.FC = () => {
             e.amount = `El monto no puede pasar del saldo pendiente (${money(saldoAnterior, doc.moneda)})`;
         }
         if (doc && saldoAnterior <= 0) e.amount = 'Esta factura ya está liquidada.';
+        if (errorPagos) e.invoice = errorPagos + ' No se puede timbrar sin saber qué parcialidad sigue.';
         if (!doc?.clienteRfc) e.invoice = 'La factura no trae RFC del receptor.';
         setErrors(e);
         return Object.keys(e).length === 0;
@@ -614,7 +639,10 @@ const PaymentReceipts: React.FC = () => {
             `Vas a timbrar un CFDI REAL ante el SAT:\n\n` +
             `Factura: ${etiqueta(doc)} — ${doc.clienteNombre}\n` +
             `Monto: ${money(amountPaid, doc.moneda)}\n` +
-            `Parcialidad ${parcialidad} · saldo anterior ${money(saldoAnterior, doc.moneda)}\n\n` +
+            `Parcialidad ${parcialidad} · saldo anterior ${money(saldoAnterior, doc.moneda)}\n` +
+            (saldoInsoluto > 0.005
+                ? `Quedará un saldo de ${money(saldoInsoluto, doc.moneda)} para otra parcialidad.\n\n`
+                : `Con este pago la factura queda LIQUIDADA.\n\n`) +
             `¿Continuar?`)) {
             return;
         }
@@ -666,8 +694,7 @@ const PaymentReceipts: React.FC = () => {
 
             // 3. Asentar el pago ANTES de descargar: si la descarga falla, el
             //    REP ya está timbrado y el saldo tiene que reflejarlo.
-            try {
-                await api.registrarRepPago({
+            const asiento: Omit<RepPago, 'id'> = {
                     facturaUuid: doc.uuid,
                     facturaOrigen: doc.origen,
                     modo: stamped.modo ?? (modo === 'test' ? 'test' : 'live'),
@@ -684,10 +711,17 @@ const PaymentReceipts: React.FC = () => {
                     parcialidad,
                     saldoAnterior: redondear(saldoAnterior),
                     saldoInsoluto: redondear(saldoAnterior - amountPaid),
-                });
+            };
+            setPendienteLibro(null);
+            try {
+                await api.registrarRepPago(asiento);
                 await cargarPagos();
             } catch (e) {
+                // El REP YA existe ante el SAT. Si no queda en el libro, el
+                // siguiente pago de esta factura tomaría un saldo y una
+                // parcialidad equivocados: eso se dice en pantalla, no en la consola.
                 console.warn('El REP se timbró pero no se pudo asentar en rep_pagos:', e);
+                setPendienteLibro(asiento);
             }
 
             // 4. Descargas
@@ -713,7 +747,20 @@ const PaymentReceipts: React.FC = () => {
         }
     };
 
+    const reintentarAsiento = async () => {
+        if (!pendienteLibro) return;
+        setReintentando(true);
+        try {
+            await api.registrarRepPago(pendienteLibro);
+            setPendienteLibro(null);
+            await cargarPagos();
+        } catch (e: any) {
+            setErrorPagos(`No se pudo asentar el REP en el libro: ${e?.message || e}`);
+        } finally { setReintentando(false); }
+    };
+
     const resetForm = () => {
+        setPendienteLibro(null);
         setTimbradoStep('idle'); setTimbradoError(null); setRepResult(null);
         setDoc(null); setInvoiceSearch(''); setAmountPaid(0); setErrors({});
     };
@@ -787,6 +834,20 @@ const PaymentReceipts: React.FC = () => {
                                     <div><p className="text-[10px] uppercase tracking-widest text-gray-400">Monto pagado</p><p className="font-mono text-sm">{money(amountPaid, doc?.moneda)}</p></div>
                                 </div>
                             </div>
+                            {pendienteLibro && (
+                                <div role="alert" className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-[11px] text-red-800 dark:text-red-200 text-left space-y-2">
+                                    <p>
+                                        <strong>El REP sí se timbró, pero NO quedó anotado en el libro de pagos.</strong>{' '}
+                                        Si emites otro REP de esta factura sin arreglarlo, tomará una parcialidad y un saldo
+                                        equivocados. Anota: parcialidad {pendienteLibro.parcialidad}, pagó {money(pendienteLibro.monto, pendienteLibro.moneda)},
+                                        saldo insoluto {money(pendienteLibro.saldoInsoluto, pendienteLibro.moneda)}.
+                                    </p>
+                                    <button onClick={reintentarAsiento} disabled={reintentando}
+                                        className="px-4 py-2 bg-red-600 text-white text-[10px] font-bold uppercase tracking-widest rounded disabled:opacity-50">
+                                        {reintentando ? 'Anotando…' : 'Reintentar anotarlo'}
+                                    </button>
+                                </div>
+                            )}
                             <div className="flex items-center justify-center gap-2 text-xs text-gray-400"><Download size={12} /> PDF y XML descargados automáticamente</div>
                             <button onClick={resetForm} className="w-full py-3 bg-primary text-white text-xs font-bold uppercase tracking-widest rounded-lg hover:bg-black transition-colors">Emitir otro REP</button>
                         </div>
@@ -937,6 +998,13 @@ const PaymentReceipts: React.FC = () => {
                                 )}
                             </div>
 
+                            {errorPagos && (
+                                <p role="alert" className="mt-3 text-[11px] text-red-700 bg-red-50 border border-red-200 rounded-lg p-3">
+                                    <strong>No se puede calcular la parcialidad.</strong> {errorPagos}{' '}
+                                    <button onClick={cargarPagos} className="underline font-bold">Reintentar</button>
+                                </p>
+                            )}
+
                             {errorPpd && (
                                 <p className="mt-3 text-[11px] text-amber-600">
                                     No se pudieron leer las facturas de Facturapi: {errorPpd}
@@ -964,6 +1032,28 @@ const PaymentReceipts: React.FC = () => {
                                         <div><span className="text-gray-400">Total factura</span><p className="font-mono font-bold text-primary">{money(doc.total, doc.moneda)}</p></div>
                                     </div>
                                     <p className="font-mono text-[9px] text-gray-400 break-all">UUID: {doc.uuid}</p>
+                                    <div className="pt-2 mt-1 border-t border-primary/10 text-[11px]">
+                                        {pagosDelDoc.length === 0 ? (
+                                            <p className="text-amber-700 dark:text-amber-300">
+                                                <strong>Sin REP anotados en la plataforma.</strong> Este sería el primero (parcialidad 1).
+                                                Si ya recibiste pagos de esta factura, emite un REP por CADA pago, con su fecha y su monto
+                                                reales; no uno por la suma.
+                                            </p>
+                                        ) : (
+                                            <>
+                                                <p className="text-gray-500 mb-1">
+                                                    REP ya timbrados: {pagosDelDoc.length} · pagado {money(pagadoDelDoc, doc.moneda)} · falta {money(saldoAnterior, doc.moneda)}
+                                                </p>
+                                                <ul className="font-mono text-[10px] text-gray-500 space-y-0.5">
+                                                    {pagosDelDoc.map(p => (
+                                                        <li key={p.id}>
+                                                            Parcialidad {p.parcialidad} · {new Date(p.fechaPago).toLocaleDateString('es-MX')} · {money(p.monto, p.moneda)}
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            </>
+                                        )}
+                                    </div>
                                 </div>
                             )}
                         </div>
@@ -1025,6 +1115,12 @@ const PaymentReceipts: React.FC = () => {
                                         />
                                     </div>
                                     {errors.amount && <p className="text-[10px] text-red-500 mt-1">{errors.amount}</p>}
+                                    {doc && (
+                                        <p className="text-[9px] text-gray-400 mt-1">
+                                            Se rellena con el saldo completo ({money(saldoAnterior, doc.moneda)}). Si este pago fue <strong>parcial</strong>,
+                                            escribe lo que de verdad recibiste: el resto queda para la parcialidad {parcialidad + 1}.
+                                        </p>
+                                    )}
                                 </div>
 
                                 {/* Parcialidad y saldo NO se capturan: salen del libro de pagos */}
